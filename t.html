@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Debug Mode</title>
+    <title>AlAzri TV - Full Debug Mode</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 160px; --card-h: 100px; }
+        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 180px; --card-h: 110px; }
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* DEBUG CONSOLE - يظهر دائماً */
+        /* شريط التصحيح الثابت */
         #tv-debug {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 100px;
-            background: rgba(0, 0, 0, 0.9); color: #00ff00; font-family: monospace;
-            font-size: 11px; z-index: 9999; overflow-y: auto; border-top: 2px solid #e50914;
-            padding: 5px; pointer-events: none;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 120px;
+            background: rgba(0, 0, 0, 0.95); color: #00ff00; font-family: monospace;
+            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 2px solid var(--primary-red);
+            padding: 10px; pointer-events: none; box-sizing: border-box;
         }
 
         .fixed-header { 
@@ -27,55 +27,64 @@
             border-bottom: 1px solid #222;
         }
 
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; outline: none; }
-
-        /* تنسيق التركيز للمتصفحات (الريموت كنترول) */
-        .card:focus, .brand:focus, .header-icon:focus, .btn-auth:focus, .btn-google:focus {
-            outline: 4px solid white !important;
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; cursor: pointer; }
+        
+        /* تأثير التركيز للريموت */
+        .brand:focus, .header-icon:focus, .card:focus, .search-input:focus, .btn-auth:focus {
+            outline: 4px solid white;
+            background: rgba(255,255,255,0.1);
             transform: scale(1.05);
-            z-index: 10;
         }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 110px 20px; }
+        .search-container { display: none; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
+        .search-container.active { display: flex; }
+        .search-input { background: transparent; border: none; color: white; outline: none; width: 150px; }
+        
+        .header-icon { cursor: pointer; font-size: 1.2rem; color: #bbb; padding: 10px; outline: none; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 140px 20px; }
 
         .row { display: none; margin-bottom: 30px; }
         .row.visible { display: block; }
-        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
+        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 10px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; border: 2px solid transparent; }
-        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; }
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; }
+        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; pointer-events: none; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.75rem; text-align: center; padding: 5px; box-sizing: border-box; }
 
-        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        #player-container { display: none; width: 100%; max-width: 900px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         video { width: 100%; aspect-ratio: 16/9; outline: none; }
     </style>
 </head>
 <body>
 
 <div id="tv-debug">
-    <div>[System] Debugger Active...</div>
+    <div>[System] Debugger Initialized. Waiting for input...</div>
 </div>
 
 <div class="fixed-header">
     <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
-    <div class="header-actions">
-        <i class="fas fa-search header-icon" tabindex="2" onclick="toggleSearch()"></i>
-        <button class="btn-google" id="google-btn" tabindex="3" onclick="loginWithGoogle()">دخول</button>
+    
+    <div class="header-actions" style="display: flex; align-items: center; gap: 10px;">
+        <div class="search-container" id="search-box">
+            <input type="text" class="search-input" id="q-input" placeholder="بحث..." tabindex="2">
+        </div>
+        <i class="fas fa-search header-icon" tabindex="3" onclick="toggleSearch()"></i>
+        <button class="btn-auth" style="background:var(--primary-red); color:white; border:none; padding:5px 15px; border-radius:4px;" tabindex="4">دخول</button>
     </div>
 </div>
 
 <main class="content-area">
     <div class="row" id="row-search">
-        <div class="row-header">
-            <div class="row-title">نتائج البحث</div>
-        </div>
+        <div class="row-title">نتائج البحث</div>
         <div class="row-content" id="grid-search"></div>
     </div>
 
     <div class="row visible" id="row-episodes">
-        <div class="row-title" id="episodes-label">الحلقات</div>
-        <div class="row-content" id="grid-episodes"></div>
+        <div class="row-title">المحتوى المقترح</div>
+        <div class="row-content" id="grid-episodes">
+            </div>
     </div>
 
     <div id="player-container">
@@ -84,80 +93,89 @@
 </main>
 
 <script>
-    // --- 1. DEBUG LOGIC ---
-    var debugBox = document.getElementById('tv-debug');
-    function log(msg, color) {
+    // --- 1. إصلاح نظام الـ DEBUG ---
+    var debugElement = document.getElementById('tv-debug');
+    function logToTV(msg, color) {
         var div = document.createElement('div');
         div.style.color = color || '#00ff00';
         div.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        debugBox.appendChild(div);
-        debugBox.scrollTop = debugBox.scrollHeight;
+        debugElement.appendChild(div);
+        debugElement.scrollTop = debugElement.scrollHeight;
     }
 
-    // Capture standard logs
-    var oldLog = console.log;
+    // ربط Console.log بشاشة التلفاز
+    var originalConsole = console.log;
     console.log = function() {
         var args = Array.prototype.slice.call(arguments);
-        log(args.join(' '));
-        oldLog.apply(console, args);
+        logToTV(args.join(' '), '#00ff00');
+        originalConsole.apply(console, args);
     };
 
     window.onerror = function(msg, url, line) {
-        log("ERROR: " + msg + " (Line: " + line + ")", "#ff4444");
+        logToTV("ERROR: " + msg + " (Line: " + line + ")", "#ff4444");
         return false;
     };
 
-    // --- 2. TV NAVIGATION (D-PAD) ---
-    document.addEventListener('keydown', function(e) {
-        var active = document.activeElement;
-        log("Key: " + e.keyCode + " | Focus: " + active.tagName);
-
-        if (e.keyCode === 13) { // Enter
-            if(active) active.click();
+    // --- 2. إصلاح الدوال المفقودة ---
+    function toggleSearch() {
+        console.log("Toggling Search Box...");
+        var box = document.getElementById('search-box');
+        box.classList.toggle('active');
+        if(box.classList.contains('active')) {
+            document.getElementById('q-input').focus();
         }
-        
-        // الانتقال التلقائي البسيط بالمتصفح يعمل بـ Tab، 
-        // لكن في التلفاز يفضل استخدام الأسهم لتغيير الـ Focus
+    }
+
+    // مستمع لإدخال البحث
+    document.getElementById('q-input').addEventListener('keydown', function(e) {
+        if(e.keyCode === 13) { // Enter
+            console.log("Searching for: " + this.value);
+            // هنا تضع دالة startSearch(this.value) الخاصة بك
+        }
     });
 
-    // --- 3. APP LOGIC ---
-    var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
-    var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
-    var db = supabase.createClient(SB_URL, SB_KEY);
-    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
-    var BASE = "https://ak.sv";
+    // --- 3. إدارة التركيز بالريموت (Remote Navigation) ---
+    document.addEventListener('keydown', function(e) {
+        var keyCode = e.keyCode;
+        // أزرار الأسهم: 37 (يسار), 38 (فوق), 39 (يمين), 40 (تحت)
+        // زر OK: 13
+        logToTV("Key Pressed: " + keyCode, "#aaa");
 
-    function fetchAndPlay(link, title) {
-        log("Fetching link: " + title);
-        document.getElementById('player-container').style.display = 'block';
-        var videoElem = document.getElementById('main-video');
-        
-        fetch(PROXY(link))
-            .then(function(res) { return res.text(); })
-            .then(function(html) {
-                log("HTML Loaded. Searching for source...");
-                // استخراج الرابط بطريقة متوافقة مع المتصفحات القديمة
-                var match = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-                if(match) {
-                    log("ID Found: " + match[1]);
-                    // تكملة منطق التشغيل هنا
-                } else {
-                    log("Failed to find video source", "#ffbb33");
-                }
-            })
-            .catch(function(err) { log("Fetch error: " + err, "#ff4444"); });
-    }
+        if(keyCode === 13) {
+            // محاكاة الضغط عند الضغط على Enter في الريموت
+            if(document.activeElement) {
+                document.activeElement.click();
+            }
+        }
+    });
 
-    // تهيئة البيانات التجريبية
-    function init() {
-        log("AlAzri TV Dashboard Ready.");
-        // إضافة tabindex للعناصر لضمان قابليتها للتركيز بالريموت
+    // --- 4. تهيئة بيانات تجريبية للتأكد من العمل ---
+    function initApp() {
+        console.log("App Initializing...");
         var grid = document.getElementById('grid-episodes');
-        grid.innerHTML = '<div class="card" tabindex="5" onclick="log(\'Clicked!\')"><img src="https://via.placeholder.com/160x100"><div class="card-label">حلقة تجريبية</div></div>';
+        
+        // إضافة حلقات تجريبية للتأكد من أن الـ Focus يعمل
+        var demoData = [
+            {t: "شباب البومب 14", img: "https://via.placeholder.com/180x110/e50914/ffffff?text=S14"},
+            {t: "شباب البومب 13", img: "https://via.placeholder.com/180x110/333/ffffff?text=S13"},
+            {t: "فيلم الأكشن", img: "https://via.placeholder.com/180x110/111/ffffff?text=Movie"}
+        ];
+
+        var html = "";
+        for(var i=0; i<demoData.length; i++) {
+            html += '<div class="card" tabindex="' + (100 + i) + '" onclick="console.log(\'Playing: ' + demoData[i].t + '\')">' +
+                    '<img src="' + demoData[i].img + '">' +
+                    '<div class="card-label">' + demoData[i].t + '</div>' +
+                    '</div>';
+        }
+        grid.innerHTML = html;
+        console.log("Demo cards loaded. Use remote to navigate.");
     }
 
-    init();
+    // تشغيل التطبيق
+    initApp();
 </script>
 
 </body>
 </html>
+ 
