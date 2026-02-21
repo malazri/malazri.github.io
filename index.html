@@ -110,6 +110,16 @@
         <div class="row-content" id="grid-favs"></div>
     </div>
 
+    <div class="row" id="row-episodes">
+        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+            <div class="row-title" id="episodes-label">الحلقات</div>
+            <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" onclick="toggleFavorite()">
+                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
+            </button>
+        </div>
+        <div class="row-content" id="grid-episodes"></div>
+    </div>
+
     <div id="player-container">
         <video id="main-video" controls autoplay tabindex="20"></video>
         <div style="padding:15px;">
@@ -124,16 +134,6 @@
                 <span>توقفت عند: <b id="last-pos-text">-</b></span>
             </div>
         </div>
-    </div>
-
-    <div class="row" id="row-episodes">
-        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
-            <div class="row-title" id="episodes-label">الحلقات</div>
-            <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" onclick="toggleFavorite()">
-                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
-            </button>
-        </div>
-        <div class="row-content" id="grid-episodes"></div>
     </div>
 </main>
 
@@ -291,6 +291,7 @@
     function updateFavBtn() {
         const isFav = favorites.some(f => f.link === state.currentSeries.link);
         document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
+        document.getElementById('fav-toggle-btn').style.background= '--primary-red';
     }
 
     async function toggleFavorite() {
