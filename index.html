@@ -170,6 +170,27 @@
         }
     }
 
+    function startProgressTracker() {
+        setInterval(async () => {
+            if (state.user && state.currentEpisodeLink && !videoElem.paused) {
+                const position = Math.floor(videoElem.currentTime);
+                const duration = Math.floor(videoElem.duration);
+                
+                // حفظ فقط إذا شاهدت أكثر من 5 ثوانٍ ولم تصل للنهاية تماماً
+                if (position > 5 && position < duration - 10) {
+                    const { error } = await db.from('watch_history').upsert({
+                        user_id: state.user.id,
+                        episode_link: state.currentEpisodeLink,
+                        last_position: position,
+                        updated_at: new Date()
+                    }, { onConflict: 'user_id, episode_link' });
+                    
+                    if(!error) console.log("تم حفظ التقدم:", position);
+                }
+            }
+        }, 10000); 
+    }
+
     async function checkUser() {
         const { data: { session } } = await db.auth.getSession();
         if(session?.user) {
@@ -271,20 +292,46 @@
     async function fetchAndPlay(link, title) {
         state.currentEpisodeLink = link;
         document.getElementById('player-container').style.display = 'block';
-        videoElem.src = "";
+        videoElem.src = ""; // تصفير المشغل
+        
         try {
             const html = await (await fetch(PROXY(link))).text();
             const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
             const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
             let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
+            
             if(mp4) {
                 state.currentMp4 = mp4;
                 videoElem.src = mp4;
                 document.getElementById('active-episode-title').innerText = title;
-                videoElem.play();
+
+                // جلب آخر موضع مشاهدة من الداتابيز
+                if (state.user) {
+                    const { data, error } = await db
+                        .from('watch_history')
+                        .select('last_position')
+                        .eq('user_id', state.user.id)
+                        .eq('episode_link', link)
+                        .maybeSingle();
+
+                    if (data && data.last_position > 5) {
+                        videoElem.onloadedmetadata = () => {
+                            videoElem.currentTime = data.last_position;
+                            videoElem.play();
+                            debug(`تم الاستكمال من ثانية: ${data.last_position}`);
+                        };
+                    } else {
+                        videoElem.play();
+                    }
+                } else {
+                    videoElem.play();
+                }
+                
                 videoElem.focus();
             }
-        } catch(e) { console.error(e); }
+        } catch(e) {
+            debug("خطأ في جلب بيانات الفيديو");
+        }
     }
 
     function renderRow(id, data, baseTab) {
@@ -303,7 +350,9 @@
 
     function copyVideoLink() { navigator.clipboard.writeText(state.currentMp4); alert("تم النسخ!"); }
 
-    checkUser();
+    checkUser().then(() => {
+        startProgressTracker();
+    });
 </script>
 </body>
 </html>
