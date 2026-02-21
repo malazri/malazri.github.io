@@ -12,6 +12,7 @@
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+        /* تحسين التركيز للريموت */
         [tabindex]:focus { outline: none !important; box-shadow: 0 0 0 3px white; background-color: rgba(255, 255, 255, 0.1); border-radius: 8px; }
 
         .fixed-header { 
@@ -21,45 +22,35 @@
             border-bottom: 1px solid #222;
         }
 
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; letter-spacing: 1px; }
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; }
 
         .header-actions { display: flex; align-items: center; gap: 15px; }
 
-        .search-wrapper { display: flex; align-items: center; gap: 10px; }
+        /* البحث والمفضلة في الهيدر */
+        .search-wrapper { display: flex; align-items: center; gap: 15px; }
         .search-container { display: none; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
         .search-container.active { display: flex; }
-        .search-input { background: transparent; border: none; color: white; outline: none; width: 150px; font-size: 0.9rem; }
-        .search-trigger { cursor: pointer; font-size: 1.2rem; color: #bbb; padding: 5px; }
+        .search-input { background: transparent; border: none; color: white; outline: none; width: 150px; }
+        
+        .header-icon { cursor: pointer; font-size: 1.2rem; color: #bbb; transition: 0.3s; padding: 5px; }
+        .header-icon:hover, .header-icon:focus { color: var(--primary-red); transform: scale(1.1); }
 
-        .btn-google { 
-            background: white; color: black; border: none; padding: 8px 12px; 
-            border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold; 
-            display: flex; align-items: center; gap: 5px;
-        }
-
+        .btn-google { background: white; color: black; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; }
         .btn-auth { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         #mobile-search-row { display: none; background: #111; padding: 10px 4%; border-bottom: 1px solid #333; }
         #mobile-search-row.active { display: block; }
 
-        .main-layout { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 240px; background: #050505; border-left: 1px solid #222; padding: 15px; overflow-y: auto; }
         .content-area { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 100px; }
 
-        /* تعديلات المفضلات للهاتف */
-        #mobile-favs-row { display: none; margin-bottom: 20px; }
-
-        .btn-fav-toggle { 
-            background: #222; color: white; border: 1px solid #444; padding: 8px 15px; 
-            border-radius: 20px; cursor: pointer; display: none; align-items: center; gap: 8px;
-            font-size: 0.85rem; margin-right: 15px;
-        }
-        .btn-fav-toggle.visible { display: inline-flex; }
-        .btn-fav-toggle.active { background: var(--primary-red); border-color: var(--primary-red); }
+        /* تنسيق العناوين مع زر الإغلاق */
+        .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .close-btn { background: #333; color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .close-btn:hover { background: var(--primary-red); }
 
         .row { display: none; margin-bottom: 30px; }
         .row.visible { display: block; }
-        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 15px; }
+        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
         .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; }
@@ -69,15 +60,7 @@
         #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         video { width: 100%; aspect-ratio: 16/9; }
 
-        .fav-item { background: #111; padding: 12px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; font-size: 0.85rem; border: 1px solid #222; }
-
-        #debug-bar { position: fixed; bottom: 0; width: 100%; background: #000; color: #555; padding: 5px 15px; font-size: 0.65rem; z-index: 9999; border-top: 1px solid #222; }
-
-        @media (max-width: 768px) { 
-            .sidebar { display: none; } 
-            #mobile-favs-row { display: block; } /* إظهار صف المفضلات في الهاتف */
-            .desktop-search { display: none; }
-        }
+        @media (max-width: 768px) { .desktop-search { display: none; } }
     </style>
 </head>
 <body>
@@ -87,17 +70,19 @@
     
     <div class="header-actions">
         <div class="search-wrapper">
+            <i class="fas fa-heart header-icon" id="fav-list-trigger" title="قائمتي" tabindex="2" onclick="toggleFavSection()"></i>
+            
             <div class="search-container desktop-search" id="search-container-desktop">
-                <input type="text" class="search-input" placeholder="بحث..." tabindex="2" onkeydown="if(event.key==='Enter') startSearch(this.value)">
+                <input type="text" class="search-input" placeholder="بحث..." tabindex="3" onkeydown="if(event.key==='Enter') startSearch(this.value)">
             </div>
-            <i class="fas fa-search search-trigger" tabindex="2" onclick="toggleSearch()"></i>
+            <i class="fas fa-search header-icon" tabindex="4" onclick="toggleSearch()"></i>
         </div>
 
         <div id="auth-section">
-            <button class="btn-google" id="google-btn" tabindex="3" onclick="loginWithGoogle()">
+            <button class="btn-google" id="google-btn" tabindex="5" onclick="loginWithGoogle()">
                 <img src="https://www.google.com/favicon.ico" width="14"> دخول
             </button>
-            <button class="btn-auth" id="logout-btn" style="display:none" tabindex="3" onclick="handleLogout()">خروج</button>
+            <button class="btn-auth" id="logout-btn" style="display:none" tabindex="5" onclick="handleLogout()">خروج</button>
         </div>
     </div>
 </div>
@@ -108,44 +93,41 @@
     </div>
 </div>
 
-<div class="main-layout">
-    <aside class="sidebar">
-        <div style="color:var(--primary-red); font-weight:bold; margin-bottom:15px; font-size:0.9rem;">قائمتي (المفضلة)</div>
-        <div id="sidebar-favs"></div>
-    </aside>
-
-    <main class="content-area">
-        <div class="row" id="row-search">
+<main class="content-area">
+    <div class="row" id="row-search">
+        <div class="row-header">
             <div class="row-title">نتائج البحث</div>
-            <div class="row-content" id="grid-search"></div>
+            <button class="close-btn" onclick="hideRow('row-search')" tabindex="10">×</button>
         </div>
-        
-        <div id="mobile-favs-row" class="row visible">
-            <div class="row-title">قائمتي</div>
-            <div class="row-content" id="mobile-favs-grid"></div>
-        </div>
+        <div class="row-content" id="grid-search"></div>
+    </div>
 
-        <div id="player-container">
-            <video id="main-video" controls autoplay tabindex="4"></video>
-            <div style="padding:15px; display:flex; justify-content:space-between; align-items:center;">
-                <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red)"></div>
-                <button class="btn-auth" style="background:#222; font-size:0.7rem;" tabindex="5" onclick="copyVideoLink()">نسخ الرابط</button>
-            </div>
+    <div class="row" id="row-favs">
+        <div class="row-header">
+            <div class="row-title">قائمتي (المفضلة)</div>
+            <button class="close-btn" onclick="hideRow('row-favs')" tabindex="11">×</button>
         </div>
+        <div class="row-content" id="grid-favs"></div>
+    </div>
 
-        <div class="row" id="row-episodes">
-            <div style="display:flex; align-items:center; margin-bottom:15px;">
-                <div class="row-title" id="episodes-label" style="margin-bottom:0">الحلقات</div>
-                <button id="fav-toggle-btn" class="btn-fav-toggle" tabindex="6" onclick="toggleFavorite()">
-                    <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">إضافة للمفضلة</span>
-                </button>
-            </div>
-            <div class="row-content" id="grid-episodes"></div>
+    <div id="player-container">
+        <video id="main-video" controls autoplay tabindex="20"></video>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center;">
+            <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red)"></div>
+            <button class="btn-auth" style="background:#222; font-size:0.7rem;" tabindex="21" onclick="copyVideoLink()">نسخ الرابط</button>
         </div>
-    </main>
-</div>
+    </div>
 
-<div id="debug-bar">AlAzri | Sync System Activated</div>
+    <div class="row" id="row-episodes">
+        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+            <div class="row-title" id="episodes-label">الحلقات</div>
+            <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" tabindex="30" onclick="toggleFavorite()">
+                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
+            </button>
+        </div>
+        <div class="row-content" id="grid-episodes"></div>
+    </div>
+</main>
 
 <script>
     const SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
@@ -154,43 +136,65 @@
     const PROXY = (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const BASE = "https://ak.sv";
 
-    let state = { searchItems: [], episodeItems: [], currentSeries: null, user: null, currentMp4: "", currentEpisodeLink: "" };
+    let state = { searchItems: [], episodeItems: [], currentSeries: null, user: null, currentEpisodeLink: "" };
     let favorites = [];
     const videoElem = document.getElementById('main-video');
 
+    // --- نظام البحث والمفضلات ---
     function toggleSearch() {
-        if (window.innerWidth <= 768) {
-            const mRow = document.getElementById('mobile-search-row');
-            mRow.classList.toggle('active');
-            if(mRow.classList.contains('active')) document.getElementById('search-input-mobile').focus();
+        const isMob = window.innerWidth <= 768;
+        const target = isMob ? document.getElementById('mobile-search-row') : document.getElementById('search-container-desktop');
+        target.classList.toggle('active');
+        if(target.classList.contains('active')) (isMob ? document.getElementById('search-input-mobile') : target.querySelector('input')).focus();
+    }
+
+    function toggleFavSection() {
+        const row = document.getElementById('row-favs');
+        if(row.classList.contains('visible')) {
+            row.classList.remove('visible');
         } else {
-            const dBox = document.getElementById('search-container-desktop');
-            dBox.classList.toggle('active');
-            if(dBox.classList.contains('active')) dBox.querySelector('input').focus();
+            renderFavorites();
+            row.classList.add('visible');
+            row.scrollIntoView({ behavior: 'smooth' });
         }
     }
 
-    // 1. وظيفة حفظ التقدم: مرتبطة برابط الحلقة الحالي فقط
-    function startProgressTracker() {
-        setInterval(async () => {
-            // نتحقق من وجود مستخدم، وجود رابط حلقة، وأن الفيديو يعمل حالياً
-            if (state.user && state.currentEpisodeLink && !videoElem.paused) {
-                const position = Math.floor(videoElem.currentTime);
-                const duration = Math.floor(videoElem.duration);
-                
-                // الحفظ يتم فقط إذا كانت المشاهدة حقيقية (أكثر من 5 ثوانٍ ولم تنتهِ الحلقة)
-                if (position > 5 && position < (duration - 15)) {
-                    await db.from('watch_history').upsert({
-                        user_id: state.user.id,
-                        episode_link: state.currentEpisodeLink, // الربط بالرابط الفريد للحلقة
-                        last_position: position,
-                        updated_at: new Date()
-                    }, { onConflict: 'user_id, episode_link' });
-                }
+    function hideRow(id) { document.getElementById(id).classList.remove('visible'); }
+
+    // --- سجل المشاهدة (المنطق التسلسلي) ---
+    async function fetchAndPlay(link, title) {
+        state.currentEpisodeLink = link;
+        document.getElementById('player-container').style.display = 'block';
+        document.getElementById('active-episode-title').innerText = "جاري التحقق من السجل...";
+        
+        videoElem.pause();
+        videoElem.removeAttribute('src');
+        videoElem.load();
+
+        try {
+            let startAt = 0;
+            if (state.user) {
+                const { data } = await db.from('watch_history').select('last_position').eq('user_id', state.user.id).eq('episode_link', link).maybeSingle();
+                if (data) startAt = data.last_position;
             }
-        }, 10000); // حفظ كل 10 ثوانٍ
+
+            const html = await (await fetch(PROXY(link))).text();
+            const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
+            const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
+            let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
+            
+            if(mp4) {
+                document.getElementById('active-episode-title').innerText = title;
+                videoElem.src = mp4;
+                videoElem.onloadedmetadata = () => {
+                    if (startAt > 5) videoElem.currentTime = startAt;
+                    videoElem.play();
+                };
+            }
+        } catch(e) { document.getElementById('active-episode-title').innerText = "خطأ في التشغيل"; }
     }
 
+    // --- وظائف Supabase ---
     async function checkUser() {
         const { data: { session } } = await db.auth.getSession();
         if(session?.user) {
@@ -198,59 +202,22 @@
             document.getElementById('google-btn').style.display = 'none';
             document.getElementById('logout-btn').style.display = 'block';
             loadFavorites();
+            startTracker();
         }
     }
-
-    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
-    async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
     async function loadFavorites() {
         const { data } = await db.from('favorites').select('series_data');
-        if(data) { favorites = data.map(d => d.series_data); updateFavUI(); }
+        if(data) favorites = data.map(d => d.series_data);
     }
 
-    async function toggleFavorite() {
-        if(!state.user) return alert("سجل دخولك أولاً");
-        const isFav = favorites.some(f => f.link === state.currentSeries.link);
-        if(isFav) {
-            await db.from('favorites').delete().eq('user_id', state.user.id).filter('series_data->>link', 'eq', state.currentSeries.link);
-            favorites = favorites.filter(f => f.link !== state.currentSeries.link);
-        } else {
-            await db.from('favorites').insert([{ user_id: state.user.id, series_data: state.currentSeries }]);
-            favorites.push(state.currentSeries);
-        }
-        updateFavUI();
-        updateFavButtonState();
-    }
-
-    function updateFavUI() {
-        // تحديث القائمة الجانبية (للكومبيوتر)
-        document.getElementById('sidebar-favs').innerHTML = favorites.map((fav, i) => `
-            <div class="fav-item" tabindex="${700 + i}" onclick="loadEpisodes(${JSON.stringify(fav).replace(/"/g, '&quot;')})">
-                ${fav.title}
-            </div>
-        `).join('');
-
-        // تحديث الصف الأفقي (للهاتف)
-        document.getElementById('mobile-favs-grid').innerHTML = favorites.map((item, i) => `
-            <div class="card" tabindex="${800 + i}" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+    function renderFavorites() {
+        document.getElementById('grid-favs').innerHTML = favorites.map((item, i) => `
+            <div class="card" tabindex="${500 + i}" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                 <img src="${item.img}">
                 <div class="card-label">${item.title}</div>
             </div>
-        `).join('');
-        
-        // إخفاء صف المفضلات إذا كان فارغاً
-        document.getElementById('mobile-favs-row').style.display = favorites.length > 0 ? 'block' : 'none';
-    }
-
-    function updateFavButtonState() {
-        const btn = document.getElementById('fav-toggle-btn');
-        if(!state.currentSeries) return btn.classList.remove('visible');
-        btn.classList.add('visible');
-        const isFav = favorites.some(f => f.link === state.currentSeries.link);
-        btn.classList.toggle('active', isFav);
-        document.getElementById('fav-text').innerText = isFav ? "في المفضلة" : "إضافة للمفضلة";
-        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
+        `).join('') || '<div style="padding:20px;">القائمة فارغة</div>';
     }
 
     async function startSearch(q) {
@@ -267,15 +234,24 @@
             }
         });
         state.searchItems = Array.from(unique.values());
-        renderRow('grid-search', state.searchItems, 100);
+        document.getElementById('grid-search').innerHTML = state.searchItems.map((item, i) => `
+            <div class="card" tabindex="${100 + i}" onclick="handleAction('grid-search', ${i})">
+                <img src="${item.img}">
+                <div class="card-label">${item.title}</div>
+            </div>
+        `).join('');
         document.getElementById('row-search').classList.add('visible');
     }
 
     async function loadEpisodes(item) {
         state.currentSeries = item;
-        updateFavButtonState();
-        document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
         document.getElementById('row-episodes').classList.add('visible');
+        document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
+        
+        const btn = document.getElementById('fav-toggle-btn');
+        btn.style.display = 'inline-flex';
+        updateFavBtn();
+
         const doc = new DOMParser().parseFromString(await (await fetch(PROXY(item.link))).text(), 'text/html');
         const uniqueEps = new Map();
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
@@ -283,91 +259,53 @@
             if(!uniqueEps.has(link)) uniqueEps.set(link, { title: a.innerText.trim(), link, img: item.img });
         });
         state.episodeItems = Array.from(uniqueEps.values());
-        if(state.episodeItems.length > 0) {
-            renderRow('grid-episodes', state.episodeItems, 200);
-            document.getElementById('episodes-label').innerText = `حلقات: ${item.title}`;
-        } else fetchAndPlay(item.link, item.title);
-    }
-
-    async function fetchAndPlay(link, title) {
-    // 1. تحديث الحالة وتجهيز الواجهة
-    state.currentEpisodeLink = link; 
-    document.getElementById('player-container').style.display = 'block';
-    document.getElementById('active-episode-title').innerText = "جاري التحقق من سجل المشاهدة...";
-    
-    // إيقاف وتصفير المشغل تماماً قبل أي عملية
-    videoElem.pause();
-    videoElem.removeAttribute('src'); 
-    videoElem.load();
-
-    try {
-        // 2. جلب سجل المشاهدة أولاً (قبل جلب الفيديو)
-        let startAt = 0;
-        if (state.user) {
-            const { data } = await db
-                .from('watch_history')
-                .select('last_position')
-                .eq('user_id', state.user.id)
-                .eq('episode_link', link)
-                .maybeSingle();
-
-            if (data && data.last_position > 5) {
-                startAt = data.last_position;
-            }
-        }
-
-        // 3. الآن جلب رابط الفيديو (MP4)
-        document.getElementById('active-episode-title').innerText = "جاري تحضير الفيديو...";
-        const html = await (await fetch(PROXY(link))).text();
-        const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
-        const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
-        let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
-        
-        if(mp4) {
-            state.currentMp4 = mp4;
-            document.getElementById('active-episode-title').innerText = title;
-
-            // 4. تحميل الفيديو وتحديد نقطة الانطلاق
-            videoElem.src = mp4;
-            
-            // ننتظر حتى تصبح البيانات جاهزة للقفز للتوقيت الصحيح
-            videoElem.onloadedmetadata = () => {
-                if (startAt > 0) {
-                    videoElem.currentTime = startAt;
-                    console.log(`تم العثور على سجل: البدء من الثانية ${startAt}`);
-                } else {
-                    console.log("لا يوجد سجل سابق: البدء من البداية");
-                }
-                videoElem.play();
-            };
-
-            videoElem.focus();
-        }
-    } catch(e) {
-        console.error("خطأ في بدء التشغيل:", e);
-        document.getElementById('active-episode-title').innerText = "خطأ في تحميل الفيديو";
-    }
-}
-
-    function renderRow(id, data, baseTab) {
-        document.getElementById(id).innerHTML = data.map((item, i) => `
-            <div class="card" tabindex="${baseTab + i}" onclick="handleAction('${id}', ${i})">
-                <img src="${item.img}">
-                <div class="card-label">${item.title}</div>
+        document.getElementById('grid-episodes').innerHTML = state.episodeItems.map((ep, i) => `
+            <div class="card" tabindex="${200 + i}" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
+                <img src="${ep.img}">
+                <div class="card-label">${ep.title}</div>
             </div>
         `).join('');
+        document.getElementById('episodes-label').innerText = item.title;
+    }
+
+    function updateFavBtn() {
+        const isFav = favorites.some(f => f.link === state.currentSeries.link);
+        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
+        document.getElementById('fav-text').innerText = isFav ? "في المفضلة" : "إضافة للمفضلة";
+    }
+
+    async function toggleFavorite() {
+        if(!state.user) return alert("سجل دخولك");
+        const isFav = favorites.some(f => f.link === state.currentSeries.link);
+        if(isFav) {
+            await db.from('favorites').delete().eq('user_id', state.user.id).filter('series_data->>link', 'eq', state.currentSeries.link);
+            favorites = favorites.filter(f => f.link !== state.currentSeries.link);
+        } else {
+            await db.from('favorites').insert([{ user_id: state.user.id, series_data: state.currentSeries }]);
+            favorites.push(state.currentSeries);
+        }
+        updateFavBtn();
+    }
+
+    function startTracker() {
+        setInterval(async () => {
+            if (state.user && state.currentEpisodeLink && !videoElem.paused) {
+                const pos = Math.floor(videoElem.currentTime);
+                if (pos > 5) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentEpisodeLink, last_position: pos, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
+            }
+        }, 10000);
     }
 
     function handleAction(row, idx) {
-        const item = (row === 'grid-search') ? state.searchItems[idx] : state.episodeItems[idx];
+        const item = state.searchItems[idx];
         if(item.isSeries) loadEpisodes(item); else fetchAndPlay(item.link, item.title);
     }
 
-    function copyVideoLink() { navigator.clipboard.writeText(state.currentMp4); alert("تم النسخ!"); }
+    function copyVideoLink() { navigator.clipboard.writeText(videoElem.src); alert("تم النسخ!"); }
+    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
+    async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
-    checkUser().then(() => {
-        startProgressTracker();
-    });
+    checkUser();
 </script>
 </body>
 </html>
