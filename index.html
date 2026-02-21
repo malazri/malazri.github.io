@@ -170,25 +170,25 @@
         }
     }
 
+    // 1. وظيفة حفظ التقدم: مرتبطة برابط الحلقة الحالي فقط
     function startProgressTracker() {
         setInterval(async () => {
+            // نتحقق من وجود مستخدم، وجود رابط حلقة، وأن الفيديو يعمل حالياً
             if (state.user && state.currentEpisodeLink && !videoElem.paused) {
                 const position = Math.floor(videoElem.currentTime);
                 const duration = Math.floor(videoElem.duration);
                 
-                // حفظ فقط إذا شاهدت أكثر من 5 ثوانٍ ولم تصل للنهاية تماماً
-                if (position > 5 && position < duration - 10) {
-                    const { error } = await db.from('watch_history').upsert({
+                // الحفظ يتم فقط إذا كانت المشاهدة حقيقية (أكثر من 5 ثوانٍ ولم تنتهِ الحلقة)
+                if (position > 5 && position < (duration - 15)) {
+                    await db.from('watch_history').upsert({
                         user_id: state.user.id,
-                        episode_link: state.currentEpisodeLink,
+                        episode_link: state.currentEpisodeLink, // الربط بالرابط الفريد للحلقة
                         last_position: position,
                         updated_at: new Date()
                     }, { onConflict: 'user_id, episode_link' });
-                    
-                    if(!error) console.log("تم حفظ التقدم:", position);
                 }
             }
-        }, 10000); 
+        }, 10000); // حفظ كل 10 ثوانٍ
     }
 
     async function checkUser() {
@@ -290,10 +290,15 @@
     }
 
     async function fetchAndPlay(link, title) {
-        state.currentEpisodeLink = link;
+        // تحديث الرابط الحالي فوراً لمنع التداخل
+        state.currentEpisodeLink = link; 
         document.getElementById('player-container').style.display = 'block';
-        videoElem.src = ""; // تصفير المشغل
         
+        // إيقاف وتصفير المشغل قبل تحميل الفيديو الجديد
+        videoElem.pause();
+        videoElem.src = ""; 
+        document.getElementById('active-episode-title').innerText = "جاري التحميل...";
+
         try {
             const html = await (await fetch(PROXY(link))).text();
             const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
@@ -305,20 +310,21 @@
                 videoElem.src = mp4;
                 document.getElementById('active-episode-title').innerText = title;
 
-                // جلب آخر موضع مشاهدة من الداتابيز
+                // استعلام محدد: هات التوقيت لهذا المستخدم ولهذا الرابط فقط
                 if (state.user) {
-                    const { data, error } = await db
+                    const { data } = await db
                         .from('watch_history')
                         .select('last_position')
                         .eq('user_id', state.user.id)
-                        .eq('episode_link', link)
+                        .eq('episode_link', link) // البحث برابط هذه الحلقة تحديداً
                         .maybeSingle();
 
                     if (data && data.last_position > 5) {
+                        // الانتظار حتى يتم تحميل ملف الفيديو للتأكد من إمكانية القفز للتوقيت
                         videoElem.onloadedmetadata = () => {
                             videoElem.currentTime = data.last_position;
                             videoElem.play();
-                            debug(`تم الاستكمال من ثانية: ${data.last_position}`);
+                            console.log(`تم استئناف الحلقة من: ${data.last_position} ثانية`);
                         };
                     } else {
                         videoElem.play();
@@ -326,11 +332,10 @@
                 } else {
                     videoElem.play();
                 }
-                
                 videoElem.focus();
             }
         } catch(e) {
-            debug("خطأ في جلب بيانات الفيديو");
+            console.error("فشل تشغيل الحلقة:", e);
         }
     }
 
