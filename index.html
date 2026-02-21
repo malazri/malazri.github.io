@@ -109,6 +109,16 @@
         </div>
         <div class="row-content" id="grid-favs"></div>
     </div>
+    
+    <div class="row" id="row-episodes">
+        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+            <div class="row-title" id="episodes-label">الحلقات</div>
+            <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" onclick="toggleFavorite()">
+                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
+            </button>
+        </div>
+        <div class="row-content" id="grid-episodes"></div>
+    </div>
 
     <div id="player-container">
         <video id="main-video" controls autoplay tabindex="20"></video>
@@ -126,15 +136,7 @@
         </div>
     </div>
 
-    <div class="row" id="row-episodes">
-        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
-            <div class="row-title" id="episodes-label">الحلقات</div>
-            <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" onclick="toggleFavorite()">
-                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
-            </button>
-        </div>
-        <div class="row-content" id="grid-episodes"></div>
-    </div>
+    
 </main>
 
 <script>
@@ -185,7 +187,9 @@
                     const d = new Date(data.updated_at);
                     document.getElementById('last-date').innerText = d.toLocaleDateString('ar-EG');
                     document.getElementById('last-time').innerText = d.toLocaleTimeString('ar-EG');
-                    document.getElementById('last-pos-text').innerText = Math.floor(startAt / 60) + " دقيقة";
+                    const minutes = Math.floor(startAt / 60);
+const seconds = startAt % 60;
+document.getElementById('last-pos-text').innerText = `${minutes} دقيقة و ${seconds} ثانية`;
                     document.getElementById('history-info-box').style.display = 'block';
                 }
             }
