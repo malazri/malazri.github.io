@@ -149,48 +149,75 @@
 
     // --- نظام التشغيل ذو الأولوية للسجل ---
     async function fetchAndPlay(link, title) {
-        state.currentEpisodeLink = link;
-        state.currentMp4 = "";
-        document.getElementById('copy-url-btn').disabled = true;
-        document.getElementById('player-container').style.display = 'block';
-        document.getElementById('history-info-box').style.display = 'none';
-        document.getElementById('active-episode-title').innerText = "جاري جلب بيانات السجل...";
+    state.currentEpisodeLink = link;
+    state.currentMp4 = "";
+    document.getElementById('copy-url-btn').disabled = true;
+    document.getElementById('player-container').style.display = 'block';
+    
+    // إخفاء صندوق المعلومات مؤقتاً عند بدء تحميل فيديو جديد
+    const historyBox = document.getElementById('history-info-box');
+    historyBox.style.display = 'none';
+    
+    document.getElementById('active-episode-title').innerText = "جاري التحقق من السجل...";
+    
+    videoElem.pause();
+    videoElem.removeAttribute('src');
+
+    try {
+        let startAt = 0;
+        if (state.user) {
+            // استعلام جلب السجل
+            const { data, error } = await db.from('watch_history')
+                .select('*')
+                .eq('user_id', state.user.id)
+                .eq('episode_link', link)
+                .maybeSingle();
+
+            if (error) console.error("خطأ في جلب السجل:", error);
+
+            if (data) {
+                startAt = data.last_position;
+                const d = new Date(data.updated_at);
+                
+                // تعبئة البيانات في الواجهة
+                document.getElementById('last-date').innerText = d.toLocaleDateString('ar-EG');
+                document.getElementById('last-time').innerText = d.toLocaleTimeString('ar-EG');
+                
+                // تحويل الثواني إلى صيغة دقيقة:ثانية
+                const mins = Math.floor(startAt / 60);
+                const secs = startAt % 60;
+                document.getElementById('last-pos-text').innerText = `${mins} دقيقة و ${secs} ثانية`;
+                
+                // إظهار الصندوق
+                historyBox.style.display = 'block';
+                console.log("تم العثور على سجل مشاهدة سابق:", startAt);
+            }
+        }
+
+        document.getElementById('active-episode-title').innerText = "جاري تجهيز: " + title;
+        const html = await (await fetch(PROXY(link))).text();
+        const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
+        const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
+        let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
         
-        videoElem.pause();
-        videoElem.removeAttribute('src');
-
-        try {
-            let startAt = 0;
-            if (state.user) {
-                const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', link).maybeSingle();
-                if (data) {
-                    startAt = data.last_position;
-                    const d = new Date(data.updated_at);
-                    document.getElementById('last-date').innerText = d.toLocaleDateString('ar-EG');
-                    document.getElementById('last-time').innerText = d.toLocaleTimeString('ar-EG');
-                    document.getElementById('last-pos-text').innerText = Math.floor(startAt / 60) + " دقيقة و " + (startAt % 60) + " ثانية";
-                    document.getElementById('history-info-box').style.display = 'block';
-                }
-            }
-
-            document.getElementById('active-episode-title').innerText = "جاري تحضير " + title;
-            const html = await (await fetch(PROXY(link))).text();
-            const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
-            const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
-            let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
+        if(mp4) {
+            state.currentMp4 = mp4;
+            document.getElementById('copy-url-btn').disabled = false;
+            document.getElementById('active-episode-title').innerText = title;
+            videoElem.src = mp4;
             
-            if(mp4) {
-                state.currentMp4 = mp4;
-                document.getElementById('copy-url-btn').disabled = false;
-                document.getElementById('active-episode-title').innerText = title;
-                videoElem.src = mp4;
-                videoElem.onloadedmetadata = () => {
-                    if (startAt > 5) videoElem.currentTime = startAt;
-                    videoElem.play();
-                };
-            }
-        } catch(e) { document.getElementById('active-episode-title').innerText = "خطأ في تحميل الفيديو"; }
+            videoElem.onloadedmetadata = () => {
+                if (startAt > 5) {
+                    videoElem.currentTime = startAt;
+                }
+                videoElem.play();
+            };
+        }
+    } catch(e) { 
+        console.error("خطأ تقني:", e);
+        document.getElementById('active-episode-title').innerText = "خطأ في الاتصال بالسيرفر"; 
     }
+}
 
     // --- منع تكرار الحلقات ---
     async function loadEpisodes(item) {
@@ -276,11 +303,23 @@
         }
     }
     async function saveProgress() {
-        if (state.user && state.currentEpisodeLink && !videoElem.paused) {
-            const pos = Math.floor(videoElem.currentTime);
-            if (pos > 5) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentEpisodeLink, last_position: pos, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
+    if (state.user && state.currentEpisodeLink && !videoElem.paused) {
+        const pos = Math.floor(videoElem.currentTime);
+        const dur = Math.floor(videoElem.duration);
+        
+        // حفظ التقدم فقط إذا شاهدت أكثر من 5 ثوانٍ ولم تصل للنهاية
+        if (pos > 5 && pos < (dur - 10)) {
+            const { error } = await db.from('watch_history').upsert({ 
+                user_id: state.user.id, 
+                episode_link: state.currentEpisodeLink, 
+                last_position: pos, 
+                updated_at: new Date() 
+            }, { onConflict: 'user_id, episode_link' });
+            
+            if (error) console.error("فشل حفظ التقدم:", error);
         }
     }
+}
     async function loadFavorites() {
         const { data } = await db.from('favorites').select('series_data');
         if(data) favorites = data.map(d => d.series_data);
