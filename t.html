@@ -3,252 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Android TV Edition</title>
+    <title>AlAzri TV - Final Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 160px; --card-h: 100px; }
-        
-        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* شاشة التصحيح الثابتة */
+        /* Permanent Debug Log */
         #tv-debug {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 110px;
-            background: rgba(0, 0, 0, 0.9); color: #00ff00; font-family: monospace;
-            font-size: 11px; z-index: 9999; overflow-y: auto; border-top: 2px solid var(--primary-red);
-            padding: 8px; pointer-events: none; box-sizing: border-box;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 120px;
+            background: rgba(0,0,0,0.95); color: #00ff00; font-family: monospace;
+            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 2px solid var(--primary-red);
+            padding: 10px; pointer-events: none; box-sizing: border-box;
         }
 
-        .fixed-header { 
-            position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
-            background: #000; padding: 12px 4%; 
-            display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 1px solid #222;
-        }
-
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; outline: none; }
+        .fixed-header { position: fixed; top: 0; left: 0; right: 0; z-index: 3000; background: #000; padding: 12px 4%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; cursor: pointer; }
         
-        /* تأثير التركيز (Focus) للريموت */
-        .brand:focus, .header-icon:focus, .card:focus, .btn-auth:focus, .btn-google:focus, .search-input:focus {
-            outline: 4px solid white !important;
-            background: rgba(255,255,255,0.1);
-            transform: scale(1.05);
-            z-index: 10;
-        }
+        /* Focus styles for TV */
+        .brand:focus, .card:focus, .btn-auth:focus, .btn-google:focus { outline: 4px solid white; transform: scale(1.05); }
 
-        .header-actions { display: flex; align-items: center; gap: 15px; }
-        .search-wrapper { display: flex; align-items: center; gap: 15px; }
-        .search-container { display: none; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
-        .search-container.active { display: flex; }
-        .search-input { background: transparent; border: none; color: white; outline: none; width: 150px; }
-        
-        .header-icon { cursor: pointer; font-size: 1.2rem; color: #bbb; padding: 5px; outline: none; }
-
-        .btn-google { background: white; color: black; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; outline: none; }
-        .btn-auth { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; outline: none; }
-
-        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 120px 20px; }
-
-        .row { display: none; margin-bottom: 30px; }
-        .row.visible { display: block; }
-        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
+        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 140px 20px; }
+        .row { display: block; margin-bottom: 30px; }
+        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 10px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; border: 2px solid transparent; }
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; }
-
-        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
-        video { width: 100%; aspect-ratio: 16/9; outline: none; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.75rem; text-align: center; padding: 5px; }
     </style>
 </head>
 <body>
 
 <div id="tv-debug">
-    <div>[System] AlAzri TV Debugger Initialized.</div>
+    <div>[System] Initializing Supabase & Auth...</div>
 </div>
 
 <div class="fixed-header">
     <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
-    
     <div class="header-actions">
-        <div class="search-wrapper">
-            <i class="fas fa-heart header-icon" id="fav-list-trigger" style="display:none" tabindex="2" onclick="toggleFavSection()"></i>
-            
-            <div class="search-container" id="search-container-desktop">
-                <input type="text" class="search-input" id="tv-search-input" placeholder="بحث..." tabindex="3">
-            </div>
-            <i class="fas fa-search header-icon" tabindex="4" onclick="toggleSearch()"></i>
-        </div>
-
-        <div id="auth-section">
-            <button class="btn-google" id="google-btn" tabindex="5" onclick="loginWithGoogle()">دخول</button>
-            <button class="btn-auth" id="logout-btn" style="display:none" tabindex="5" onclick="handleLogout()">خروج</button>
-        </div>
+        <button class="btn-google" id="google-btn" tabindex="2" onclick="loginWithGoogle()" style="padding:8px 15px; cursor:pointer;">دخول بجوجل</button>
+        <button class="btn-auth" id="logout-btn" style="display:none; background:red; color:white;" tabindex="3" onclick="handleLogout()">خروج</button>
     </div>
 </div>
 
 <main class="content-area">
-    <div class="row" id="row-search">
-        <div class="row-header"><div class="row-title">نتائج البحث</div></div>
-        <div class="row-content" id="grid-search"></div>
-    </div>
-
-    <div class="row" id="row-favs">
-        <div class="row-header"><div class="row-title">قائمتي</div></div>
-        <div class="row-content" id="grid-favs"></div>
-    </div>
-    
-    <div class="row visible" id="row-episodes">
-        <div class="row-header"><div class="row-title" id="episodes-label">الحلقات</div></div>
-        <div class="row-content" id="grid-episodes"></div>
-    </div>
-
-    <div id="player-container">
-        <video id="main-video" controls tabindex="20"></video>
-        <div id="active-episode-title" style="padding:15px; font-weight:bold; color:var(--primary-red)"></div>
+    <div class="row">
+        <div class="row-title">المحتوى المقترح</div>
+        <div class="row-content" id="grid-main">
+            </div>
     </div>
 </main>
 
 <script>
-    // --- 1. الـ DEBUGGER المطور ---
-    var debugElement = document.getElementById('tv-debug');
-    function logToScreen(msg, color) {
+    // 1. DEBUGGER
+    var debugLog = document.getElementById('tv-debug');
+    function logToTV(msg, color) {
         var div = document.createElement('div');
         div.style.color = color || '#00ff00';
         div.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        debugElement.appendChild(div);
-        debugElement.scrollTop = debugElement.scrollHeight;
+        debugLog.appendChild(div);
+        debugLog.scrollTop = debugLog.scrollHeight;
     }
 
-    // ربط Console.log
-    var oldLog = console.log;
-    console.log = function() {
-        var args = Array.prototype.slice.call(arguments);
-        logToScreen(args.join(' '));
-        oldLog.apply(console, args);
-    };
-
-    window.onerror = function(msg, url, line) {
-        logToScreen("ERROR: " + msg + " at line " + line, "#ff4444");
-        return false;
-    };
-
-    // --- 2. إعدادات المتغيرات الأصلية ---
+    // 2. SUPABASE INITIALIZATION
     var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
     var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
-    var db = supabase.createClient(SB_URL, SB_KEY);
-    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
-    var BASE = "https://ak.sv";
+    var db;
 
-    var state = { user: null, currentEpisodeLink: "", currentMp4: "" };
-    var favorites = [];
-    var videoElem = document.getElementById('main-video');
-
-    // --- 3. الدوال الأصلية مع تعديلات التلفاز ---
-    function toggleSearch() {
-        console.log("Toggle Search Triggered");
-        var target = document.getElementById('search-container-desktop');
-        target.classList.toggle('active');
-        if(target.classList.contains('active')) document.getElementById('tv-search-input').focus();
-    }
-
-    document.getElementById('tv-search-input').addEventListener('keydown', function(e) {
-        if(e.keyCode === 13) startSearch(this.value);
-    });
-
-    function toggleFavSection() {
-        if(!state.user) return;
-        var row = document.getElementById('row-favs');
-        if(!row.classList.contains('visible')) renderFavorites();
-        row.classList.toggle('visible');
-    }
-
-    async function startSearch(q) {
-        if(!q) return;
-        console.log("Searching for: " + q);
-        try {
-            var res = await fetch(PROXY(BASE + "/search?q=" + q));
-            var html = await res.text();
-            var doc = new DOMParser().parseFromString(html, 'text/html');
-            var unique = new Map();
-            
-            doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(function(el) {
-                var a = el.tagName === 'A' ? el : el.querySelector('a');
-                var img = el.querySelector('img');
-                if(a && img) {
-                    var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src, isSeries: link.includes('/series/') });
-                }
-            });
-
-            var grid = document.getElementById('grid-search');
-            grid.innerHTML = Array.from(unique.values()).map(function(item, i) {
-                return '<div class="card" tabindex="' + (100 + i) + '" onclick=\'handleAction(' + JSON.stringify(item) + ')\'>' +
-                       '<img src="' + item.img + '"><div class="card-label">' + item.title + '</div></div>';
-            }).join('');
-            document.getElementById('row-search').classList.add('visible');
-            console.log("Search results rendered.");
-        } catch(e) { console.log("Search Error: " + e.message); }
-    }
-
-    async function fetchAndPlay(link, title) {
-        console.log("Fetching Video: " + title);
-        state.currentEpisodeLink = link;
-        document.getElementById('player-container').style.display = 'block';
-        document.getElementById('active-episode-title').innerText = "جاري التحميل...";
-        
-        try {
-            var res = await fetch(PROXY(link));
-            var html = await res.text();
-            var idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-            if(idMatch) {
-                var dlRes = await fetch(PROXY(link.replace('/episode/', '/download/' + idMatch[1] + '/')));
-                var dlHtml = await dlRes.text();
-                var mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
-                if(mp4) {
-                    console.log("Video source found!");
-                    videoElem.src = mp4.href;
-                    document.getElementById('active-episode-title').innerText = title;
-                    videoElem.play();
-                    videoElem.focus();
-                }
-            } else { console.log("Video ID not found."); }
-        } catch(e) { console.log("Play Error: " + e.message); }
-    }
-
-    function handleAction(item) {
-        if(item.isSeries) {
-            console.log("Loading series: " + item.title);
-            // logic for loading episodes...
+    try {
+        if (typeof supabase !== 'undefined') {
+            db = supabase.createClient(SB_URL, SB_KEY);
+            logToTV("Supabase loaded successfully.");
         } else {
-            fetchAndPlay(item.link, item.title);
+            logToTV("CRITICAL: Supabase library failed to load!", "#ff4444");
         }
+    } catch (e) {
+        logToTV("Supabase Init Error: " + e.message, "#ff4444");
     }
 
-    async function checkUser() {
-        var session = await db.auth.getSession();
-        if(session.data.session) {
-            state.user = session.data.session.user;
-            document.getElementById('google-btn').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'block';
-            document.getElementById('fav-list-trigger').style.display = 'block';
-            console.log("User Logged In: " + state.user.email);
-        }
-    }
+    // 3. AUTH FUNCTIONS (Attached to window for global access)
+    window.loginWithGoogle = function() {
+        logToTV("Login attempt started...");
+        if (!db) return logToTV("Error: Database not ready", "#ff4444");
+        
+        db.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.href }
+        }).then(function(res) {
+            if (res.error) logToTV("Login Error: " + res.error.message, "#ff4444");
+            else logToTV("Redirecting to Google...");
+        });
+    };
 
-    // --- 4. نظام التحكم بالريموت (D-PAD) ---
+    window.handleLogout = function() {
+        if (!db) return;
+        db.auth.signOut().then(function() {
+            logToTV("Logged out.");
+            location.reload();
+        });
+    };
+
+    window.checkUser = function() {
+        if (!db) return;
+        db.auth.getSession().then(function(res) {
+            if (res.data.session) {
+                var user = res.data.session.user;
+                logToTV("User active: " + user.email);
+                document.getElementById('google-btn').style.display = 'none';
+                document.getElementById('logout-btn').style.display = 'block';
+            } else {
+                logToTV("No active session found.");
+            }
+        });
+    };
+
+    // 4. REMOTE NAVIGATION
     document.addEventListener('keydown', function(e) {
-        if(e.keyCode === 13) { // Enter/OK
-            if(document.activeElement) document.activeElement.click();
+        logToTV("Key: " + e.keyCode);
+        if (e.keyCode === 13) { // Enter
+            if (document.activeElement) document.activeElement.click();
         }
-        // تسجيل الأزرار لمعرفة كود الريموت
-        logToScreen("Remote Key Pressed: " + e.keyCode, "#aaa");
     });
 
-    checkUser();
-    console.log("System Ready. Use remote arrows to navigate.");
+    // 5. INIT APP
+    window.onload = function() {
+        checkUser();
+        // Add one demo card to test focus
+        var grid = document.getElementById('grid-main');
+        grid.innerHTML = '<div class="card" tabindex="10" onclick="alert(\'Working!\')"><img src="https://via.placeholder.com/160x100/333/fff?text=Test+Card"><div class="card-label">اختبار البطاقة</div></div>';
+    };
+
+    // Global Error Catcher
+    window.onerror = function(m, u, l) {
+        logToTV("ERR: " + m + " (Line " + l + ")", "#ff4444");
+    };
 </script>
+
 </body>
 </html>
