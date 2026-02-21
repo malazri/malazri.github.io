@@ -3,29 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Final Fix</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>AlAzri TV - Full Debug Edition</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 160px; --card-h: 100px; }
         body { background-color: var(--bg-dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* Permanent Debug Log */
+        /* شاشة التصحيح - ثابتة وتظهر دائماً */
         #tv-debug {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 120px;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 140px;
             background: rgba(0,0,0,0.95); color: #00ff00; font-family: monospace;
-            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 2px solid var(--primary-red);
+            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 3px solid var(--primary-red);
             padding: 10px; pointer-events: none; box-sizing: border-box;
         }
 
         .fixed-header { position: fixed; top: 0; left: 0; right: 0; z-index: 3000; background: #000; padding: 12px 4%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
         .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; cursor: pointer; }
         
-        /* Focus styles for TV */
-        .brand:focus, .card:focus, .btn-auth:focus, .btn-google:focus { outline: 4px solid white; transform: scale(1.05); }
+        /* تحسينات التركيز للتلفاز */
+        .brand:focus, .card:focus, .btn-auth:focus, .btn-google:focus { 
+            outline: 4px solid white !important; 
+            transform: scale(1.05); 
+            background: rgba(255,255,255,0.2);
+        }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 140px 20px; }
+        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 160px 20px; }
         .row { display: block; margin-bottom: 30px; }
         .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 10px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
@@ -33,19 +37,21 @@
         .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.75rem; text-align: center; padding: 5px; }
+        
+        .header-actions button { margin-left: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="tv-debug">
-    <div>[System] Initializing Supabase & Auth...</div>
+    <div>[System] System booting up...</div>
 </div>
 
 <div class="fixed-header">
     <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
     <div class="header-actions">
-        <button class="btn-google" id="google-btn" tabindex="2" onclick="loginWithGoogle()" style="padding:8px 15px; cursor:pointer;">دخول بجوجل</button>
-        <button class="btn-auth" id="logout-btn" style="display:none; background:red; color:white;" tabindex="3" onclick="handleLogout()">خروج</button>
+        <button class="btn-google" id="google-btn" tabindex="2" onclick="loginWithGoogle()" style="padding:8px 15px;">دخول بجوجل</button>
+        <button class="btn-auth" id="logout-btn" style="display:none; background:red; color:white; border:none; padding:8px 15px; border-radius:4px;" tabindex="3" onclick="handleLogout()">خروج</button>
     </div>
 </div>
 
@@ -58,7 +64,7 @@
 </main>
 
 <script>
-    // 1. DEBUGGER
+    // --- 1. نظام الـ DEBUG المتقدم ---
     var debugLog = document.getElementById('tv-debug');
     function logToTV(msg, color) {
         var div = document.createElement('div');
@@ -68,77 +74,118 @@
         debugLog.scrollTop = debugLog.scrollHeight;
     }
 
-    // 2. SUPABASE INITIALIZATION
+    // ربط كافة رسائل الكونسول بالـ Debugger تلقائياً
+    (function() {
+        var oldLog = console.log;
+        console.log = function() {
+            var args = Array.prototype.slice.call(arguments);
+            logToTV("LOG: " + args.join(' '), "#00ff00");
+            oldLog.apply(console, args);
+        };
+        var oldErr = console.error;
+        console.error = function() {
+            var args = Array.prototype.slice.call(arguments);
+            logToTV("ERROR: " + args.join(' '), "#ff4444");
+            oldErr.apply(console, args);
+        };
+    })();
+
+    window.onerror = function(m, u, l) {
+        logToTV("CRITICAL ERR: " + m + " (Line " + l + ")", "#ff4444");
+    };
+
+    // --- 2. إعدادات SUPABASE ---
     var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
     var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
-    var db;
+    var db = null;
 
-    try {
-        if (typeof supabase !== 'undefined') {
-            db = supabase.createClient(SB_URL, SB_KEY);
-            logToTV("Supabase loaded successfully.");
-        } else {
-            logToTV("CRITICAL: Supabase library failed to load!", "#ff4444");
+    function initSupabase() {
+        try {
+            if (typeof supabase !== 'undefined') {
+                db = supabase.createClient(SB_URL, SB_KEY);
+                logToTV("Supabase library detected and initialized.");
+                return true;
+            } else {
+                logToTV("Supabase library not found yet, retrying...", "#ffbb33");
+                return false;
+            }
+        } catch (e) {
+            logToTV("Init Exception: " + e.message, "#ff4444");
+            return false;
         }
-    } catch (e) {
-        logToTV("Supabase Init Error: " + e.message, "#ff4444");
     }
 
-    // 3. AUTH FUNCTIONS (Attached to window for global access)
+    // --- 3. وظائف الهوية (AUTH) ---
     window.loginWithGoogle = function() {
-        logToTV("Login attempt started...");
-        if (!db) return logToTV("Error: Database not ready", "#ff4444");
+        logToTV("Login button clicked.");
+        if (!db && !initSupabase()) {
+            logToTV("Action failed: Supabase library still not loaded.", "#ff4444");
+            return;
+        }
         
+        logToTV("Starting OAuth redirect...");
         db.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: window.location.href }
         }).then(function(res) {
-            if (res.error) logToTV("Login Error: " + res.error.message, "#ff4444");
-            else logToTV("Redirecting to Google...");
+            if (res.error) logToTV("OAuth Error: " + res.error.message, "#ff4444");
+            else logToTV("Redirecting to Google login page...");
         });
     };
 
     window.handleLogout = function() {
         if (!db) return;
         db.auth.signOut().then(function() {
-            logToTV("Logged out.");
+            logToTV("User logged out.");
             location.reload();
         });
     };
 
     window.checkUser = function() {
-        if (!db) return;
+        if (!db && !initSupabase()) return;
         db.auth.getSession().then(function(res) {
             if (res.data.session) {
                 var user = res.data.session.user;
-                logToTV("User active: " + user.email);
+                logToTV("Session Active: " + user.email);
                 document.getElementById('google-btn').style.display = 'none';
                 document.getElementById('logout-btn').style.display = 'block';
             } else {
-                logToTV("No active session found.");
+                logToTV("No session found. User is guest.");
             }
         });
     };
 
-    // 4. REMOTE NAVIGATION
+    // --- 4. نظام التنقل والتشغيل ---
     document.addEventListener('keydown', function(e) {
-        logToTV("Key: " + e.keyCode);
-        if (e.keyCode === 13) { // Enter
-            if (document.activeElement) document.activeElement.click();
+        logToTV("Remote Key Detected: " + e.keyCode);
+        if (e.keyCode === 13) { // Enter/OK
+            if (document.activeElement) {
+                logToTV("Activating: " + document.activeElement.tagName);
+                document.activeElement.click();
+            }
         }
     });
 
-    // 5. INIT APP
+    // --- 5. بدء التطبيق عند اكتمال التحميل ---
     window.onload = function() {
-        checkUser();
-        // Add one demo card to test focus
-        var grid = document.getElementById('grid-main');
-        grid.innerHTML = '<div class="card" tabindex="10" onclick="alert(\'Working!\')"><img src="https://via.placeholder.com/160x100/333/fff?text=Test+Card"><div class="card-label">اختبار البطاقة</div></div>';
-    };
+        logToTV("Window loaded. Checking dependencies...");
+        
+        // محاولة التهيئة عدة مرات في حال تأخر الـ CDN
+        var retryCount = 0;
+        var checkInterval = setInterval(function() {
+            retryCount++;
+            if (initSupabase()) {
+                clearInterval(checkInterval);
+                checkUser();
+            } else if (retryCount > 10) {
+                clearInterval(checkInterval);
+                logToTV("FATAL: Could not load Supabase after 10 attempts.", "#ff4444");
+            }
+        }, 1000);
 
-    // Global Error Catcher
-    window.onerror = function(m, u, l) {
-        logToTV("ERR: " + m + " (Line " + l + ")", "#ff4444");
+        // تعبئة بطاقة تجريبية
+        var grid = document.getElementById('grid-main');
+        grid.innerHTML = '<div class="card" tabindex="10" onclick="console.log(\'Card clicked!\')"><img src="https://via.placeholder.com/160x100/333/fff?text=AlAzri+TV"><div class="card-label">بطاقة اختبار</div></div>';
     };
 </script>
 
