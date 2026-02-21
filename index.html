@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV</title>
+    <title>AlAzri TV - v4.5</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -12,53 +12,54 @@
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* الهيدر ثابت في أعلى طبقة */
+        /* الهيدر ثابت في الأعلى تماماً */
         .fixed-header { 
-            position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
+            position: fixed; top: 0; left: 0; right: 0; z-index: 4000; 
             background: #000; padding: 12px 4%; 
             display: flex; justify-content: space-between; align-items: center; 
             border-bottom: 1px solid #222;
         }
 
         .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; }
-
         .header-actions { display: flex; align-items: center; gap: 15px; }
 
+        /* البحث والمفضلة */
         .search-wrapper { display: flex; align-items: center; gap: 15px; }
         .search-container { display: none; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
         .search-container.active { display: flex; }
         .search-input { background: transparent; border: none; color: white; outline: none; width: 150px; }
         
         .header-icon { cursor: pointer; font-size: 1.2rem; color: #bbb; padding: 5px; }
-        #fav-list-trigger { display: none; } /* مخفي افتراضياً */
+        #fav-list-trigger { display: none; } /* يظهر فقط عند تسجيل الدخول */
 
         .btn-google { background: white; color: black; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; }
         .btn-auth { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-auth:disabled { background: #333; cursor: not-allowed; color: #777; }
 
-        #mobile-search-row { display: none; position: fixed; top: 60px; width: 100%; z-index: 2999; background: #111; padding: 10px 4%; border-bottom: 1px solid #333; }
+        #mobile-search-row { display: none; position: fixed; top: 60px; left:0; right:0; z-index: 3999; background: #111; padding: 10px 4%; border-bottom: 1px solid #333; }
         #mobile-search-row.active { display: block; }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 100px 20px; } /* padding علوي لموازنة الهيدر الثابت */
+        .content-area { flex: 1; overflow-y: auto; padding: 85px 20px 100px 20px; position: relative; z-index: 10; }
 
         .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .close-btn { background: #333; color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .close-btn { background: #333; color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
 
         .row { display: none; margin-bottom: 30px; }
         .row.visible { display: block; }
         .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; }
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; border: 1px solid transparent; }
+        .card:focus { border-color: white; transform: scale(1.05); outline: none; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; border-bottom-radius: 8px; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 
         #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
-        video { width: 100%; aspect-ratio: 16/9; }
+        video { width: 100%; aspect-ratio: 16/9; display: block; }
 
-        /* تنسيق بيانات التاريخ والوقت */
-        .history-info { background: #111; padding: 10px 15px; border-radius: 8px; margin-top: 10px; border-right: 3px solid #555; font-size: 0.8rem; color: #aaa; display: none; }
-        .history-info b { color: #fff; }
+        /* سجل المشاهدة تحت المشغل */
+        .history-info { background: #161616; padding: 12px 18px; border-radius: 8px; margin-top: 12px; border-right: 4px solid var(--primary-red); font-size: 0.85rem; color: #ccc; display: none; }
+        .history-info b { color: #fff; margin-left: 5px; }
 
         @media (max-width: 768px) { .desktop-search { display: none; } }
     </style>
@@ -66,30 +67,29 @@
 <body>
 
 <div class="fixed-header">
-    <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
+    <div class="brand" onclick="location.reload()">ALAZRI</div>
     
     <div class="header-actions">
         <div class="search-wrapper">
-            <i class="fas fa-heart header-icon" id="fav-list-trigger" tabindex="2" onclick="toggleFavSection()"></i>
-            
+            <i class="fas fa-heart header-icon" id="fav-list-trigger" onclick="toggleFavSection()"></i>
             <div class="search-container desktop-search" id="search-container-desktop">
-                <input type="text" class="search-input" placeholder="بحث..." tabindex="3" onkeydown="if(event.key==='Enter') startSearch(this.value)">
+                <input type="text" class="search-input" placeholder="بحث..." onkeydown="if(event.key==='Enter') startSearch(this.value)">
             </div>
-            <i class="fas fa-search header-icon" tabindex="4" onclick="toggleSearch()"></i>
+            <i class="fas fa-search header-icon" onclick="toggleSearch()"></i>
         </div>
 
         <div id="auth-section">
-            <button class="btn-google" id="google-btn" tabindex="5" onclick="loginWithGoogle()">
+            <button class="btn-google" id="google-btn" onclick="loginWithGoogle()">
                 <img src="https://www.google.com/favicon.ico" width="14"> دخول
             </button>
-            <button class="btn-auth" id="logout-btn" style="display:none" tabindex="5" onclick="handleLogout()">خروج</button>
+            <button class="btn-auth" id="logout-btn" style="display:none" onclick="handleLogout()">خروج</button>
         </div>
     </div>
 </div>
 
 <div id="mobile-search-row">
     <div style="display:flex; background:#222; border-radius:5px; padding:5px 10px;">
-        <input type="text" id="search-input-mobile" style="background:transparent; border:none; color:white; width:100%; outline:none;" placeholder="ابحث..." onkeydown="if(event.key==='Enter') startSearch(this.value)">
+        <input type="text" id="search-input-mobile" style="background:transparent; border:none; color:white; width:100%; outline:none;" placeholder="ابحث عن مسلسل..." onkeydown="if(event.key==='Enter') startSearch(this.value)">
     </div>
 </div>
 
@@ -111,26 +111,25 @@
     </div>
 
     <div id="player-container">
-        <video id="main-video" controls autoplay tabindex="20"></video>
+        <video id="main-video" controls autoplay></video>
         <div style="padding:15px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red)"></div>
-                <button id="copy-url-btn" class="btn-auth" style="background:#222; font-size:0.7rem;" disabled onclick="copyVideoLink()">نسخ الرابط</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap:10px;">
+                <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red); font-size: 1.1rem;"></div>
+                <button id="copy-url-btn" class="btn-auth" style="background:#222; font-size:0.75rem;" disabled onclick="copyVideoLink()">نسخ الرابط</button>
             </div>
-            
             <div id="history-info-box" class="history-info">
-                <span>آخر مشاهدة: <b id="last-date">-</b></span> | 
-                <span>التوقيت: <b id="last-time">-</b></span> | 
-                <span>توقفت عند: <b id="last-pos-text">-</b></span>
+                <span>آخر مشاهدة: <b id="last-date"></b></span> | 
+                <span>الوقت: <b id="last-time"></b></span> | 
+                <span>توقفت عند: <b id="last-pos-text"></b></span>
             </div>
         </div>
     </div>
 
     <div class="row" id="row-episodes">
-        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+        <div class="row-header" style="justify-content: flex-start; gap:20px;">
             <div class="row-title" id="episodes-label">الحلقات</div>
             <button id="fav-toggle-btn" class="btn-auth" style="background:#222; font-size:0.8rem; display:none;" onclick="toggleFavorite()">
-                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">مفضلة</span>
+                <i id="fav-icon" class="far fa-heart"></i> <span>مفضلة</span>
             </button>
         </div>
         <div class="row-content" id="grid-episodes"></div>
@@ -144,33 +143,18 @@
     const PROXY = (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const BASE = "https://ak.sv";
 
-    let state = { user: null, currentEpisodeLink: "", currentMp4: "" };
+    let state = { user: null, currentEpisodeLink: "", currentMp4: "", currentSeries: null };
     let favorites = [];
     const videoElem = document.getElementById('main-video');
 
-    function toggleSearch() {
-        const isMob = window.innerWidth <= 768;
-        const target = isMob ? document.getElementById('mobile-search-row') : document.getElementById('search-container-desktop');
-        target.classList.toggle('active');
-    }
-
-    function toggleFavSection() {
-        if(!state.user) return;
-        const row = document.getElementById('row-favs');
-        if(!row.classList.contains('visible')) renderFavorites();
-        row.classList.toggle('visible');
-    }
-
-    function hideRow(id) { document.getElementById(id).classList.remove('visible'); }
-
-    // --- منطق التشغيل المطور مع عرض البيانات التاريخية ---
+    // --- نظام التشغيل ذو الأولوية للسجل ---
     async function fetchAndPlay(link, title) {
         state.currentEpisodeLink = link;
-        state.currentMp4 = ""; 
+        state.currentMp4 = "";
         document.getElementById('copy-url-btn').disabled = true;
         document.getElementById('player-container').style.display = 'block';
         document.getElementById('history-info-box').style.display = 'none';
-        document.getElementById('active-episode-title').innerText = "جاري التحقق...";
+        document.getElementById('active-episode-title').innerText = "جاري جلب بيانات السجل...";
         
         videoElem.pause();
         videoElem.removeAttribute('src');
@@ -181,15 +165,15 @@
                 const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', link).maybeSingle();
                 if (data) {
                     startAt = data.last_position;
-                    // عرض بيانات السجل
                     const d = new Date(data.updated_at);
                     document.getElementById('last-date').innerText = d.toLocaleDateString('ar-EG');
                     document.getElementById('last-time').innerText = d.toLocaleTimeString('ar-EG');
-                    document.getElementById('last-pos-text').innerText = Math.floor(startAt / 60) + " دقيقة";
+                    document.getElementById('last-pos-text').innerText = Math.floor(startAt / 60) + " دقيقة و " + (startAt % 60) + " ثانية";
                     document.getElementById('history-info-box').style.display = 'block';
                 }
             }
 
+            document.getElementById('active-episode-title').innerText = "جاري تحضير " + title;
             const html = await (await fetch(PROXY(link))).text();
             const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
             const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
@@ -205,42 +189,46 @@
                     videoElem.play();
                 };
             }
-        } catch(e) { document.getElementById('active-episode-title').innerText = "خطأ في الاتصال"; }
+        } catch(e) { document.getElementById('active-episode-title').innerText = "خطأ في تحميل الفيديو"; }
     }
 
-    async function checkUser() {
-        const { data: { session } } = await db.auth.getSession();
-        if(session?.user) {
-            state.user = session.user;
-            document.getElementById('google-btn').style.display = 'none';
-            document.getElementById('logout-btn').style.display = 'block';
-            document.getElementById('fav-list-trigger').style.display = 'block'; // إظهار القلب
-            loadFavorites();
-            setInterval(saveProgress, 10000);
+    // --- منع تكرار الحلقات ---
+    async function loadEpisodes(item) {
+        state.currentSeries = item;
+        const grid = document.getElementById('grid-episodes');
+        document.getElementById('row-episodes').classList.add('visible');
+        grid.innerHTML = 'جاري التصفية...';
+        
+        if(state.user) {
+            document.getElementById('fav-toggle-btn').style.display = 'inline-flex';
+            updateFavBtn();
         }
+
+        try {
+            const html = await (await fetch(PROXY(item.link))).text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const uniqueMap = new Map();
+
+            doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
+                const href = a.getAttribute('href');
+                const fullLink = href.includes('http') ? href : BASE + href;
+                if(!uniqueMap.has(fullLink)) {
+                    uniqueMap.set(fullLink, { title: a.innerText.trim(), link: fullLink, img: item.img });
+                }
+            });
+
+            const finalEps = Array.from(uniqueMap.values());
+            grid.innerHTML = finalEps.map(ep => `
+                <div class="card" tabindex="200" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
+                    <img src="${ep.img}">
+                    <div class="card-label">${ep.title}</div>
+                </div>
+            `).join('');
+            document.getElementById('episodes-label').innerText = item.title;
+        } catch(e) { grid.innerHTML = 'خطأ في التحميل'; }
     }
 
-    async function saveProgress() {
-        if (state.user && state.currentEpisodeLink && !videoElem.paused) {
-            const pos = Math.floor(videoElem.currentTime);
-            if (pos > 5) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentEpisodeLink, last_position: pos, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
-        }
-    }
-
-    async function loadFavorites() {
-        const { data } = await db.from('favorites').select('series_data');
-        if(data) favorites = data.map(d => d.series_data);
-    }
-
-    function renderFavorites() {
-        document.getElementById('grid-favs').innerHTML = favorites.map((item, i) => `
-            <div class="card" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                <img src="${item.img}">
-                <div class="card-label">${item.title}</div>
-            </div>
-        `).join('') || '<div style="padding:20px;">المفضلة فارغة</div>';
-    }
-
+    // --- البحث والمفضلة ---
     async function startSearch(q) {
         if(!q) return;
         const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
@@ -255,7 +243,7 @@
             }
         });
         document.getElementById('grid-search').innerHTML = Array.from(unique.values()).map(item => `
-            <div class="card" onclick="handleAction(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+            <div class="card" tabindex="100" onclick="handleAction(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                 <img src="${item.img}">
                 <div class="card-label">${item.title}</div>
             </div>
@@ -263,71 +251,52 @@
         document.getElementById('row-search').classList.add('visible');
     }
 
-    async function loadEpisodes(item) {
-    state.currentSeries = item;
-    const grid = document.getElementById('grid-episodes');
-    document.getElementById('row-episodes').classList.add('visible');
-    grid.innerHTML = '<div style="padding:20px;">جاري تصفية وتحميل الحلقات...</div>';
-    
-    if(state.user) {
-        document.getElementById('fav-toggle-btn').style.display = 'inline-block';
-        document.getElementByID('fav-toggle-btn').style.background = '';
-        updateFavBtn();
+    // --- وظائف عامة ---
+    function toggleSearch() {
+        const isMob = window.innerWidth <= 768;
+        const target = isMob ? document.getElementById('mobile-search-row') : document.getElementById('search-container-desktop');
+        target.classList.toggle('active');
     }
-
-    try {
-        const response = await fetch(PROXY(item.link));
-        const html = await response.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        
-        // استخدام Map لضمان عدم تكرار الرابط (Key هو الرابط)
-        const uniqueEpsMap = new Map();
-
-        doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
-            const rawLink = a.getAttribute('href');
-            const fullLink = rawLink.includes('http') ? rawLink : BASE + rawLink;
-            const title = a.innerText.trim();
-
-            // إذا لم يكن الرابط موجوداً في الخريطة، قم بإضافته
-            if (!uniqueEpsMap.has(fullLink) && title !== "") {
-                uniqueEpsMap.set(fullLink, {
-                    title: title,
-                    link: fullLink,
-                    img: item.img
-                });
-            }
-        });
-
-        // تحويل الخريطة إلى مصفوفة للعرض
-        const finalEpisodes = Array.from(uniqueEpsMap.values());
-
-        if (finalEpisodes.length === 0) {
-            grid.innerHTML = '<div style="padding:20px;">لم يتم العثور على حلقات أو قد يكون فيلماً.</div>';
-            // إذا كان فيلماً، نحاول تشغيله مباشرة
-            if (!item.isSeries) fetchAndPlay(item.link, item.title);
-            return;
+    function hideRow(id) { document.getElementById(id).classList.remove('visible'); }
+    function toggleFavSection() {
+        if(!state.user) return;
+        const row = document.getElementById('row-favs');
+        if(!row.classList.contains('visible')) renderFavorites();
+        row.classList.toggle('visible');
+    }
+    async function checkUser() {
+        const { data: { session } } = await db.auth.getSession();
+        if(session?.user) {
+            state.user = session.user;
+            document.getElementById('google-btn').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'block';
+            document.getElementById('fav-list-trigger').style.display = 'block';
+            loadFavorites();
+            setInterval(saveProgress, 10000);
         }
-
-        grid.innerHTML = finalEpisodes.map(ep => `
-            <div class="card" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
-                <img src="${ep.img}">
-                <div class="card-label">${ep.title}</div>
-            </div>
-        `).join('');
-        
-        document.getElementById('episodes-label').innerText = item.title;
-
-    } catch (e) {
-        grid.innerHTML = '<div style="padding:20px;">حدث خطأ أثناء جلب الحلقات.</div>';
-        console.error("Error loading episodes:", e);
     }
-}
-
+    async function saveProgress() {
+        if (state.user && state.currentEpisodeLink && !videoElem.paused) {
+            const pos = Math.floor(videoElem.currentTime);
+            if (pos > 5) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentEpisodeLink, last_position: pos, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
+        }
+    }
+    async function loadFavorites() {
+        const { data } = await db.from('favorites').select('series_data');
+        if(data) favorites = data.map(d => d.series_data);
+    }
+    function renderFavorites() {
+        document.getElementById('grid-favs').innerHTML = favorites.map(item => `
+            <div class="card" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <img src="${item.img}">
+                <div class="card-label">${item.title}</div>
+            </div>
+        `).join('') || '<div style="padding:20px;">المفضلة فارغة</div>';
+    }
     function updateFavBtn() {
         const isFav = favorites.some(f => f.link === state.currentSeries.link);
         document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
     }
-
     async function toggleFavorite() {
         if(!state.user) return;
         const isFav = favorites.some(f => f.link === state.currentSeries.link);
@@ -340,9 +309,8 @@
         }
         updateFavBtn();
     }
-
     function handleAction(item) { if(item.isSeries) loadEpisodes(item); else fetchAndPlay(item.link, item.title); }
-    function copyVideoLink() { if(state.currentMp4) { navigator.clipboard.writeText(state.currentMp4); alert("تم النسخ!"); } }
+    function copyVideoLink() { if(state.currentMp4) { navigator.clipboard.writeText(state.currentMp4); alert("تم نسخ الرابط المباشر!"); } }
     async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
     async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
