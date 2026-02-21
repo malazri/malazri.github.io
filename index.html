@@ -269,7 +269,7 @@
         document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
         
         const btn = document.getElementById('fav-toggle-btn');
-        btn.style.display = 'inline-flex';
+        btn.style.display = 'inline-block';
         updateFavBtn();
 
         const doc = new DOMParser().parseFromString(await (await fetch(PROXY(item.link))).text(), 'text/html');
@@ -291,7 +291,7 @@
     function updateFavBtn() {
         const isFav = favorites.some(f => f.link === state.currentSeries.link);
         document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
-        document.getElementById('fav-toggle-btn').style.background= '--primary-red';
+        document.getElementById('fav-toggle-button').style.setProperty('background-color', 'var(--primary-red)');
     }
 
     async function toggleFavorite() {
