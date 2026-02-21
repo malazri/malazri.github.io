@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - v5.0</title>
+    <title>AlAzri TV - v5.1</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -31,8 +31,7 @@
         .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 15px; }
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; }
-        .card:hover { transform: scale(1.05); }
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; border: 1px solid #333; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.75rem; text-align: center; padding: 6px 2px; border-radius: 0 0 8px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -61,7 +60,7 @@
 </div>
 
 <div id="mobile-search-row">
-    <input type="text" id="search-input" style="width:100%; background:#222; border:none; color:white; padding:10px; border-radius:5px; outline:none;" placeholder="بحث..." onkeydown="if(event.key==='Enter') startSearch(this.value)">
+    <input type="text" id="search-input" style="width:100%; background:#222; border:none; color:white; padding:10px; border-radius:5px; outline:none;" placeholder="ابحث هنا..." onkeydown="if(event.key==='Enter') startSearch(this.value)">
 </div>
 
 <main class="content-area">
@@ -74,7 +73,7 @@
             <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red); margin-bottom:10px; font-size:1.1rem;"></div>
             <div id="history-info-box" class="history-info">
                 <div id="history-text">
-                    <i class="fas fa-history"></i> آخر مشاهدة: <b id="last-date"></b> | توقفت عند: <b id="last-pos-text"></b>
+                    <i class="fas fa-history"></i> آخر مشاهدة: <b id="last-date"></b> | توقف عند: <b id="last-pos-text"></b>
                 </div>
                 <button class="btn-restart" onclick="restartVideo()">إعادة من البداية</button>
             </div>
@@ -105,13 +104,10 @@
     async function fetchAndPlay(link, title) {
         if (!link) return;
         state.currentEpisodeLink = link;
-
         document.getElementById('player-container').style.display = 'block';
         document.getElementById('history-info-box').style.display = 'none';
-        document.getElementById('active-episode-title').innerText = "جاري تحضير الفيديو...";
-        
-        videoElem.pause();
-        videoElem.src = "";
+        document.getElementById('active-episode-title').innerText = "جاري التحميل...";
+        videoElem.pause(); videoElem.src = "";
 
         try {
             let resumeTime = 0;
@@ -135,15 +131,14 @@
             if (mp4Match) {
                 document.getElementById('active-episode-title').innerText = title;
                 videoElem.src = mp4Match[1];
-                videoElem.onmetadata = () => { if(resumeTime > 5) videoElem.currentTime = resumeTime; };
-                videoElem.play();
+                videoElem.onloadedmetadata = () => { if(resumeTime > 5) videoElem.currentTime = resumeTime; videoElem.play(); };
             }
         } catch (e) { document.getElementById('active-episode-title').innerText = "خطأ في التشغيل"; }
     }
 
     function restartVideo() { videoElem.currentTime = 0; videoElem.play(); document.getElementById('history-info-box').style.display = 'none'; }
 
-    // --- جلب الحلقات (مع تصفية دقيقة) ---
+    // --- جلب الحلقات ---
     async function loadEpisodes(item) {
         state.currentSeries = item;
         const grid = document.getElementById('grid-episodes');
@@ -157,49 +152,59 @@
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const unique = new Map();
 
-            // تصفية الروابط لضمان جلب الحلقات فقط ومنع روابط المسلسلات الأخرى
-            doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
-                const link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-                const title = a.innerText.trim();
-                
-                // التأكد أن الرابط يحتوي على كلمة "episode" ولا يتكرر
-                if (!unique.has(link) && title.includes("الحلقة")) {
-                    unique.set(link, { title: title, link: link, img: item.img });
+            // منطق أكثر مرونة لجلب الروابط
+            doc.querySelectorAll('a').forEach(a => {
+                const href = a.getAttribute('href') || "";
+                if (href.includes('/episode/')) {
+                    const link = href.includes('http') ? href : BASE + href;
+                    const title = a.innerText.trim();
+                    if (!unique.has(link) && title.length > 0) {
+                        unique.set(link, { title, link, img: item.img });
+                    }
                 }
             });
 
-            if(unique.size === 0) {
-                grid.innerHTML = "لا توجد حلقات متاحة حالياً.";
-            } else {
-                grid.innerHTML = Array.from(unique.values()).map(ep => `
-                    <div class="card" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
-                        <img src="${ep.img}"><div class="card-label">${ep.title}</div>
-                    </div>
-                `).join('');
-            }
+            grid.innerHTML = Array.from(unique.values()).map(ep => `
+                <div class="card" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
+                    <img src="${ep.img}"><div class="card-label">${ep.title}</div>
+                </div>
+            `).join('') || "لم يتم العثور على حلقات.";
             document.getElementById('episodes-label').innerText = item.title;
-        } catch(e) { grid.innerHTML = "خطأ في جلب البيانات"; }
+        } catch(e) { grid.innerHTML = "خطأ في الاتصال"; }
     }
 
-    // --- الوظائف العامة ---
+    // --- البحث ---
     async function startSearch(q) {
         if(!q) return;
-        const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
-        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        const results = [];
-        doc.querySelectorAll('.subject-item').forEach(item => {
-            const a = item.querySelector('a');
-            const img = item.querySelector('img');
-            if(a && img) {
-                results.push({ title: img.alt, link: a.href.includes('http') ? a.href : BASE + a.getAttribute('href'), img: img.src });
-            }
-        });
-        document.getElementById('grid-search').innerHTML = results.map(item => `
-            <div class="card" onclick='handleAction(${JSON.stringify(item)})'>
-                <img src="${item.img}"><div class="card-label">${item.title}</div>
-            </div>
-        `).join('');
         document.getElementById('row-search').classList.add('visible');
+        document.getElementById('grid-search').innerHTML = "جاري البحث...";
+        
+        try {
+            const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const results = [];
+
+            // البحث في جميع العناصر التي قد تحتوي على روابط مسلسلات/أفلام
+            doc.querySelectorAll('a[href*="/series/"], a[href*="/movie/"]').forEach(a => {
+                const img = a.querySelector('img');
+                if(img) {
+                    results.push({ 
+                        title: img.alt || "بدون عنوان", 
+                        link: a.href.includes('http') ? a.href : BASE + a.getAttribute('href'), 
+                        img: img.src || img.dataset.src 
+                    });
+                }
+            });
+
+            const uniqueRes = Array.from(new Map(results.map(r => [r.link, r])).values());
+
+            document.getElementById('grid-search').innerHTML = uniqueRes.map(item => `
+                <div class="card" onclick='handleAction(${JSON.stringify(item)})'>
+                    <img src="${item.img}"><div class="card-label">${item.title}</div>
+                </div>
+            `).join('') || "لا توجد نتائج.";
+        } catch(e) { document.getElementById('grid-search').innerHTML = "خطأ في البحث"; }
     }
 
     function handleAction(item) {
@@ -230,16 +235,14 @@
 
     async function loadFavorites() {
         const { data } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
-        if(data) {
+        if(data && data.length > 0) {
             favorites = data.map(d => d.series_data);
-            if(favorites.length > 0) {
-                document.getElementById('row-favs').classList.add('visible');
-                document.getElementById('grid-favs').innerHTML = favorites.map(item => `
-                    <div class="card" onclick='handleAction(${JSON.stringify(item)})'>
-                        <img src="${item.img}"><div class="card-label">${item.title}</div>
-                    </div>
-                `).join('');
-            }
+            document.getElementById('row-favs').classList.add('visible');
+            document.getElementById('grid-favs').innerHTML = favorites.map(item => `
+                <div class="card" onclick='handleAction(${JSON.stringify(item)})'>
+                    <img src="${item.img}"><div class="card-label">${item.title}</div>
+                </div>
+            `).join('');
         }
     }
 
@@ -254,8 +257,7 @@
             await db.from('favorites').insert([{ user_id: state.user.id, series_data: state.currentSeries }]);
             favorites.push(state.currentSeries);
         }
-        updateFavBtn();
-        loadFavorites();
+        updateFavBtn(); loadFavorites();
     }
 
     async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
