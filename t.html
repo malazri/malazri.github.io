@@ -2,270 +2,178 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TV Debugger - Shabab Al-Bomb</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>AlAzri TV - Debug Mode</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        :root {
-            --bg-color: #0a0a0a;
-            --card-bg: #1a1a1a;
-            --accent-color: #e50914;
-            --text-color: #ffffff;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        /* 1. VISUAL DEBUGGER OVERLAY */
-        #debug-console {
-            height: 180px;
-            background: #000;
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 13px;
-            overflow-y: auto;
-            padding: 10px;
-            border-bottom: 3px solid #e50914;
-            box-sizing: border-box;
-            z-index: 9999;
-        }
-
-        .log-error { color: #ff4444; font-weight: bold; }
-        .log-warn { color: #ffbb33; }
-
-        /* 2. APP UI */
-        .container {
-            flex: 1;
-            padding: 20px 40px;
-            overflow-y: auto;
-        }
-
-        header { margin-bottom: 20px; }
-        h1 { font-size: 2rem; margin: 0; color: var(--accent-color); }
+        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 220px; --card-h: 130px; }
         
-        .episode-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px;
-            padding-bottom: 50px;
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* DEBUGGER STYLE */
+        #tv-console {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 120px;
+            background: rgba(0,0,0,0.9); color: #0f0; font-family: monospace;
+            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 2px solid #444;
+            display: none; padding: 10px; pointer-events: none;
         }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            border: 4px solid transparent;
-            transition: transform 0.2s ease;
+        .fixed-header { 
+            position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
+            background: #000; padding: 12px 4%; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid #222;
         }
 
-        .card img {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 4px;
-            background: #333; /* Placeholder color */
-        }
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; }
+        .brand:focus { color: white; transform: scale(1.1); }
 
-        .card-title {
-            margin-top: 10px;
-            font-size: 14px;
-            height: 40px;
-            overflow: hidden;
-        }
+        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 150px 20px; }
 
-        .card.focused {
-            transform: scale(1.05);
-            border-color: white;
-            background: #2a2a2a;
-        }
+        .row { display: none; margin-bottom: 30px; }
+        .row.visible { display: block; }
+        .row-content { display: flex; gap: 20px; overflow-x: hidden; padding: 20px 5px; }
 
-        /* PLAYER OVERLAY */
-        #player-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: black;
-            z-index: 10000;
+        /* TV FOCUS STYLE */
+        .card { 
+            min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; 
+            border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; 
+            border: 4px solid transparent; transition: all 0.2s ease;
+            outline: none; /* Hide default browser focus */
         }
-        #close-btn {
-            position: absolute; top: 20px; right: 20px;
-            background: red; color: white; padding: 10px;
-            z-index: 10001; cursor: pointer;
+        .card.focused { 
+            border-color: white; transform: scale(1.1); z-index: 10;
+            box-shadow: 0 0 20px rgba(255,255,255,0.4);
         }
+        
+        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.8rem; text-align: center; padding: 5px; }
+
+        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; }
+        video { width: 100%; aspect-ratio: 16/9; outline: none; }
+        video:focus { border: 3px solid var(--primary-red); }
     </style>
 </head>
 <body>
 
-<div id="debug-console">
-    <div>[System] Initializing Debugger...</div>
+<div id="tv-console"></div>
+
+<div class="fixed-header">
+    <div class="brand" tabindex="1">ALAZRI TV</div>
+    <div class="header-actions" style="color:#aaa; font-size: 0.8rem;">
+        اضغط (Menu/Blue) للديبيج | استخدم الأزرار للتنقل
+    </div>
 </div>
 
-<div class="container" id="main-content">
-    <header>
-        <h1>شباب البومب - جميع المواسم</h1>
-        <p id="status-text">جاري البحث عن الحلقات...</p>
-    </header>
+<main class="content-area" id="main-scroll">
+    <div class="row" id="row-search">
+        <div class="row-title">نتائج البحث</div>
+        <div class="row-content" id="grid-search"></div>
+    </div>
 
-    <div class="episode-grid" id="grid">
-        </div>
-</div>
+    <div class="row visible" id="row-episodes">
+        <div class="row-title" id="episodes-label">الحلقات الأخيرة</div>
+        <div class="row-content" id="grid-episodes"></div>
+    </div>
 
-<div id="player-overlay">
-    <div id="close-btn">اضغط Backspace للعودة</div>
-    <iframe id="video-frame" src="" allowfullscreen></iframe>
-</div>
+    <div id="player-container">
+        <video id="main-video" controls tabindex="10"></video>
+    </div>
+</main>
 
 <script>
-    // --- PART 1: LEGACY DEBUGGER (ES5) ---
-    var consoleDiv = document.getElementById('debug-console');
-    
-    function logToScreen(msg, type) {
-        var div = document.createElement('div');
-        if (type === 'error') div.className = 'log-error';
-        if (type === 'warn') div.className = 'log-warn';
-        div.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        consoleDiv.appendChild(div);
-        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    // --- 1. TV DEBUGGER LOGIC ---
+    var consoleEl = document.getElementById('tv-console');
+    function tvLog(msg, isErr) {
+        var line = document.createElement('div');
+        line.style.color = isErr ? '#ff4444' : '#0f0';
+        line.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        consoleEl.appendChild(line);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
-    // Intercept Global Errors
-    window.onerror = function(message, source, lineno) {
-        logToScreen("ERR: " + message + " (Line: " + lineno + ")", "error");
-        return false;
-    };
-
-    // Override Console.log
+    // Capture all console logs and errors
     var oldLog = console.log;
-    console.log = function() {
-        var args = Array.prototype.slice.call(arguments);
-        logToScreen(args.join(' '), "info");
-        oldLog.apply(console, arguments);
-    };
+    console.log = function() { tvLog(Array.prototype.slice.call(arguments).join(' ')); oldLog.apply(console, arguments); };
+    window.onerror = function(m, u, l) { tvLog("ERR: " + m + " Line: " + l, true); return false; };
 
-    // --- PART 2: APP LOGIC (ES5) ---
-    var PROXY = "https://cors-anywhere.herokuapp.com/"; 
-    var TARGET_URL = "https://tye.ahwaktv.net/?s=" + encodeURIComponent("شباب البومب");
-    
-    var episodes = [];
-    var currentIndex = 0;
+    // --- 2. SPATIAL NAVIGATION (D-PAD) ---
+    var currentFocusIndex = 0;
+    var focusableElements = [];
 
-    function fetchEpisodes() {
-        console.log("Starting Fetch for: شباب البومب");
-        
-        fetch(PROXY + TARGET_URL)
-            .then(function(res) { 
-                console.log("Network Response: " + res.status);
-                if(res.status === 403) console.log("WARN: Proxy access denied. Visit the cors-anywhere demo link.");
-                return res.text(); 
-            })
-            .then(function(html) {
-                console.log("Data received. Parsing HTML...");
-                var parser = new DOMParser();
-                var doc = parser.parseFromString(html, 'text/html');
-                
-                // Try multiple selectors in case site layout changed
-                var items = doc.querySelectorAll('.PostItem, .archive-item, article, .video-card'); 
-                console.log("Selectors found: " + items.length);
-
-                if (items.length === 0) {
-                    logToScreen("No items found with standard selectors. Checking all links...", "warn");
-                    items = doc.querySelectorAll('a[href*="episode"], a[href*="series"]');
-                }
-
-                for (var i = 0; i < items.length; i++) {
-                    var item = items[i];
-                    try {
-                        var link = item.querySelector('a') ? item.querySelector('a').href : (item.href || "");
-                        var title = item.innerText.trim().split('\n')[0];
-                        var img = item.querySelector('img') ? item.querySelector('img').src : "";
-
-                        if (link && title.length > 2) {
-                            episodes.push({ title: title, link: link, img: img });
-                        }
-                    } catch(e) {}
-                }
-
-                if (episodes.length > 0) {
-                    document.getElementById('status-text').innerText = "تم العثور على " + episodes.length + " حلقة";
-                    renderGrid();
-                } else {
-                    document.getElementById('status-text').innerText = "فشل العثور على محتوى. تحقق من سجل الأخطاء.";
-                }
-            })
-            .catch(function(err) {
-                console.log("Fetch Error: " + err.toString());
-            });
+    function updateFocusable() {
+        // Collect all visible cards and interactive elements
+        var cards = document.querySelectorAll('.card, .brand, video');
+        focusableElements = Array.prototype.slice.call(cards).filter(function(el) {
+            return el.offsetParent !== null; // Only visible elements
+        });
     }
 
-    function renderGrid() {
-        var grid = document.getElementById('grid');
-        var content = "";
-        for (var i = 0; i < episodes.length; i++) {
-            var focusedClass = (i === 0) ? "focused" : "";
-            content += '<div class="card ' + focusedClass + '" id="card-' + i + '">' +
-                       '<img src="' + episodes[i].img + '" onerror="this.src=\'https://via.placeholder.com/200x120?text=No+Image\'">' +
-                       '<div class="card-title">' + episodes[i].title + '</div>' +
-                       '</div>';
-        }
-        grid.innerHTML = content;
-    }
-
-    // --- PART 3: REMOTE CONTROL LOGIC ---
     document.addEventListener('keydown', function(e) {
-        // If player is open, only listen for back button
-        if (document.getElementById('player-overlay').style.display === 'block') {
-            if (e.key === 'Backspace' || e.keyCode === 8 || e.keyCode === 27) {
-                closePlayer();
-            }
-            return;
+        // Toggle Console with a key (usually 'Menu' or a specific code on TV)
+        if (e.keyCode === 406 || e.key === 'F9') { // Example codes
+            consoleEl.style.display = consoleEl.style.display === 'none' ? 'block' : 'none';
         }
 
-        var cards = document.querySelectorAll('.card');
-        if (cards.length === 0) return;
+        updateFocusable();
+        var oldIndex = currentFocusIndex;
 
-        // Remove focus from current
-        if (cards[currentIndex]) cards[currentIndex].classList.remove('focused');
+        if (e.keyCode === 39) currentFocusIndex++; // Right
+        if (e.keyCode === 37) currentFocusIndex--; // Left
+        if (e.keyCode === 40) currentFocusIndex += 4; // Down (approx row change)
+        if (e.keyCode === 38) currentFocusIndex -= 4; // Up
 
-        // TV KeyCodes: 37=Left, 38=Up, 39=Right, 40=Down, 13=OK
-        if (e.keyCode === 39) { // Right
-            currentIndex = (currentIndex + 1) % cards.length;
-        } else if (e.keyCode === 37) { // Left
-            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
-        } else if (e.keyCode === 13) { // Enter
-            console.log("Selected: " + episodes[currentIndex].title);
-            openPlayer(episodes[currentIndex].link);
+        // Boundaries
+        if (currentFocusIndex < 0) currentFocusIndex = 0;
+        if (currentFocusIndex >= focusableElements.length) currentFocusIndex = focusableElements.length - 1;
+
+        // Apply Focus
+        focusableElements.forEach(function(el) { el.classList.remove('focused'); });
+        var activeEl = focusableElements[currentFocusIndex];
+        if (activeEl) {
+            activeEl.classList.add('focused');
+            activeEl.focus();
+            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
         }
 
-        // Apply focus to new
-        if (cards[currentIndex]) {
-            cards[currentIndex].classList.add('focused');
-            cards[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Trigger Click on Enter
+        if (e.keyCode === 13) {
+            console.log("Enter pressed on: " + activeEl.className);
+            activeEl.click();
         }
     });
 
-    function openPlayer(url) {
-        logToScreen("Attempting to load player for: " + url);
-        document.getElementById('player-overlay').style.display = 'block';
-        // In a real app, you would fetch the watch link from the page here
-        document.getElementById('video-frame').src = url; 
+    // --- 3. UPDATED CORE LOGIC (ES5 COMPATIBLE) ---
+    var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
+    var SB_KEY = "..."; // Keep your key
+    var db = supabase.createClient(SB_URL, SB_KEY);
+    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
+
+    function fetchAndPlay(link, title) {
+        console.log("Attempting to play: " + title);
+        document.getElementById('player-container').style.display = 'block';
+        var video = document.getElementById('main-video');
+        
+        fetch(PROXY(link))
+            .then(function(res) { return res.text(); })
+            .then(function(html) {
+                // Simplified regex for older TV browsers
+                var idMatch = html.match(/link\/([a-zA-Z0-9]+)/);
+                if (idMatch) {
+                    console.log("Found Video ID: " + idMatch[1]);
+                    // Continue your download logic here...
+                } else {
+                    console.log("Video ID not found in HTML");
+                }
+            })
+            .catch(function(err) { console.log("Fetch Fail: " + err); });
     }
 
-    function closePlayer() {
-        document.getElementById('player-overlay').style.display = 'none';
-        document.getElementById('video-frame').src = "";
-    }
-
-    // Start App
-    fetchEpisodes();
+    // Initialize
+    console.log("App Started. Controller ready.");
+    updateFocusable();
 </script>
-
 </body>
 </html>
