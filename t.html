@@ -1,132 +1,271 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Android TV JS Debugger</title>
+    <title>TV Debugger - Shabab Al-Bomb</title>
     <style>
+        :root {
+            --bg-color: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --accent-color: #e50914;
+            --text-color: #ffffff;
+        }
+
         body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 0;
-            background: #121212;
-            color: white;
-            font-family: sans-serif;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             height: 100vh;
         }
 
-        /* The "App" Area */
-        #app-viewport {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            border-bottom: 2px solid #444;
-        }
-
-        .button {
-            padding: 20px 40px;
-            background: #007bff;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            border-radius: 8px;
-        }
-
-        .button:focus {
-            background: #28a745;
-            outline: 5px solid white;
-        }
-
-        /* The "Debug" Area */
+        /* 1. VISUAL DEBUGGER OVERLAY */
         #debug-console {
-            height: 40%;
+            height: 180px;
             background: #000;
             color: #00ff00;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
+            font-family: monospace;
+            font-size: 13px;
             overflow-y: auto;
             padding: 10px;
+            border-bottom: 3px solid #e50914;
             box-sizing: border-box;
+            z-index: 9999;
         }
 
-        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #222; }
         .log-error { color: #ff4444; font-weight: bold; }
         .log-warn { color: #ffbb33; }
+
+        /* 2. APP UI */
+        .container {
+            flex: 1;
+            padding: 20px 40px;
+            overflow-y: auto;
+        }
+
+        header { margin-bottom: 20px; }
+        h1 { font-size: 2rem; margin: 0; color: var(--accent-color); }
+        
+        .episode-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            border: 4px solid transparent;
+            transition: transform 0.2s ease;
+        }
+
+        .card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            background: #333; /* Placeholder color */
+        }
+
+        .card-title {
+            margin-top: 10px;
+            font-size: 14px;
+            height: 40px;
+            overflow: hidden;
+        }
+
+        .card.focused {
+            transform: scale(1.05);
+            border-color: white;
+            background: #2a2a2a;
+        }
+
+        /* PLAYER OVERLAY */
+        #player-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: black;
+            z-index: 10000;
+        }
+        #close-btn {
+            position: absolute; top: 20px; right: 20px;
+            background: red; color: white; padding: 10px;
+            z-index: 10001; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <div id="app-viewport">
-        <h1>TV JS Tester</h1>
-        <p>Use your Remote (OK/Enter) on the button below:</p>
-        <button id="test-btn" class="button">Click Me / Press OK</button>
-    </div>
+<div id="debug-console">
+    <div>[System] Initializing Debugger...</div>
+</div>
 
-    <div id="debug-console">
-        <div class="log-entry">[System] Console Initialized...</div>
-    </div>
+<div class="container" id="main-content">
+    <header>
+        <h1>شباب البومب - جميع المواسم</h1>
+        <p id="status-text">جاري البحث عن الحلقات...</p>
+    </header>
 
-    <script>
-        // 1. VISUAL LOGGER SETUP
-        // Using var for legacy TV compatibility
-        var consoleElement = document.getElementById('debug-console');
+    <div class="episode-grid" id="grid">
+        </div>
+</div>
 
-        function screenLog(message, type) {
-            var entry = document.createElement('div');
-            entry.className = 'log-entry' + (type ? ' log-' + type : '');
-            entry.innerText = '[' + new Date().toLocaleTimeString() + '] ' + message;
-            consoleElement.appendChild(entry);
-            consoleElement.scrollTop = consoleElement.scrollHeight;
-        }
+<div id="player-overlay">
+    <div id="close-btn">اضغط Backspace للعودة</div>
+    <iframe id="video-frame" src="" allowfullscreen></iframe>
+</div>
 
-        // 2. CATCH GLOBAL ERRORS (The "Why is it not working" catcher)
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            var errorDetail = msg + ' (Line: ' + lineNo + ')';
-            screenLog('RUNTIME ERROR: ' + errorDetail, 'error');
-            return false;
-        };
+<script>
+    // --- PART 1: LEGACY DEBUGGER (ES5) ---
+    var consoleDiv = document.getElementById('debug-console');
+    
+    function logToScreen(msg, type) {
+        var div = document.createElement('div');
+        if (type === 'error') div.className = 'log-error';
+        if (type === 'warn') div.className = 'log-warn';
+        div.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        consoleDiv.appendChild(div);
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
 
-        // 3. OVERRIDE STANDARD LOGS
-        var originalLog = console.log;
-        console.log = function() {
-            var args = Array.prototype.slice.call(arguments);
-            screenLog(args.join(' '));
-            originalLog.apply(console, args);
-        };
+    // Intercept Global Errors
+    window.onerror = function(message, source, lineno) {
+        logToScreen("ERR: " + message + " (Line: " + lineno + ")", "error");
+        return false;
+    };
 
-        // 4. TEST LOGIC
-        var btn = document.getElementById('test-btn');
+    // Override Console.log
+    var oldLog = console.log;
+    console.log = function() {
+        var args = Array.prototype.slice.call(arguments);
+        logToScreen(args.join(' '), "info");
+        oldLog.apply(console, arguments);
+    };
+
+    // --- PART 2: APP LOGIC (ES5) ---
+    var PROXY = "https://cors-anywhere.herokuapp.com/"; 
+    var TARGET_URL = "https://tye.ahwaktv.net/?s=" + encodeURIComponent("شباب البومب");
+    
+    var episodes = [];
+    var currentIndex = 0;
+
+    function fetchEpisodes() {
+        console.log("Starting Fetch for: شباب البومب");
         
-        // Focus the button automatically for TV Remote usage
-        btn.focus();
+        fetch(PROXY + TARGET_URL)
+            .then(function(res) { 
+                console.log("Network Response: " + res.status);
+                if(res.status === 403) console.log("WARN: Proxy access denied. Visit the cors-anywhere demo link.");
+                return res.text(); 
+            })
+            .then(function(html) {
+                console.log("Data received. Parsing HTML...");
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                
+                // Try multiple selectors in case site layout changed
+                var items = doc.querySelectorAll('.PostItem, .archive-item, article, .video-card'); 
+                console.log("Selectors found: " + items.length);
 
-        btn.onclick = function() {
-            console.log("Button Clicked via Mouse/Touch!");
-        };
+                if (items.length === 0) {
+                    logToScreen("No items found with standard selectors. Checking all links...", "warn");
+                    items = doc.querySelectorAll('a[href*="episode"], a[href*="series"]');
+                }
 
-        // Standard TV Remote "OK" button listener
-        window.addEventListener('keydown', function(e) {
-            console.log("Key Pressed. Code: " + e.keyCode);
-            
-            // KeyCode 13 is usually "Enter/OK"
-            if (e.keyCode === 13) {
-                console.log("OK/Enter Pressed!");
-                triggerTestError();
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
+                    try {
+                        var link = item.querySelector('a') ? item.querySelector('a').href : (item.href || "");
+                        var title = item.innerText.trim().split('\n')[0];
+                        var img = item.querySelector('img') ? item.querySelector('img').src : "";
+
+                        if (link && title.length > 2) {
+                            episodes.push({ title: title, link: link, img: img });
+                        }
+                    } catch(e) {}
+                }
+
+                if (episodes.length > 0) {
+                    document.getElementById('status-text').innerText = "تم العثور على " + episodes.length + " حلقة";
+                    renderGrid();
+                } else {
+                    document.getElementById('status-text').innerText = "فشل العثور على محتوى. تحقق من سجل الأخطاء.";
+                }
+            })
+            .catch(function(err) {
+                console.log("Fetch Error: " + err.toString());
+            });
+    }
+
+    function renderGrid() {
+        var grid = document.getElementById('grid');
+        var content = "";
+        for (var i = 0; i < episodes.length; i++) {
+            var focusedClass = (i === 0) ? "focused" : "";
+            content += '<div class="card ' + focusedClass + '" id="card-' + i + '">' +
+                       '<img src="' + episodes[i].img + '" onerror="this.src=\'https://via.placeholder.com/200x120?text=No+Image\'">' +
+                       '<div class="card-title">' + episodes[i].title + '</div>' +
+                       '</div>';
+        }
+        grid.innerHTML = content;
+    }
+
+    // --- PART 3: REMOTE CONTROL LOGIC ---
+    document.addEventListener('keydown', function(e) {
+        // If player is open, only listen for back button
+        if (document.getElementById('player-overlay').style.display === 'block') {
+            if (e.key === 'Backspace' || e.keyCode === 8 || e.keyCode === 27) {
+                closePlayer();
             }
-        });
-
-        function triggerTestError() {
-            console.log("Attempting to call a non-existent function to test error catching...");
-            // This will trigger window.onerror
-            nonExistentFunction();
+            return;
         }
 
-        console.log("Ready! Use your remote to interact.");
-    </script>
+        var cards = document.querySelectorAll('.card');
+        if (cards.length === 0) return;
+
+        // Remove focus from current
+        if (cards[currentIndex]) cards[currentIndex].classList.remove('focused');
+
+        // TV KeyCodes: 37=Left, 38=Up, 39=Right, 40=Down, 13=OK
+        if (e.keyCode === 39) { // Right
+            currentIndex = (currentIndex + 1) % cards.length;
+        } else if (e.keyCode === 37) { // Left
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+        } else if (e.keyCode === 13) { // Enter
+            console.log("Selected: " + episodes[currentIndex].title);
+            openPlayer(episodes[currentIndex].link);
+        }
+
+        // Apply focus to new
+        if (cards[currentIndex]) {
+            cards[currentIndex].classList.add('focused');
+            cards[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+
+    function openPlayer(url) {
+        logToScreen("Attempting to load player for: " + url);
+        document.getElementById('player-overlay').style.display = 'block';
+        // In a real app, you would fetch the watch link from the page here
+        document.getElementById('video-frame').src = url; 
+    }
+
+    function closePlayer() {
+        document.getElementById('player-overlay').style.display = 'none';
+        document.getElementById('video-frame').src = "";
+    }
+
+    // Start App
+    fetchEpisodes();
+</script>
+
 </body>
 </html>
