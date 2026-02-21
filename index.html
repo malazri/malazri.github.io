@@ -264,26 +264,64 @@
     }
 
     async function loadEpisodes(item) {
-        state.currentSeries = item;
-        document.getElementById('row-episodes').classList.add('visible');
-        document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
-        if(state.user) {
-            document.getElementById('fav-toggle-btn').style.display = 'inline-flex';
-            updateFavBtn();
-        }
-        const doc = new DOMParser().parseFromString(await (await fetch(PROXY(item.link))).text(), 'text/html');
-        const eps = [];
+    state.currentSeries = item;
+    const grid = document.getElementById('grid-episodes');
+    document.getElementById('row-episodes').classList.add('visible');
+    grid.innerHTML = '<div style="padding:20px;">جاري تصفية وتحميل الحلقات...</div>';
+    
+    if(state.user) {
+        document.getElementById('fav-toggle-btn').style.display = 'inline-block';
+        document.getElementByID('fav-toggle-btn').style.background = '';
+        updateFavBtn();
+    }
+
+    try {
+        const response = await fetch(PROXY(item.link));
+        const html = await response.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        
+        // استخدام Map لضمان عدم تكرار الرابط (Key هو الرابط)
+        const uniqueEpsMap = new Map();
+
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
-            eps.push({ title: a.innerText.trim(), link: a.href.includes('http') ? a.href : BASE + a.getAttribute('href'), img: item.img });
+            const rawLink = a.getAttribute('href');
+            const fullLink = rawLink.includes('http') ? rawLink : BASE + rawLink;
+            const title = a.innerText.trim();
+
+            // إذا لم يكن الرابط موجوداً في الخريطة، قم بإضافته
+            if (!uniqueEpsMap.has(fullLink) && title !== "") {
+                uniqueEpsMap.set(fullLink, {
+                    title: title,
+                    link: fullLink,
+                    img: item.img
+                });
+            }
         });
-        document.getElementById('grid-episodes').innerHTML = eps.map(ep => `
+
+        // تحويل الخريطة إلى مصفوفة للعرض
+        const finalEpisodes = Array.from(uniqueEpsMap.values());
+
+        if (finalEpisodes.length === 0) {
+            grid.innerHTML = '<div style="padding:20px;">لم يتم العثور على حلقات أو قد يكون فيلماً.</div>';
+            // إذا كان فيلماً، نحاول تشغيله مباشرة
+            if (!item.isSeries) fetchAndPlay(item.link, item.title);
+            return;
+        }
+
+        grid.innerHTML = finalEpisodes.map(ep => `
             <div class="card" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
                 <img src="${ep.img}">
                 <div class="card-label">${ep.title}</div>
             </div>
         `).join('');
+        
         document.getElementById('episodes-label').innerText = item.title;
+
+    } catch (e) {
+        grid.innerHTML = '<div style="padding:20px;">حدث خطأ أثناء جلب الحلقات.</div>';
+        console.error("Error loading episodes:", e);
     }
+}
 
     function updateFavBtn() {
         const isFav = favorites.some(f => f.link === state.currentSeries.link);
