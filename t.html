@@ -8,16 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 220px; --card-h: 130px; }
+        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 160px; --card-h: 100px; }
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* DEBUGGER STYLE */
-        #tv-console {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 120px;
-            background: rgba(0,0,0,0.9); color: #0f0; font-family: monospace;
-            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 2px solid #444;
-            display: none; padding: 10px; pointer-events: none;
+        /* DEBUG CONSOLE - يظهر دائماً */
+        #tv-debug {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 100px;
+            background: rgba(0, 0, 0, 0.9); color: #00ff00; font-family: monospace;
+            font-size: 11px; z-index: 9999; overflow-y: auto; border-top: 2px solid #e50914;
+            padding: 5px; pointer-events: none;
         }
 
         .fixed-header { 
@@ -27,54 +27,54 @@
             border-bottom: 1px solid #222;
         }
 
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; }
-        .brand:focus { color: white; transform: scale(1.1); }
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; outline: none; }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 150px 20px; }
+        /* تنسيق التركيز للمتصفحات (الريموت كنترول) */
+        .card:focus, .brand:focus, .header-icon:focus, .btn-auth:focus, .btn-google:focus {
+            outline: 4px solid white !important;
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 110px 20px; }
 
         .row { display: none; margin-bottom: 30px; }
         .row.visible { display: block; }
-        .row-content { display: flex; gap: 20px; overflow-x: hidden; padding: 20px 5px; }
+        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
+        .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
-        /* TV FOCUS STYLE */
-        .card { 
-            min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; 
-            border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; 
-            border: 4px solid transparent; transition: all 0.2s ease;
-            outline: none; /* Hide default browser focus */
-        }
-        .card.focused { 
-            border-color: white; transform: scale(1.1); z-index: 10;
-            box-shadow: 0 0 20px rgba(255,255,255,0.4);
-        }
-        
-        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.8rem; text-align: center; padding: 5px; }
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; border: 2px solid transparent; }
+        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; }
 
-        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; }
+        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         video { width: 100%; aspect-ratio: 16/9; outline: none; }
-        video:focus { border: 3px solid var(--primary-red); }
     </style>
 </head>
 <body>
 
-<div id="tv-console"></div>
+<div id="tv-debug">
+    <div>[System] Debugger Active...</div>
+</div>
 
 <div class="fixed-header">
-    <div class="brand" tabindex="1">ALAZRI TV</div>
-    <div class="header-actions" style="color:#aaa; font-size: 0.8rem;">
-        اضغط (Menu/Blue) للديبيج | استخدم الأزرار للتنقل
+    <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
+    <div class="header-actions">
+        <i class="fas fa-search header-icon" tabindex="2" onclick="toggleSearch()"></i>
+        <button class="btn-google" id="google-btn" tabindex="3" onclick="loginWithGoogle()">دخول</button>
     </div>
 </div>
 
-<main class="content-area" id="main-scroll">
+<main class="content-area">
     <div class="row" id="row-search">
-        <div class="row-title">نتائج البحث</div>
+        <div class="row-header">
+            <div class="row-title">نتائج البحث</div>
+        </div>
         <div class="row-content" id="grid-search"></div>
     </div>
 
     <div class="row visible" id="row-episodes">
-        <div class="row-title" id="episodes-label">الحلقات الأخيرة</div>
+        <div class="row-title" id="episodes-label">الحلقات</div>
         <div class="row-content" id="grid-episodes"></div>
     </div>
 
@@ -84,96 +84,80 @@
 </main>
 
 <script>
-    // --- 1. TV DEBUGGER LOGIC ---
-    var consoleEl = document.getElementById('tv-console');
-    function tvLog(msg, isErr) {
-        var line = document.createElement('div');
-        line.style.color = isErr ? '#ff4444' : '#0f0';
-        line.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        consoleEl.appendChild(line);
-        consoleEl.scrollTop = consoleEl.scrollHeight;
+    // --- 1. DEBUG LOGIC ---
+    var debugBox = document.getElementById('tv-debug');
+    function log(msg, color) {
+        var div = document.createElement('div');
+        div.style.color = color || '#00ff00';
+        div.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        debugBox.appendChild(div);
+        debugBox.scrollTop = debugBox.scrollHeight;
     }
 
-    // Capture all console logs and errors
+    // Capture standard logs
     var oldLog = console.log;
-    console.log = function() { tvLog(Array.prototype.slice.call(arguments).join(' ')); oldLog.apply(console, arguments); };
-    window.onerror = function(m, u, l) { tvLog("ERR: " + m + " Line: " + l, true); return false; };
+    console.log = function() {
+        var args = Array.prototype.slice.call(arguments);
+        log(args.join(' '));
+        oldLog.apply(console, args);
+    };
 
-    // --- 2. SPATIAL NAVIGATION (D-PAD) ---
-    var currentFocusIndex = 0;
-    var focusableElements = [];
+    window.onerror = function(msg, url, line) {
+        log("ERROR: " + msg + " (Line: " + line + ")", "#ff4444");
+        return false;
+    };
 
-    function updateFocusable() {
-        // Collect all visible cards and interactive elements
-        var cards = document.querySelectorAll('.card, .brand, video');
-        focusableElements = Array.prototype.slice.call(cards).filter(function(el) {
-            return el.offsetParent !== null; // Only visible elements
-        });
-    }
-
+    // --- 2. TV NAVIGATION (D-PAD) ---
     document.addEventListener('keydown', function(e) {
-        // Toggle Console with a key (usually 'Menu' or a specific code on TV)
-        if (e.keyCode === 406 || e.key === 'F9') { // Example codes
-            consoleEl.style.display = consoleEl.style.display === 'none' ? 'block' : 'none';
+        var active = document.activeElement;
+        log("Key: " + e.keyCode + " | Focus: " + active.tagName);
+
+        if (e.keyCode === 13) { // Enter
+            if(active) active.click();
         }
-
-        updateFocusable();
-        var oldIndex = currentFocusIndex;
-
-        if (e.keyCode === 39) currentFocusIndex++; // Right
-        if (e.keyCode === 37) currentFocusIndex--; // Left
-        if (e.keyCode === 40) currentFocusIndex += 4; // Down (approx row change)
-        if (e.keyCode === 38) currentFocusIndex -= 4; // Up
-
-        // Boundaries
-        if (currentFocusIndex < 0) currentFocusIndex = 0;
-        if (currentFocusIndex >= focusableElements.length) currentFocusIndex = focusableElements.length - 1;
-
-        // Apply Focus
-        focusableElements.forEach(function(el) { el.classList.remove('focused'); });
-        var activeEl = focusableElements[currentFocusIndex];
-        if (activeEl) {
-            activeEl.classList.add('focused');
-            activeEl.focus();
-            activeEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-        }
-
-        // Trigger Click on Enter
-        if (e.keyCode === 13) {
-            console.log("Enter pressed on: " + activeEl.className);
-            activeEl.click();
-        }
+        
+        // الانتقال التلقائي البسيط بالمتصفح يعمل بـ Tab، 
+        // لكن في التلفاز يفضل استخدام الأسهم لتغيير الـ Focus
     });
 
-    // --- 3. UPDATED CORE LOGIC (ES5 COMPATIBLE) ---
+    // --- 3. APP LOGIC ---
     var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
-    var SB_KEY = "..."; // Keep your key
+    var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
     var db = supabase.createClient(SB_URL, SB_KEY);
     var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
+    var BASE = "https://ak.sv";
 
     function fetchAndPlay(link, title) {
-        console.log("Attempting to play: " + title);
+        log("Fetching link: " + title);
         document.getElementById('player-container').style.display = 'block';
-        var video = document.getElementById('main-video');
+        var videoElem = document.getElementById('main-video');
         
         fetch(PROXY(link))
             .then(function(res) { return res.text(); })
             .then(function(html) {
-                // Simplified regex for older TV browsers
-                var idMatch = html.match(/link\/([a-zA-Z0-9]+)/);
-                if (idMatch) {
-                    console.log("Found Video ID: " + idMatch[1]);
-                    // Continue your download logic here...
+                log("HTML Loaded. Searching for source...");
+                // استخراج الرابط بطريقة متوافقة مع المتصفحات القديمة
+                var match = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+                if(match) {
+                    log("ID Found: " + match[1]);
+                    // تكملة منطق التشغيل هنا
                 } else {
-                    console.log("Video ID not found in HTML");
+                    log("Failed to find video source", "#ffbb33");
                 }
             })
-            .catch(function(err) { console.log("Fetch Fail: " + err); });
+            .catch(function(err) { log("Fetch error: " + err, "#ff4444"); });
     }
 
-    // Initialize
-    console.log("App Started. Controller ready.");
-    updateFocusable();
+    // تهيئة البيانات التجريبية
+    function init() {
+        log("AlAzri TV Dashboard Ready.");
+        // إضافة tabindex للعناصر لضمان قابليتها للتركيز بالريموت
+        var grid = document.getElementById('grid-episodes');
+        grid.innerHTML = '<div class="card" tabindex="5" onclick="log(\'Clicked!\')"><img src="https://via.placeholder.com/160x100"><div class="card-label">حلقة تجريبية</div></div>';
+    }
+
+    init();
 </script>
+
 </body>
 </html>
