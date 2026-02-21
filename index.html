@@ -269,7 +269,7 @@
         document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
         
         const btn = document.getElementById('fav-toggle-btn');
-        btn.style.display = 'inline-block';
+        btn.style.display = 'inline-flex';
         updateFavBtn();
 
         const doc = new DOMParser().parseFromString(await (await fetch(PROXY(item.link))).text(), 'text/html');
