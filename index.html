@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - v4.6</title>
+    <title>AlAzri TV - v4.7</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -47,15 +47,16 @@
         .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
 
         .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; border: 1px solid transparent; }
-        .card:focus { border-color: white; transform: scale(1.05); outline: none; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.7rem; text-align: center; padding: 5px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 
         #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
         video { width: 100%; aspect-ratio: 16/9; display: block; }
 
-        .history-info { background: #161616; padding: 12px 18px; border-radius: 8px; margin-top: 12px; border-right: 4px solid var(--primary-red); font-size: 0.85rem; color: #ccc; display: none; }
+        .history-info { background: #161616; padding: 12px 18px; border-radius: 8px; margin-top: 12px; border-right: 4px solid var(--primary-red); font-size: 0.85rem; color: #ccc; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
         .history-info b { color: #fff; margin-left: 5px; }
+        .btn-restart { background: #333; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; transition: 0.3s; }
+        .btn-restart:hover { background: var(--primary-red); }
 
         @media (max-width: 768px) { .desktop-search { display: none; } }
     </style>
@@ -95,9 +96,12 @@
                 <button id="copy-url-btn" class="btn-auth" style="background:#222; font-size:0.75rem;" disabled onclick="copyVideoLink()">نسخ الرابط</button>
             </div>
             <div id="history-info-box" class="history-info">
-                <span>آخر مشاهدة: <b id="last-date"></b></span> | 
-                <span>الوقت: <b id="last-time"></b></span> | 
-                <span>توقفت عند: <b id="last-pos-text"></b></span>
+                <div>
+                    <span>آخر مشاهدة: <b id="last-date"></b></span> | 
+                    <span>الوقت: <b id="last-time"></b></span> | 
+                    <span>توقفت عند: <b id="last-pos-text"></b></span>
+                </div>
+                <button class="btn-restart" onclick="restartVideo()">البدء من البداية <i class="fas fa-redo"></i></button>
             </div>
         </div>
     </div>
@@ -126,7 +130,6 @@
         if (!link) return;
         state.currentEpisodeLink = link;
         
-        // 1. واجهة المستخدم
         document.getElementById('player-container').style.display = 'block';
         document.getElementById('history-info-box').style.display = 'none';
         document.getElementById('active-episode-title').innerText = "جاري التحقق من السجل...";
@@ -139,7 +142,6 @@
         try {
             let resumeTime = 0;
 
-            // 2. جلب السجل فوراً
             if (state.user) {
                 const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', link).maybeSingle();
                 if (data) {
@@ -147,12 +149,11 @@
                     const d = new Date(data.updated_at);
                     document.getElementById('last-date').innerText = d.toLocaleDateString('ar-EG');
                     document.getElementById('last-time').innerText = d.toLocaleTimeString('ar-EG');
-                    document.getElementById('last-pos-text').innerText = `${Math.floor(resumeTime/60)} دقيقة`;
-                    document.getElementById('history-info-box').style.display = 'block';
+                    document.getElementById('last-pos-text').innerText = `${Math.floor(resumeTime/60)} دقيقة و ${resumeTime % 60} ثانية`;
+                    document.getElementById('history-info-box').style.display = 'flex';
                 }
             }
 
-            // 3. جلب الفيديو
             document.getElementById('active-episode-title').innerText = "جاري استخراج الرابط...";
             const html = await (await fetch(PROXY(link))).text();
             const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
@@ -168,12 +169,11 @@
                 
                 videoElem.src = mp4;
                 
-                // التحكم الصارم في الوقت
                 const onReady = () => {
                     if (resumeTime > 5) {
                         videoElem.currentTime = resumeTime;
                     }
-                    videoElem.play().catch(() => console.log("تفاعل مطلوب للتشغيل"));
+                    videoElem.play().catch(() => console.log("User interaction required"));
                     videoElem.removeEventListener('canplaythrough', onReady);
                 };
                 
@@ -181,18 +181,27 @@
             }
         } catch (e) { 
             document.getElementById('active-episode-title').innerText = "خطأ في تحميل الفيديو"; 
-            console.error(e);
         }
+    }
+
+    function restartVideo() {
+        videoElem.currentTime = 0;
+        videoElem.play();
+        document.getElementById('history-info-box').style.display = 'none';
     }
 
     async function saveProgress() {
         if (state.user && state.currentEpisodeLink && !videoElem.paused && videoElem.currentTime > 5) {
-            await db.from('watch_history').upsert({
-                user_id: state.user.id,
-                episode_link: state.currentEpisodeLink,
-                last_position: Math.floor(videoElem.currentTime),
-                updated_at: new Date()
-            }, { onConflict: 'user_id, episode_link' });
+            const pos = Math.floor(videoElem.currentTime);
+            const dur = Math.floor(videoElem.duration);
+            if (pos < dur - 10) {
+                await db.from('watch_history').upsert({
+                    user_id: state.user.id,
+                    episode_link: state.currentEpisodeLink,
+                    last_position: pos,
+                    updated_at: new Date()
+                }, { onConflict: 'user_id, episode_link' });
+            }
         }
     }
 
@@ -204,11 +213,11 @@
             document.getElementById('logout-btn').style.display = 'block';
             document.getElementById('fav-list-trigger').style.display = 'block';
             loadFavorites();
-            setInterval(saveProgress, 7000); // حفظ كل 7 ثوانٍ لضمان الدقة
+            setInterval(saveProgress, 7000);
         }
     }
 
-    // وظائف المساعد
+    // بقية الوظائف الأساسية
     async function startSearch(q) {
         if(!q) return;
         const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
