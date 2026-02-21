@@ -290,54 +290,64 @@
     }
 
     async function fetchAndPlay(link, title) {
-        // تحديث الرابط الحالي فوراً لمنع التداخل
-        state.currentEpisodeLink = link; 
-        document.getElementById('player-container').style.display = 'block';
-        
-        // إيقاف وتصفير المشغل قبل تحميل الفيديو الجديد
-        videoElem.pause();
-        videoElem.src = ""; 
-        document.getElementById('active-episode-title').innerText = "جاري التحميل...";
+    // 1. تحديث الحالة وتجهيز الواجهة
+    state.currentEpisodeLink = link; 
+    document.getElementById('player-container').style.display = 'block';
+    document.getElementById('active-episode-title').innerText = "جاري التحقق من سجل المشاهدة...";
+    
+    // إيقاف وتصفير المشغل تماماً قبل أي عملية
+    videoElem.pause();
+    videoElem.removeAttribute('src'); 
+    videoElem.load();
 
-        try {
-            const html = await (await fetch(PROXY(link))).text();
-            const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
-            const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
-            let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
-            
-            if(mp4) {
-                state.currentMp4 = mp4;
-                videoElem.src = mp4;
-                document.getElementById('active-episode-title').innerText = title;
+    try {
+        // 2. جلب سجل المشاهدة أولاً (قبل جلب الفيديو)
+        let startAt = 0;
+        if (state.user) {
+            const { data } = await db
+                .from('watch_history')
+                .select('last_position')
+                .eq('user_id', state.user.id)
+                .eq('episode_link', link)
+                .maybeSingle();
 
-                // استعلام محدد: هات التوقيت لهذا المستخدم ولهذا الرابط فقط
-                if (state.user) {
-                    const { data } = await db
-                        .from('watch_history')
-                        .select('last_position')
-                        .eq('user_id', state.user.id)
-                        .eq('episode_link', link) // البحث برابط هذه الحلقة تحديداً
-                        .maybeSingle();
-
-                    if (data && data.last_position > 5) {
-                        // الانتظار حتى يتم تحميل ملف الفيديو للتأكد من إمكانية القفز للتوقيت
-                        videoElem.onloadedmetadata = () => {
-                            videoElem.currentTime = data.last_position;
-                            videoElem.play();
-                            console.log(`تم استئناف الحلقة من: ${data.last_position} ثانية`);
-                        };
-                    } else {
-                        videoElem.play();
-                    }
-                } else {
-                    videoElem.play();
-                }
-                videoElem.focus();
+            if (data && data.last_position > 5) {
+                startAt = data.last_position;
             }
-        } catch(e) {
-            console.error("فشل تشغيل الحلقة:", e);
         }
+
+        // 3. الآن جلب رابط الفيديو (MP4)
+        document.getElementById('active-episode-title').innerText = "جاري تحضير الفيديو...";
+        const html = await (await fetch(PROXY(link))).text();
+        const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
+        const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
+        let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
+        
+        if(mp4) {
+            state.currentMp4 = mp4;
+            document.getElementById('active-episode-title').innerText = title;
+
+            // 4. تحميل الفيديو وتحديد نقطة الانطلاق
+            videoElem.src = mp4;
+            
+            // ننتظر حتى تصبح البيانات جاهزة للقفز للتوقيت الصحيح
+            videoElem.onloadedmetadata = () => {
+                if (startAt > 0) {
+                    videoElem.currentTime = startAt;
+                    console.log(`تم العثور على سجل: البدء من الثانية ${startAt}`);
+                } else {
+                    console.log("لا يوجد سجل سابق: البدء من البداية");
+                }
+                videoElem.play();
+            };
+
+            videoElem.focus();
+        }
+    } catch(e) {
+        console.error("خطأ في بدء التشغيل:", e);
+        document.getElementById('active-episode-title').innerText = "خطأ في تحميل الفيديو";
     }
+}
 
     function renderRow(id, data, baseTab) {
         document.getElementById(id).innerHTML = data.map((item, i) => `
