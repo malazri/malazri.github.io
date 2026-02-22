@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AlAzri TV</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 180px; --card-h: 250px; }
+        
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        /* تأثيرات التركيز الخاصة بـ Android TV (ريموت كنترول) */
+        *:focus {
+            outline: 3px solid var(--primary-red) !important;
+            box-shadow: 0 0 15px var(--primary-red);
+            transform: scale(1.05);
+            transition: all 0.2s ease-in-out;
+            z-index: 10;
+        }
+        input:focus { transform: none; } /* منع التكبير لحقل الإدخال */
+
+        .fixed-header { 
+            position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
+            background: #000; padding: 12px 4%; 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 1px solid #222;
+        }
+
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; padding: 5px; border-radius: 5px; }
+
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+
+        .search-wrapper { display: flex; align-items: center; gap: 15px; }
+        .search-container { display: flex; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
+        .search-input { background: transparent; border: none; color: white; outline: none; width: 200px; font-size: 1.1rem; }
+        
+        .header-icon { cursor: pointer; font-size: 1.5rem; color: #bbb; padding: 10px; border-radius: 5px; }
+
+        .btn-action { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1.1rem;}
+        .btn-action:disabled { background: #333; cursor: not-allowed; color: #777; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 100px 20px; scroll-behavior: smooth; }
+
+        .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .close-btn { background: #333; color: #fff; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+
+        .row { display: none; margin-bottom: 30px; }
+        .row.visible { display: block; }
+        .row-title { font-size: 1.3rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
+        
+        /* التمرير الأفقي السلس للقوائم */
+        .row-content { display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; scroll-behavior: smooth; }
+        /* إخفاء شريط التمرير الافتراضي لشكل أجمل على التلفاز */
+        .row-content::-webkit-scrollbar { display: none; }
+        .row-content { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; border: 2px solid transparent; }
+        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.9rem; text-align: center; padding: 8px 0; border-bottom-radius: 6px; font-weight: bold; }
+
+        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        video { width: 100%; aspect-ratio: 16/9; outline: none; }
+
+        .history-info { background: #111; padding: 10px 15px; border-radius: 8px; margin-top: 10px; border-right: 3px solid #555; font-size: 0.9rem; color: #aaa; display: none; }
+        .history-info b { color: #fff; }
+    </style>
+</head>
+<body>
+
+<div class="fixed-header">
+    <div class="brand" tabindex="0" onclick="location.reload()">ALAZRI</div>
+    
+    <div class="header-actions">
+        <div class="search-wrapper">
+            <i class="fas fa-heart header-icon" tabindex="0" onclick="toggleFavSection()" title="المفضلة"></i>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" id="search-input" placeholder="ابحث هنا..." tabindex="0" onkeydown="if(event.key==='Enter') startSearch(this.value)">
+            </div>
+            <i class="fas fa-search header-icon" tabindex="0" onclick="startSearch(document.getElementById('search-input').value)"></i>
+        </div>
+    </div>
+</div>
+
+<main class="content-area">
+    <div class="row" id="row-search">
+        <div class="row-header">
+            <div class="row-title">نتائج البحث</div>
+            <button class="close-btn" tabindex="0" onclick="hideRow('row-search')">×</button>
+        </div>
+        <div class="row-content" id="grid-search"></div>
+    </div>
+
+    <div class="row" id="row-favs">
+        <div class="row-header">
+            <div class="row-title">قائمتي</div>
+            <button class="close-btn" tabindex="0" onclick="hideRow('row-favs')">×</button>
+        </div>
+        <div class="row-content" id="grid-favs"></div>
+    </div>
+    
+    <div class="row" id="row-episodes">
+        <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+            <div class="row-title" id="episodes-label">الحلقات</div>
+            <button id="fav-toggle-btn" class="btn-action" tabindex="0" style="background:#222; font-size:1rem; display:none;" onclick="toggleFavorite()">
+                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">أضف للمفضلة</span>
+            </button>
+        </div>
+        <div class="row-content" id="grid-episodes"></div>
+    </div>
+
+    <div id="player-container">
+        <video id="main-video" controls autoplay tabindex="0"></video>
+        <div style="padding:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div id="active-episode-title" style="font-weight:bold; font-size: 1.2rem; color:var(--primary-red)"></div>
+                <button id="copy-url-btn" class="btn-action" tabindex="0" style="background:#222;" disabled onclick="copyVideoLink()">نسخ الرابط</button>
+            </div>
+            
+            <div id="history-info-box" class="history-info">
+                <span>توقفت عند: <b id="last-pos-text">-</b></span> | 
+                <button tabindex="0" class="btn-action" style="padding: 4px 10px; font-size: 0.8rem; margin-right: 10px;" onclick="resumePlayback()">إكمال المشاهدة</button>
+                <button tabindex="0" class="btn-action" style="padding: 4px 10px; font-size: 0.8rem; background: #444;" onclick="startOverPlayback()">البدء من جديد</button>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const PROXY = (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    const BASE = "https://ak.sv";
+    
+    // مفاتيح التخزين المحلي
+    const FAV_KEY = "alazri_tv_favorites";
+    const HISTORY_KEY = "alazri_tv_history";
+
+    let state = { currentEpisodeLink: "", currentMp4: "", currentSeries: null, savedPosition: 0 };
+    const videoElem = document.getElementById('main-video');
+
+    // دعم الضغط على زر OK/Enter من الريموت لتفعيل العناصر المحددة
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            if (document.activeElement && document.activeElement.tagName !== 'INPUT') {
+                document.activeElement.click();
+            }
+        }
+    });
+
+    // تمرير العنصر المحدد إلى منتصف الشاشة (مهم للتلفاز)
+    document.addEventListener('focus', function(e) {
+        if (e.target.classList && e.target.classList.contains('card')) {
+            e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }, true);
+
+    function hideRow(id) { document.getElementById(id).classList.remove('visible'); }
+
+    // --- إدارة التخزين المحلي (Local Storage) ---
+    function getFavorites() { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); }
+    function saveFavorites(favs) { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }
+    
+    function getHistory() { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "{}"); }
+    function saveHistory(historyObj) { localStorage.setItem(HISTORY_KEY, JSON.stringify(historyObj)); }
+
+    function toggleFavSection() {
+        const row = document.getElementById('row-favs');
+        if(!row.classList.contains('visible')) renderFavorites();
+        row.classList.toggle('visible');
+        if (row.classList.contains('visible')) {
+            setTimeout(() => {
+                const firstCard = document.querySelector('#grid-favs .card');
+                if (firstCard) firstCard.focus();
+            }, 100);
+        }
+    }
+
+    function renderFavorites() {
+        const favs = getFavorites();
+        document.getElementById('grid-favs').innerHTML = favs.map((item, i) => `
+            <div class="card" tabindex="0" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                <img src="${item.img}">
+                <div class="card-label">${item.title}</div>
+            </div>
+        `).join('') || '<div style="padding:20px;">القائمة المفضلة فارغة</div>';
+    }
+
+    // --- منطق التشغيل وحفظ السجل ---
+    async function fetchAndPlay(link, title) {
+        state.currentEpisodeLink = link;
+        state.currentMp4 = ""; 
+        state.savedPosition = 0;
+        
+        document.getElementById('copy-url-btn').disabled = true;
+        document.getElementById('player-container').style.display = 'block';
+        document.getElementById('history-info-box').style.display = 'none';
+        document.getElementById('active-episode-title').innerText = "جاري البحث عن السيرفر...";
+        
+        videoElem.pause();
+        videoElem.removeAttribute('src');
+
+        // جلب سجل المشاهدة من Local Storage
+        const history = getHistory();
+        if (history[link] && history[link].last_position > 10) {
+            state.savedPosition = history[link].last_position;
+            const minutes = Math.floor(state.savedPosition / 60);
+            const seconds = state.savedPosition % 60;
+            document.getElementById('last-pos-text').innerText = `${minutes} دقيقة و ${seconds} ثانية`;
+            document.getElementById('history-info-box').style.display = 'block';
+        }
+
+        try {
+            const html = await (await fetch(PROXY(link))).text();
+            const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
+            if (!id) throw new Error("لم يتم العثور على المعرف");
+            
+            const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
+            let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
+            
+            if(mp4) {
+                state.currentMp4 = mp4;
+                document.getElementById('copy-url-btn').disabled = false;
+                document.getElementById('active-episode-title').innerText = title;
+                videoElem.src = mp4;
+                videoElem.onloadedmetadata = () => {
+                    // إذا لم يكن هناك سجل، سيتم التشغيل من البداية فوراً
+                    if (state.savedPosition === 0) {
+                        videoElem.play();
+                    }
+                };
+                // التركيز على المشغل للتحكم به بالريموت
+                videoElem.focus();
+                videoElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                document.getElementById('active-episode-title').innerText = "لم يتم العثور على رابط فيديو مباشر";
+            }
+        } catch(e) { 
+            console.error(e);
+            document.getElementById('active-episode-title').innerText = "حدث خطأ في جلب الحلقة"; 
+        }
+    }
+
+    function resumePlayback() {
+        videoElem.currentTime = state.savedPosition;
+        videoElem.play();
+        document.getElementById('history-info-box').style.display = 'none';
+        videoElem.focus();
+    }
+
+    function startOverPlayback() {
+        videoElem.currentTime = 0;
+        videoElem.play();
+        document.getElementById('history-info-box').style.display = 'none';
+        videoElem.focus();
+    }
+
+    // حفظ تلقائي كل 10 ثوانٍ في الـ Local Storage
+    setInterval(() => {
+        if (state.currentEpisodeLink && !videoElem.paused && videoElem.currentTime > 5) {
+            const history = getHistory();
+            history[state.currentEpisodeLink] = {
+                last_position: Math.floor(videoElem.currentTime),
+                updated_at: new Date().toISOString()
+            };
+            saveHistory(history);
+        }
+    }, 10000);
+
+    // --- منطق البحث ---
+    async function startSearch(q) {
+        if(!q) return;
+        document.getElementById('active-episode-title').innerText = "جاري البحث...";
+        const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const unique = new Map();
+        
+        doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(el => {
+            const a = el.tagName === 'A' ? el : el.querySelector('a');
+            const img = el.querySelector('img');
+            if(a && img) {
+                const link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                if(!unique.has(link)) unique.set(link, { title: img.alt, link, img: img.dataset.src || img.src, isSeries: link.includes('/series/') });
+            }
+        });
+        
+        const results = Array.from(unique.values());
+        document.getElementById('grid-search').innerHTML = results.map((item, i) => `
+            <div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                <img src="${item.img}">
+                <div class="card-label">${item.title}</div>
+            </div>
+        `).join('') || '<div style="padding:20px;">لا توجد نتائج</div>';
+        
+        document.getElementById('row-search').classList.add('visible');
+        
+        // التركيز على أول نتيجة لسهولة التنقل
+        setTimeout(() => {
+            const firstResult = document.querySelector('#grid-search .card');
+            if(firstResult) firstResult.focus();
+        }, 100);
+    }
+
+    // --- منطق الحلقات والمفضلة ---
+    async function loadEpisodes(item) {
+        state.currentSeries = item;
+        document.getElementById('row-episodes').classList.add('visible');
+        document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
+        
+        const btn = document.getElementById('fav-toggle-btn');
+        btn.style.display = 'inline-block';
+        updateFavBtn();
+
+        try {
+            const doc = new DOMParser().parseFromString(await (await fetch(PROXY(item.link))).text(), 'text/html');
+            const uniqueEps = new Map();
+            doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
+                const link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                if(!uniqueEps.has(link)) uniqueEps.set(link, { title: a.innerText.trim(), link, img: item.img });
+            });
+            
+            const eps = Array.from(uniqueEps.values());
+            document.getElementById('grid-episodes').innerHTML = eps.map((ep, i) => `
+                <div class="card" tabindex="0" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
+                    <img src="${ep.img}">
+                    <div class="card-label">${ep.title}</div>
+                </div>
+            `).join('') || '<div>لا توجد حلقات متاحة</div>';
+            
+            document.getElementById('episodes-label').innerText = item.title;
+            
+            // نقل التركيز لأول حلقة
+            setTimeout(() => {
+                const firstEp = document.querySelector('#grid-episodes .card');
+                if (firstEp) firstEp.focus();
+            }, 100);
+            
+        } catch (e) {
+            document.getElementById('grid-episodes').innerHTML = 'خطأ في جلب الحلقات';
+        }
+    }
+
+    function updateFavBtn() {
+        const favs = getFavorites();
+        const isFav = favs.some(f => f.link === state.currentSeries.link);
+        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
+        document.getElementById('fav-text').innerText = isFav ? "إزالة من المفضلة" : "أضف للمفضلة";
+    }
+
+    function toggleFavorite() {
+        let favs = getFavorites();
+        const isFav = favs.some(f => f.link === state.currentSeries.link);
+        
+        if(isFav) {
+            favs = favs.filter(f => f.link !== state.currentSeries.link);
+        } else {
+            favs.push(state.currentSeries);
+        }
+        
+        saveFavorites(favs);
+        updateFavBtn();
+        
+        // تحديث القائمة المفتوحة إذا كانت معروضة
+        if (document.getElementById('row-favs').classList.contains('visible')) {
+            renderFavorites();
+        }
+    }
+
+    function handleAction(item) { 
+        if(item.isSeries) loadEpisodes(item); else fetchAndPlay(item.link, item.title); 
+    }
+    
+    function copyVideoLink() { 
+        if(state.currentMp4) { navigator.clipboard.writeText(state.currentMp4); alert("تم النسخ!"); } 
+    }
+    
+</script>
+</body>
+</html>
