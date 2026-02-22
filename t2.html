@@ -11,7 +11,7 @@
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* تأثيرات التركيز الخاصة بـ Android TV (ريموت كنترول) */
+        /* Focus styles for Android TV (D-Pad) */
         *:focus {
             outline: 3px solid var(--primary-red) !important;
             box-shadow: 0 0 15px var(--primary-red);
@@ -19,7 +19,7 @@
             transition: all 0.2s ease-in-out;
             z-index: 10;
         }
-        input:focus { transform: none; } /* منع التكبير لحقل الإدخال */
+        input:focus { transform: none; }
 
         .fixed-header { 
             position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
@@ -41,7 +41,8 @@
         .btn-action { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1.1rem;}
         .btn-action:disabled { background: #333; cursor: not-allowed; color: #777; }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 100px 20px; scroll-behavior: smooth; }
+        /* Increased bottom padding to prevent the debug console from covering content */
+        .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 140px 20px; scroll-behavior: smooth; }
 
         .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .close-btn { background: #333; color: #fff; border: none; border-radius: 50%; width: 35px; height: 35px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
@@ -50,9 +51,7 @@
         .row.visible { display: block; }
         .row-title { font-size: 1.3rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
         
-        /* التمرير الأفقي السلس للقوائم */
         .row-content { display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; scroll-behavior: smooth; }
-        /* إخفاء شريط التمرير الافتراضي لشكل أجمل على التلفاز */
         .row-content::-webkit-scrollbar { display: none; }
         .row-content { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -65,6 +64,27 @@
 
         .history-info { background: #111; padding: 10px 15px; border-radius: 8px; margin-top: 10px; border-right: 3px solid #555; font-size: 0.9rem; color: #aaa; display: none; }
         .history-info b { color: #fff; }
+
+        /* --- DEBUG CONSOLE STYLES --- */
+        #debug-console {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #0f0; /* Terminal Green */
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 10px;
+            border-top: 2px solid #333;
+            overflow-y: auto;
+            z-index: 4000;
+            pointer-events: none; /* Allows clicking through it if needed */
+            direction: ltr; /* Keeps debug text left-to-right for easier reading of URLs/code */
+            text-align: left;
+        }
+        #debug-console div { margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px; }
     </style>
 </head>
 <body>
@@ -129,18 +149,29 @@
 
 </main>
 
+<div id="debug-console"></div>
+
 <script>
     const PROXY = (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`;
     const BASE = "https://ak.sv";
     
-    // مفاتيح التخزين المحلي
     const FAV_KEY = "alazri_tv_favorites";
     const HISTORY_KEY = "alazri_tv_history";
 
     let state = { currentEpisodeLink: "", currentMp4: "", currentSeries: null, savedPosition: 0 };
     const videoElem = document.getElementById('main-video');
 
-    // دعم الضغط على زر OK/Enter من الريموت لتفعيل العناصر المحددة
+    // --- Debugging Function ---
+    function debugLog(message) {
+        const consoleEl = document.getElementById('debug-console');
+        const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+        consoleEl.innerHTML += `<div>[${time}] ${message}</div>`;
+        consoleEl.scrollTop = consoleEl.scrollHeight; // Auto-scroll to latest log
+        console.log(`[DEBUG] ${message}`);
+    }
+
+    debugLog("System Initialized. Ready for actions.");
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             if (document.activeElement && document.activeElement.tagName !== 'INPUT') {
@@ -149,7 +180,6 @@
         }
     });
 
-    // تمرير العنصر المحدد إلى منتصف الشاشة (مهم للتلفاز)
     document.addEventListener('focus', function(e) {
         if (e.target.classList && e.target.classList.contains('card')) {
             e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -158,7 +188,6 @@
 
     function hideRow(id) { document.getElementById(id).classList.remove('visible'); }
 
-    // --- إدارة التخزين المحلي (Local Storage) ---
     function getFavorites() { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); }
     function saveFavorites(favs) { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }
     
@@ -166,6 +195,7 @@
     function saveHistory(historyObj) { localStorage.setItem(HISTORY_KEY, JSON.stringify(historyObj)); }
 
     function toggleFavSection() {
+        debugLog("Toggling Favorites Section");
         const row = document.getElementById('row-favs');
         if(!row.classList.contains('visible')) renderFavorites();
         row.classList.toggle('visible');
@@ -179,6 +209,7 @@
 
     function renderFavorites() {
         const favs = getFavorites();
+        debugLog(`Rendering ${favs.length} favorite items`);
         document.getElementById('grid-favs').innerHTML = favs.map((item, i) => `
             <div class="card" tabindex="0" onclick="loadEpisodes(${JSON.stringify(item).replace(/"/g, '&quot;')})">
                 <img src="${item.img}">
@@ -187,8 +218,8 @@
         `).join('') || '<div style="padding:20px;">القائمة المفضلة فارغة</div>';
     }
 
-    // --- منطق التشغيل وحفظ السجل ---
     async function fetchAndPlay(link, title) {
+        debugLog(`Attempting to play: ${title} | Link: ${link}`);
         state.currentEpisodeLink = link;
         state.currentMp4 = ""; 
         state.savedPosition = 0;
@@ -201,48 +232,58 @@
         videoElem.pause();
         videoElem.removeAttribute('src');
 
-        // جلب سجل المشاهدة من Local Storage
         const history = getHistory();
         if (history[link] && history[link].last_position > 10) {
             state.savedPosition = history[link].last_position;
             const minutes = Math.floor(state.savedPosition / 60);
             const seconds = state.savedPosition % 60;
+            debugLog(`Found saved progress: ${minutes}m ${seconds}s`);
             document.getElementById('last-pos-text').innerText = `${minutes} دقيقة و ${seconds} ثانية`;
             document.getElementById('history-info-box').style.display = 'block';
         }
 
         try {
+            debugLog("Fetching page HTML...");
             const html = await (await fetch(PROXY(link))).text();
             const id = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/)?.[1];
-            if (!id) throw new Error("لم يتم العثور على المعرف");
+            if (!id) {
+                debugLog("Error: Could not extract link ID from HTML");
+                throw new Error("لم يتم العثور على المعرف");
+            }
             
+            debugLog(`Found ID: ${id}, fetching download page...`);
             const dlHtml = await (await fetch(PROXY(link.replace('/episode/', `/download/${id}/`)))).text();
             let mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]')?.href;
             
             if(mp4) {
+                debugLog("Successfully extracted MP4 link");
                 state.currentMp4 = mp4;
                 document.getElementById('copy-url-btn').disabled = false;
                 document.getElementById('active-episode-title').innerText = title;
                 videoElem.src = mp4;
                 videoElem.onloadedmetadata = () => {
-                    // إذا لم يكن هناك سجل، سيتم التشغيل من البداية فوراً
                     if (state.savedPosition === 0) {
+                        debugLog("Starting playback from the beginning");
                         videoElem.play();
+                    } else {
+                        debugLog("Waiting for user to choose resume or start over");
                     }
                 };
-                // التركيز على المشغل للتحكم به بالريموت
                 videoElem.focus();
                 videoElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
+                debugLog("Warning: No MP4 link found on the download page");
                 document.getElementById('active-episode-title').innerText = "لم يتم العثور على رابط فيديو مباشر";
             }
         } catch(e) { 
+            debugLog(`Exception caught during playback setup: ${e.message}`);
             console.error(e);
             document.getElementById('active-episode-title').innerText = "حدث خطأ في جلب الحلقة"; 
         }
     }
 
     function resumePlayback() {
+        debugLog(`Resuming playback at ${state.savedPosition} seconds`);
         videoElem.currentTime = state.savedPosition;
         videoElem.play();
         document.getElementById('history-info-box').style.display = 'none';
@@ -250,60 +291,68 @@
     }
 
     function startOverPlayback() {
+        debugLog("Starting playback over from 0 seconds");
         videoElem.currentTime = 0;
         videoElem.play();
         document.getElementById('history-info-box').style.display = 'none';
         videoElem.focus();
     }
 
-    // حفظ تلقائي كل 10 ثوانٍ في الـ Local Storage
     setInterval(() => {
         if (state.currentEpisodeLink && !videoElem.paused && videoElem.currentTime > 5) {
+            const pos = Math.floor(videoElem.currentTime);
             const history = getHistory();
             history[state.currentEpisodeLink] = {
-                last_position: Math.floor(videoElem.currentTime),
+                last_position: pos,
                 updated_at: new Date().toISOString()
             };
             saveHistory(history);
+            debugLog(`Auto-saved position: ${pos}s for current episode`);
         }
     }, 10000);
 
-    // --- منطق البحث ---
     async function startSearch(q) {
         if(!q) return;
+        debugLog(`Starting search for query: "${q}"`);
         document.getElementById('active-episode-title').innerText = "جاري البحث...";
-        const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
-        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        const unique = new Map();
         
-        doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(el => {
-            const a = el.tagName === 'A' ? el : el.querySelector('a');
-            const img = el.querySelector('img');
-            if(a && img) {
-                const link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-                if(!unique.has(link)) unique.set(link, { title: img.alt, link, img: img.dataset.src || img.src, isSeries: link.includes('/series/') });
-            }
-        });
-        
-        const results = Array.from(unique.values());
-        document.getElementById('grid-search').innerHTML = results.map((item, i) => `
-            <div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
-                <img src="${item.img}">
-                <div class="card-label">${item.title}</div>
-            </div>
-        `).join('') || '<div style="padding:20px;">لا توجد نتائج</div>';
-        
-        document.getElementById('row-search').classList.add('visible');
-        
-        // التركيز على أول نتيجة لسهولة التنقل
-        setTimeout(() => {
-            const firstResult = document.querySelector('#grid-search .card');
-            if(firstResult) firstResult.focus();
-        }, 100);
+        try {
+            const res = await fetch(PROXY(`${BASE}/search?q=${q}`));
+            const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+            const unique = new Map();
+            
+            doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(el => {
+                const a = el.tagName === 'A' ? el : el.querySelector('a');
+                const img = el.querySelector('img');
+                if(a && img) {
+                    const link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                    if(!unique.has(link)) unique.set(link, { title: img.alt, link, img: img.dataset.src || img.src, isSeries: link.includes('/series/') });
+                }
+            });
+            
+            const results = Array.from(unique.values());
+            debugLog(`Search completed. Found ${results.length} unique results.`);
+            
+            document.getElementById('grid-search').innerHTML = results.map((item, i) => `
+                <div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                    <img src="${item.img}">
+                    <div class="card-label">${item.title}</div>
+                </div>
+            `).join('') || '<div style="padding:20px;">لا توجد نتائج</div>';
+            
+            document.getElementById('row-search').classList.add('visible');
+            
+            setTimeout(() => {
+                const firstResult = document.querySelector('#grid-search .card');
+                if(firstResult) firstResult.focus();
+            }, 100);
+        } catch (e) {
+            debugLog(`Search failed: ${e.message}`);
+        }
     }
 
-    // --- منطق الحلقات والمفضلة ---
     async function loadEpisodes(item) {
+        debugLog(`Loading episodes for series: ${item.title}`);
         state.currentSeries = item;
         document.getElementById('row-episodes').classList.add('visible');
         document.getElementById('grid-episodes').innerHTML = 'جاري التحميل...';
@@ -321,6 +370,8 @@
             });
             
             const eps = Array.from(uniqueEps.values());
+            debugLog(`Successfully extracted ${eps.length} episodes`);
+            
             document.getElementById('grid-episodes').innerHTML = eps.map((ep, i) => `
                 <div class="card" tabindex="0" onclick="fetchAndPlay('${ep.link}', '${ep.title}')">
                     <img src="${ep.img}">
@@ -330,13 +381,13 @@
             
             document.getElementById('episodes-label').innerText = item.title;
             
-            // نقل التركيز لأول حلقة
             setTimeout(() => {
                 const firstEp = document.querySelector('#grid-episodes .card');
                 if (firstEp) firstEp.focus();
             }, 100);
             
         } catch (e) {
+            debugLog(`Failed to load episodes: ${e.message}`);
             document.getElementById('grid-episodes').innerHTML = 'خطأ في جلب الحلقات';
         }
     }
@@ -354,25 +405,31 @@
         
         if(isFav) {
             favs = favs.filter(f => f.link !== state.currentSeries.link);
+            debugLog(`Removed from favorites: ${state.currentSeries.title}`);
         } else {
             favs.push(state.currentSeries);
+            debugLog(`Added to favorites: ${state.currentSeries.title}`);
         }
         
         saveFavorites(favs);
         updateFavBtn();
         
-        // تحديث القائمة المفتوحة إذا كانت معروضة
         if (document.getElementById('row-favs').classList.contains('visible')) {
             renderFavorites();
         }
     }
 
     function handleAction(item) { 
+        debugLog(`Item clicked: ${item.title} (isSeries: ${item.isSeries})`);
         if(item.isSeries) loadEpisodes(item); else fetchAndPlay(item.link, item.title); 
     }
     
     function copyVideoLink() { 
-        if(state.currentMp4) { navigator.clipboard.writeText(state.currentMp4); alert("تم النسخ!"); } 
+        if(state.currentMp4) { 
+            navigator.clipboard.writeText(state.currentMp4); 
+            debugLog("MP4 link copied to clipboard");
+            alert("تم النسخ!"); 
+        } 
     }
     
 </script>
