@@ -3,72 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.15</title>
+    <title>AlAzri TV v1.16</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
         * { box-sizing: border-box; }
-        body { 
-            background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; 
-            margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
-            display: flex; flex-direction: column;
-        }
-
-        header { 
-            height: 60px; background: #000; display: flex; 
-            align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222;
-            flex-shrink: 0;
-        }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw; display: flex; flex-direction: column; }
+        header { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; flex-shrink: 0; }
         .brand { color: var(--primary-red); font-size: 1.3rem; font-weight: 900; }
         .header-controls { display: flex; gap: 8px; align-items: center; }
-        
         .toggle-btn { cursor: pointer; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; }
         .toggle-btn.active { color: white; background: var(--primary-red); border-color: var(--primary-red); }
         .min-btn { background: #333; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.7rem; }
-
         .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 220px; }
         .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; }
 
-        /* TOP SECTION */
         #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; overflow: hidden; }
-        .top-section { 
-            display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; 
-            transition: max-height 0.3s ease-in-out; max-height: 200px; scroll-behavior: smooth;
-        }
+        .top-section { display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; transition: max-height 0.3s ease-in-out; max-height: 200px; scroll-behavior: smooth; }
         .top-section::-webkit-scrollbar { display: none; }
         .top-section.minimized { max-height: 0px; padding: 0; border: none; }
 
-        /* SCROLL BUTTONS */
-        .scroll-btn { 
-            position: absolute; top: 50%; transform: translateY(-50%); 
-            background: var(--inactive-gray); color: #fff; border: none; 
-            width: 35px; height: 70px; cursor: pointer; z-index: 10; 
-            display: none; align-items: center; justify-content: center; border-radius: 4px;
-        }
+        .scroll-btn { position: absolute; top: 50%; transform: translateY(-50%); background: var(--inactive-gray); color: #fff; border: none; width: 35px; height: 70px; cursor: pointer; z-index: 10; display: none; align-items: center; justify-content: center; border-radius: 4px; }
         .scroll-btn.can-scroll { background: var(--primary-red); }
         .top-container:not(.is-minimized) .scroll-btn.active { display: flex; }
         .s-left { left: 5px; } .s-right { right: 5px; }
 
-        /* LAYOUT */
         .main-layout { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
         .side-container { position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: flex; flex-direction: column; overflow: hidden; }
         .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
         .side-section::-webkit-scrollbar { display: none; }
-        
         .v-scroll { background: var(--inactive-gray); color: white; border: none; width: 100%; padding: 8px; cursor: pointer; display: none; }
         .v-scroll.can-scroll { background: var(--primary-red); }
         .v-scroll.active { display: block; }
 
-        /* PLAYER */
         .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; }
         .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
         #main-video { width: 100%; flex: 1; background: #000; }
         .player-footer { padding: 8px 20px; background: #000; border-top: 1px solid #111; font-size: 0.8rem; color: #999; display: flex; justify-content: space-between; }
-        .stat-val { color: #fff; font-weight: bold; }
 
-        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; }
+        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; vertical-align: top; }
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
+        
+        /* Load More Plus Card */
+        .load-more-card { display: inline-flex; min-width: 60px; height: var(--card-h); background: #222; border: 2px dashed #444; border-radius: 4px; cursor: pointer; align-items: center; justify-content: center; margin-left: 12px; color: var(--primary-red); font-size: 2rem; transition: 0.2s; }
+        .load-more-card:hover { background: #333; border-color: var(--primary-red); }
+
         .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
         .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
         .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
@@ -82,7 +62,7 @@
         <button class="min-btn" onclick="toggleMinimizeTop()" id="min-indicator"><i class="fas fa-chevron-up"></i> تصغير</button>
         <button class="toggle-btn active" id="btn-hist" onclick="toggleRowManual('group-history', 'btn-hist')">المتابعة</button>
         <button class="toggle-btn active" id="btn-fav" onclick="toggleRowManual('group-favs', 'btn-fav')">المفضلة</button>
-        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..." onfocus="ensureTopVisible()"></div>
+        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..."></div>
     </div>
 </header>
 
@@ -106,177 +86,129 @@
         </div>
         <button class="v-scroll" id="scroll-d" onclick="scrollYElem(200)"><i class="fas fa-chevron-down"></i></button>
     </div>
-
     <div class="middle-section">
         <div class="player-header" id="v-title">بانتظار الاختيار...</div>
-        <div style="flex:1; position:relative; overflow:hidden;">
-            <video id="main-video" controls></video>
-            <div id="resume-ui" class="resume-overlay">
-                <h2>إكمال المشاهدة؟</h2>
-                <p id="resume-msg" style="color:#aaa; margin-bottom:15px;"></p>
-                <div><button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px;">نعم</button>
-                <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px;">من جديد</button></div>
-            </div>
+        <div style="flex:1; position:relative; overflow:hidden;"><video id="main-video" controls></video>
+            <div id="resume-ui" class="resume-overlay"><h2>إكمال المشاهدة؟</h2><p id="resume-msg" style="color:#aaa; margin-bottom:15px;"></p>
+            <div><button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px;">نعم</button><button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px;">من جديد</button></div></div>
         </div>
-        <div class="player-footer">
-            <div>التاريخ والوقت: <span id="meta-date" class="stat-val">--</span></div>
-            <div>الموقف الحالي: <span id="meta-pos" class="stat-val">--</span></div>
-        </div>
+        <div class="player-footer"><div>التاريخ والوقت: <span id="meta-date" style="color:#fff;">--</span></div><div>الموقف الحالي: <span id="meta-pos" style="color:#fff;">--</span></div></div>
     </div>
 </div>
 
 <script>
     var PROXY = url => "https://corsproxy.io/?" + encodeURIComponent(url);
     var BASE = "https://ak.sv";
-    var state = { currentSeries: null, currentLink: null, savedPos: 0 };
+    var state = { currentSeries: null, currentLink: null, savedPos: 0, searchQuery: "", searchPage: 1 };
     var video = document.getElementById('main-video');
 
-    function fmtTime(s) {
-        if(!s || isNaN(s)) return "00:00";
-        var m = Math.floor(s / 60);
-        var sec = Math.floor(s % 60);
-        return (m < 10 ? "0"+m : m) + ":" + (sec < 10 ? "0"+sec : sec);
-    }
-
-    function toggleMinimizeTop() {
-        var top = document.getElementById('discovery');
-        top.classList.toggle('minimized');
-        document.getElementById('top-cont').classList.toggle('is-minimized');
-        document.getElementById('min-indicator').innerHTML = top.classList.contains('minimized') ? '<i class="fas fa-chevron-down"></i> تكبير' : '<i class="fas fa-chevron-up"></i> تصغير';
-        setTimeout(updateAllScrollStates, 310);
-    }
-
+    function fmtTime(s) { if(!s || isNaN(s)) return "00:00"; var m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
+    function toggleMinimizeTop() { var t=document.getElementById('discovery'); t.classList.toggle('minimized'); document.getElementById('top-cont').classList.toggle('is-minimized'); document.getElementById('min-indicator').innerHTML = t.classList.contains('minimized')?'<i class="fas fa-chevron-down"></i> تكبير':'<i class="fas fa-chevron-up"></i> تصغير'; setTimeout(updateAllScrollStates, 310); }
     function ensureTopVisible() { if(document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop(); }
 
-    function updateAllScrollStates() {
-        updateScrollColors('discovery', 'scroll-r', 'scroll-l', 'x');
-        updateScrollColors('side-area', 'scroll-u', 'scroll-d', 'y');
+    function updateAllScrollStates() { updateScrollColors('discovery', 'scroll-r', 'scroll-l', 'x'); updateScrollColors('side-area', 'scroll-u', 'scroll-d', 'y'); }
+    function updateScrollColors(eId, bMinId, bMaxId, axis) {
+        var el=document.getElementById(eId), minB=document.getElementById(bMinId), maxB=document.getElementById(bMaxId);
+        if(axis==='x'){ var can=el.scrollWidth>el.clientWidth; minB.classList.toggle('active',can); maxB.classList.toggle('active',can); var isS=Math.abs(el.scrollLeft)<5, isE=Math.abs(el.scrollLeft)+el.clientWidth>=el.scrollWidth-5; minB.classList.toggle('can-scroll',!isS); maxB.classList.toggle('can-scroll',!isE); }
+        else { var can=el.scrollHeight>el.clientHeight; minB.classList.toggle('active',can); maxB.classList.toggle('active',can); minB.classList.toggle('can-scroll',el.scrollTop>5); maxB.classList.toggle('can-scroll',el.scrollTop+el.clientHeight<el.scrollHeight-5); }
     }
 
-    function updateScrollColors(elemId, btnMinId, btnMaxId, axis) {
-        var el = document.getElementById(elemId);
-        var minBtn = document.getElementById(btnMinId);
-        var maxBtn = document.getElementById(btnMaxId);
-        if(axis === 'x') {
-            var canS = el.scrollWidth > el.clientWidth;
-            minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
-            var isAtStart = Math.abs(el.scrollLeft) < 5;
-            var isAtEnd = Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 5;
-            minBtn.classList.toggle('can-scroll', !isAtStart);
-            maxBtn.classList.toggle('can-scroll', !isAtEnd);
-        } else {
-            var canS = el.scrollHeight > el.clientHeight;
-            minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
-            minBtn.classList.toggle('can-scroll', el.scrollTop > 5);
-            maxBtn.classList.toggle('can-scroll', el.scrollTop + el.clientHeight < el.scrollHeight - 5);
-        }
-    }
+    function scrollXElem(v) { document.getElementById('discovery').scrollBy({left:v, behavior:'smooth'}); }
+    function scrollYElem(v) { document.getElementById('side-area').scrollBy({top:v, behavior:'smooth'}); }
 
-    function scrollXElem(val) { document.getElementById('discovery').scrollBy({ left: val, behavior: 'smooth' }); }
-    function scrollYElem(val) { document.getElementById('side-area').scrollBy({ top: val, behavior: 'smooth' }); }
-
-    // UNIVERSAL ACTION HANDLER (Movie vs Series)
     async function handleAction(i) { 
         if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop();
-        
         if(i.link.includes('/movie/')) {
-            // It's a Movie: Clear sidebar and play directly
             document.getElementById('series-title').innerText = "فيلم";
             document.getElementById('episode-list').innerHTML = `<div class="ep-item active-ep"><span>${i.title}</span></div>`;
-            document.getElementById('fav-btn').style.display = 'block';
-            state.currentSeries = i;
-            updateFavBtnUI();
-            fetchAndPlay(i);
-        } else {
-            // It's a Series: Load episode list
-            loadEpisodes(i);
-        }
+            document.getElementById('fav-btn').style.display='block'; state.currentSeries=i; updateFavBtnUI(); fetchAndPlay(i);
+        } else { loadEpisodes(i); }
     }
 
-    function toggleRowManual(id, btnId) {
-        ensureTopVisible();
-        var el = document.getElementById(id);
-        el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none';
-        document.getElementById(btnId).classList.toggle('active', el.style.display !== 'none');
-        setTimeout(updateAllScrollStates, 50);
-    }
-
-    async function startSearch(q) {
+    async function startSearch(q, append = false) {
         if(!q) return; ensureTopVisible();
-        ['group-history','group-favs'].forEach(id => document.getElementById(id).style.display = 'none');
-        ['btn-hist','btn-fav'].forEach(id => document.getElementById(id).classList.remove('active'));
+        if(!append) { 
+            state.searchQuery = q; state.searchPage = 1;
+            ['group-history','group-favs'].forEach(id=>document.getElementById(id).style.display='none');
+            ['btn-hist','btn-fav'].forEach(id=>document.getElementById(id).classList.remove('active'));
+            document.getElementById('content-search').innerHTML = "";
+        }
+        
         try {
-            var res = await fetch(PROXY(BASE + "/search?q=" + q));
+            var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
             var unique = new Map();
-            doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]').forEach(a => {
+            var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
+            
+            items.forEach(a => {
                 var img = a.querySelector('img');
                 if(img) {
                     var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
                     if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
                 }
             });
+
+            // Remove existing plus button if it exists
+            var plus = document.getElementById('plus-btn');
+            if(plus) plus.remove();
+
+            var container = document.getElementById('content-search');
+            var html = Array.from(unique.values()).map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
+            container.innerHTML += html;
+
+            // Add Plus Button if results were found (assuming more might exist)
+            if(items.length > 0) {
+                container.innerHTML += `<div id="plus-btn" class="load-more-card" onclick="loadNextPage()"><i class="fas fa-plus"></i></div>`;
+            }
+
             document.getElementById('group-search').style.display = 'inline-flex';
-            document.getElementById('content-search').innerHTML = Array.from(unique.values()).map(i => 
-                `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`
-            ).join('');
             setTimeout(updateAllScrollStates, 350);
         } catch(e) {}
     }
 
+    function loadNextPage() {
+        state.searchPage++;
+        startSearch(state.searchQuery, true);
+    }
+
     async function loadEpisodes(item) {
-        state.currentSeries = item;
-        document.getElementById('series-title').innerText = item.title;
-        document.getElementById('fav-btn').style.display = 'block';
-        updateFavBtnUI();
+        state.currentSeries = item; document.getElementById('series-title').innerText = item.title;
+        document.getElementById('fav-btn').style.display = 'block'; updateFavBtnUI();
         var res = await fetch(PROXY(item.link));
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         var uniqueEps = new Map();
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
-            var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+            var link = a.href.includes('http')?a.href:BASE+a.getAttribute('href');
             if(!uniqueEps.has(link)) uniqueEps.set(link, a.innerText.trim());
         });
         var html = '';
-        uniqueEps.forEach((title, link) => {
-            var active = state.currentLink === link;
-            html += `<div class="ep-item ${active?'active-ep':''}" onclick='fetchAndPlay(${JSON.stringify({title:title, link:link, img:item.img}).replace(/'/g, "&apos;")})'>
-                <span>${title}</span> ${active?'<i class="fas fa-play-circle"></i>':''}
-            </div>`;
+        uniqueEps.forEach((t, l) => {
+            var active = state.currentLink === l;
+            html += `<div class="ep-item ${active?'active-ep':''}" onclick='fetchAndPlay(${JSON.stringify({title:t, link:l, img:item.img}).replace(/'/g, "&apos;")})'><span>${t}</span> ${active?'<i class="fas fa-play-circle"></i>':''}</div>`;
         });
         document.getElementById('episode-list').innerHTML = html;
         setTimeout(updateAllScrollStates, 100);
     }
 
     async function fetchAndPlay(item) {
-        state.currentLink = item.link;
-        document.getElementById('v-title').innerText = item.title;
-        document.getElementById('resume-ui').style.display = 'none';
-        video.pause();
+        state.currentLink = item.link; document.getElementById('v-title').innerText = item.title;
+        document.getElementById('resume-ui').style.display = 'none'; video.pause();
         var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]');
         var record = h.find(x => x.link === item.link);
         if(record && record.pos > 10) {
-            state.savedPos = record.pos;
-            var dt = new Date(record.ts);
+            state.savedPos = record.pos; var dt = new Date(record.ts);
             document.getElementById('meta-date').innerText = dt.toLocaleDateString('ar-EG') + " " + dt.toLocaleTimeString('ar-EG');
             document.getElementById('meta-pos').innerText = fmtTime(record.pos);
             document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(record.pos);
             document.getElementById('resume-ui').style.display = 'flex';
         }
-        
-        // Movie or Episode logic for source fetching
         var typeKey = item.link.includes('/movie/') ? '/movie/' : '/episode/';
-        var dlKey = item.link.includes('/movie/') ? '/download/' : '/download/';
-
+        var dlKey = item.link.includes('/movie/') ? '/download-movie/' : '/download/';
         var m = (await (await fetch(PROXY(item.link))).text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
         if(m) {
             var dl = await (await fetch(PROXY(item.link.replace(typeKey, dlKey + m[1] + '/')))).text();
             var mp4 = new DOMParser().parseFromString(dl, 'text/html').querySelector('a[href*=".mp4"]');
-            if(mp4) {
-                video.src = mp4.href;
-                saveToHistory(item);
-                if(!record || record.pos <= 10) video.play();
-                if(state.currentSeries && !item.link.includes('/movie/')) loadEpisodes(state.currentSeries);
-            }
+            if(mp4) { video.src = mp4.href; saveToHistory(item); if(!record || record.pos <= 10) video.play(); if(state.currentSeries && !item.link.includes('/movie/')) loadEpisodes(state.currentSeries); }
         }
     }
 
@@ -285,15 +217,10 @@
         var ex = h.find(x => x.link === item.link);
         h = h.filter(x => x.link !== item.link);
         h.unshift({ title: item.title, link: item.link, img: item.img, pos: ex?ex.pos:0, ts: Date.now() });
-        localStorage.setItem('alazri_hist', JSON.stringify(h.slice(0, 20)));
-        refreshTop();
+        localStorage.setItem('alazri_hist', JSON.stringify(h.slice(0, 20))); refreshTop();
     }
 
-    function confirmResume(yes) {
-        document.getElementById('resume-ui').style.display = 'none';
-        if(yes) video.currentTime = state.savedPos;
-        video.play();
-    }
+    function confirmResume(y) { document.getElementById('resume-ui').style.display = 'none'; if(y) video.currentTime = state.savedPos; video.play(); }
 
     function refreshTop() {
         var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]');
@@ -307,34 +234,17 @@
         var favs = JSON.parse(localStorage.getItem('alazri_favs') || '[]');
         var idx = favs.findIndex(f => f.link === state.currentSeries.link);
         if(idx > -1) favs.splice(idx, 1); else favs.push(state.currentSeries);
-        localStorage.setItem('alazri_favs', JSON.stringify(favs));
-        updateFavBtnUI(); refreshTop();
+        localStorage.setItem('alazri_favs', JSON.stringify(favs)); updateFavBtnUI(); refreshTop();
     }
 
-    function updateFavBtnUI() {
-        var isF = (JSON.parse(localStorage.getItem('alazri_favs') || '[]')).some(f => f.link === state.currentSeries.link);
-        document.getElementById('fav-btn').innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة";
-        document.getElementById('fav-btn').style.background = isF ? "#444" : "#e50914";
-    }
+    function updateFavBtnUI() { var isF = (JSON.parse(localStorage.getItem('alazri_favs') || '[]')).some(f => f.link === state.currentSeries.link); var b = document.getElementById('fav-btn'); b.innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة"; b.style.background = isF ? "#444" : "#e50914"; }
 
-    setInterval(() => {
-        if(state.currentLink && !video.paused) {
-            var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]');
-            var r = h.find(x => x.link === state.currentLink);
-            if(r) { 
-                r.pos = Math.floor(video.currentTime); 
-                r.ts = Date.now(); 
-                localStorage.setItem('alazri_hist', JSON.stringify(h));
-                document.getElementById('meta-pos').innerText = fmtTime(r.pos);
-            }
-        }
-    }, 10000);
+    setInterval(() => { if(state.currentLink && !video.paused) { var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]'); var r = h.find(x => x.link === state.currentLink); if(r) { r.pos = Math.floor(video.currentTime); r.ts = Date.now(); localStorage.setItem('alazri_hist', JSON.stringify(h)); document.getElementById('meta-pos').innerText = fmtTime(r.pos); } } }, 10000);
 
     document.getElementById('discovery').onscroll = updateAllScrollStates;
     document.getElementById('side-area').onscroll = updateAllScrollStates;
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
-    window.onload = refreshTop;
-    window.onresize = updateAllScrollStates;
+    window.onload = refreshTop; window.onresize = updateAllScrollStates;
 </script>
 </body>
 </html>
