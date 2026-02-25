@@ -2,148 +2,260 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Debug Fix</title>
-    
-    <script src="./supabase-js@2.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlAzri TV Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
-        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 160px; --card-h: 100px; }
-        body { background-color: var(--bg-dark); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        #tv-debug {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 150px;
-            background: rgba(0,0,0,0.95); color: #00ff00; font-family: monospace;
-            font-size: 12px; z-index: 9999; overflow-y: auto; border-top: 3px solid var(--primary-red);
-            padding: 10px; pointer-events: none; box-sizing: border-box;
-        }
-
-        .fixed-header { position: fixed; top: 0; left: 0; right: 0; z-index: 3000; background: #000; padding: 12px 4%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; outline: none; cursor: pointer; }
+        :root { --primary-red: #e50914; --bg-dark: #050505; --panel-bg: #111; --card-w: 140px; --card-h: 200px; }
         
-        .brand:focus, .card:focus, .btn-auth:focus, .btn-google:focus { 
-            outline: 4px solid white !important; transform: scale(1.05); background: rgba(255,255,255,0.2);
+        body { 
+            background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; 
+            margin: 0; padding: 0; overflow: hidden; height: 100vh;
+            display: grid;
+            grid-template-rows: 70px 220px 1fr; /* Header, Top-Section, Main-Area */
+            grid-template-columns: 1fr 300px;    /* Middle(Player), Side(Episodes) */
         }
 
-        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 170px 20px; }
-        .row-title { font-size: 1.1rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; margin-bottom: 10px; }
-        .row-content { display: flex; gap: 15px; overflow-x: auto; padding: 10px 5px; }
+        /* --- Global Focus --- */
+        *:focus { outline: 3px solid var(--primary-red) !important; transform: scale(1.02); z-index: 10; }
 
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; outline: none; }
-        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); font-size: 0.75rem; text-align: center; padding: 5px; }
+        /* --- Header --- */
+        header { 
+            grid-row: 1; grid-column: 1 / span 2;
+            background: #000; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 30px; border-bottom: 1px solid #222;
+        }
+        .brand { color: var(--primary-red); font-size: 1.8rem; font-weight: 900; cursor: pointer; }
+        .search-box { background: #222; border-radius: 5px; padding: 5px 15px; display: flex; align-items: center; width: 400px; }
+        .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 1.1rem; }
+
+        /* --- TOP SECTION: Results & Favorites --- */
+        .top-section { 
+            grid-row: 2; grid-column: 1 / span 2;
+            background: #0a0a0a; overflow-x: auto; white-space: nowrap;
+            padding: 10px 20px; border-bottom: 1px solid #222;
+            display: flex; gap: 15px; align-items: center;
+        }
+        .section-label { 
+            writing-mode: vertical-rl; transform: rotate(180deg); 
+            font-size: 0.8rem; color: var(--primary-red); font-weight: bold; padding: 5px;
+        }
+
+        /* --- SIDE SECTION: Episodes --- */
+        .side-section { 
+            grid-row: 3; grid-column: 2;
+            background: var(--panel-bg); border-right: 1px solid #222;
+            display: flex; flex-direction: column; overflow-y: auto; padding: 10px;
+        }
+        .side-title { padding: 10px; font-weight: bold; border-bottom: 1px solid #333; margin-bottom: 10px; color: var(--primary-red); }
+
+        /* --- MIDDLE SECTION: Player --- */
+        .middle-section { 
+            grid-row: 3; grid-column: 1;
+            background: #000; display: flex; flex-direction: column; position: relative;
+        }
+        #main-video { width: 100%; height: 100%; background: #000; }
+
+        /* --- Cards UI --- */
+        .card { 
+            display: inline-block; min-width: var(--card-w); height: var(--card-h); 
+            background: #1a1a1a; border-radius: 6px; overflow: hidden; 
+            cursor: pointer; position: relative; flex-shrink: 0;
+        }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        .card-label { 
+            position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); 
+            font-size: 0.75rem; text-align: center; padding: 5px 0; white-space: normal;
+        }
+
+        .ep-item { 
+            padding: 12px; background: #1a1a1a; margin-bottom: 8px; border-radius: 4px; 
+            cursor: pointer; font-size: 0.9rem; border-right: 3px solid transparent;
+        }
+        .ep-item:focus { border-right-color: var(--primary-red); }
+
+        /* --- Overlays --- */
+        .resume-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100; display: none;
+        }
+
+        .btn-action { background: var(--primary-red); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 5px; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
 
-<div id="tv-debug">
-    <div>[System] Starting Bootstrap...</div>
+<header>
+    <div class="brand" onclick="location.reload()" tabindex="0">ALAZRI TV</div>
+    <div class="search-box">
+        <i class="fas fa-search" style="margin-left:10px; color:#666;"></i>
+        <input type="text" id="search-input" placeholder="ابحث عن فيلم أو مسلسل..." tabindex="0">
+    </div>
+    <div id="fav-trigger" tabindex="0" onclick="showFavoritesInTop()" style="cursor:pointer;">
+        <i class="fas fa-heart" style="color:var(--primary-red); font-size:1.5rem;"></i>
+    </div>
+</header>
+
+<div class="top-section" id="top-bar">
+    <div class="section-label">البحث والمفضلة</div>
+    <div id="top-content" style="display:flex; gap:15px;"></div>
 </div>
 
-<div class="fixed-header">
-    <div class="brand" tabindex="1" onclick="location.reload()">ALAZRI</div>
-    <div class="header-actions">
-        <button id="google-btn" tabindex="2" onclick="loginWithGoogle()" style="padding:10px 20px; background:white; color:black; font-weight:bold; border-radius:5px;">دخول بجوجل</button>
-        <button id="logout-btn" tabindex="3" onclick="handleLogout()" style="display:none; padding:10px 20px; background:red; color:white; font-weight:bold; border-radius:5px;">خروج</button>
-    </div>
+<div class="side-section">
+    <div class="side-title" id="series-title">قائمة الحلقات</div>
+    <button id="fav-btn" class="btn-action" style="display:none; margin-bottom:10px;" onclick="handleFavoriteAction()" tabindex="0">
+        <i id="fav-icon" class="far fa-heart"></i> أضف للمفضلة
+    </button>
+    <div id="episode-list"></div>
 </div>
 
-<main class="content-area">
-    <div class="row">
-        <div class="row-title">الحلقات المقترحة</div>
-        <div class="row-content" id="grid-main"></div>
+<div class="middle-section">
+    <video id="main-video" controls tabindex="0"></video>
+    
+    <div id="resume-ui" class="resume-overlay">
+        <h2>إكمال المشاهدة؟</h2>
+        <p id="resume-msg"></p>
+        <div>
+            <button class="btn-action" onclick="confirmResume(true)" tabindex="0">نعم، إكمال</button>
+            <button class="btn-action" style="background:#444" onclick="confirmResume(false)" tabindex="0">البدء من جديد</button>
+        </div>
     </div>
-</main>
+
+    <div style="padding:15px; background: rgba(0,0,0,0.7); position:absolute; bottom:0; width:100%;">
+        <div id="video-title" style="font-weight:bold; color:var(--primary-red); font-size:1.2rem;">يرجى اختيار محتوى للمشاهدة</div>
+    </div>
+</div>
 
 <script>
-    // 1. نظام التسجيل الفوري
-    var debugLog = document.getElementById('tv-debug');
-    function log(msg, color) {
-        var d = document.createElement('div');
-        d.style.color = color || '#00ff00';
-        d.innerText = '[' + new Date().toLocaleTimeString() + '] ' + msg;
-        debugLog.appendChild(d);
-        debugLog.scrollTop = debugLog.scrollHeight;
-    }
+    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
+    var BASE = "https://ak.sv";
+    var FAV_KEY = "alazri_favs_v2";
+    var HIST_KEY = "alazri_hist_v2";
+    var state = { currentSeries: null, currentLink: null, savedPos: 0 };
+    var video = document.getElementById('main-video');
 
-    // 2. التحقق من تحميل المكتبات
-    window.onload = function() {
-        log("Checking Supabase Library...");
-        if (typeof supabase === 'undefined') {
-            log("FAILED: Supabase script not loaded. Trying backup source...", "#ff4444");
-            loadBackupScript();
+    // --- Core Logic ---
+    function getFavs() { var d = localStorage.getItem(FAV_KEY); return d ? JSON.parse(d) : []; }
+    function getHist() { var d = localStorage.getItem(HIST_KEY); return d ? JSON.parse(d) : {}; }
+
+    // Init Favorites in Top Bar
+    function showFavoritesInTop() {
+        var favs = getFavs();
+        var container = document.getElementById('top-content');
+        if(favs.length > 0) {
+            container.innerHTML = favs.map(function(item) {
+                return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(item).replace(/'/g, "&apos;") + ')\'><img src="'+item.img+'"><div class="card-label">'+item.title+'</div></div>';
+            }).join('');
         } else {
-            log("SUCCESS: Supabase is ready.");
-            initApp();
+            container.innerHTML = '<p style="padding:20px; color:#555;">قائمة المفضلة فارغة</p>';
         }
-    };
-
-    function loadBackupScript() {
-        var script = document.createElement('script');
-        script.src = "https://unpkg.com/@supabase/supabase-js@2.48.1/dist/umd/supabase.js";
-        script.onload = function() {
-            log("Backup source loaded successfully!");
-            initApp();
-        };
-        script.onerror = function() {
-            log("FATAL ERROR: All sources failed. Check TV Internet or Proxy.", "#ff0000");
-        };
-        document.head.appendChild(script);
     }
 
-    // 3. إعدادات قاعدة البيانات
-    var SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
-    var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
-    var db = null;
-
-    function initApp() {
-        try {
-            db = supabase.createClient(SB_URL, SB_KEY);
-            log("Database client created.");
-            checkUser();
-        } catch (e) {
-            log("Init Error: " + e.message, "#ff4444");
-        }
-
-        // بطاقة اختبار للتأكد من أن الشاشة تعمل
-        var grid = document.getElementById('grid-main');
-        grid.innerHTML = '<div class="card" tabindex="10" onclick="log(\'Card clicked!\')"><img src="https://via.placeholder.com/160x100/333/fff?text=Test"><div class="card-label">اختبار المحتوى</div></div>';
-    }
-
-    // 4. وظائف الهوية
-    window.loginWithGoogle = function() {
-        if (!db) { log("Error: Database not ready", "#ff4444"); return; }
-        log("Redirecting to Auth...");
-        db.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.href }
-        }).then(function(res) {
-            if (res.error) log("Login Error: " + res.error.message, "#ff4444");
-        });
-    };
-
-    window.handleLogout = function() {
-        db.auth.signOut().then(function() { location.reload(); });
-    };
-
-    function checkUser() {
-        db.auth.getSession().then(function(res) {
-            if (res.data.session) {
-                log("Logged in as: " + res.data.session.user.email);
-                document.getElementById('google-btn').style.display = 'none';
-                document.getElementById('logout-btn').style.display = 'block';
-            } else {
-                log("User: Guest");
+    async function startSearch(q) {
+        if(!q) return;
+        var res = await fetch(PROXY(BASE + "/search?q=" + q));
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var unique = new Map();
+        doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(function(el) {
+            var a = el.tagName === 'A' ? el : el.querySelector('a');
+            var img = el.querySelector('img');
+            if(a && img) {
+                var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
+                if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src, isSeries: link.indexOf('/series/') !== -1 });
             }
         });
+        document.getElementById('top-content').innerHTML = Array.from(unique.values()).map(function(item) {
+            return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(item).replace(/'/g, "&apos;") + ')\'><img src="'+item.img+'"><div class="card-label">'+item.title+'</div></div>';
+        }).join('');
+        document.getElementById('top-content').querySelector('.card').focus();
     }
 
-    // تتبع أخطاء المتصفح العامة
-    window.onerror = function(m, u, l) { log("Runtime Err: " + m + " (Line " + l + ")", "#ff4444"); };
-</script>
+    async function loadEpisodes(item) {
+        state.currentSeries = item;
+        document.getElementById('series-title').innerText = item.title;
+        document.getElementById('fav-btn').style.display = 'block';
+        updateFavBtnUI();
+        
+        var res = await fetch(PROXY(item.link));
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var uniqueEps = new Map();
+        doc.querySelectorAll('a[href*="/episode/"]').forEach(function(a) {
+            var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
+            if(!uniqueEps.has(link)) uniqueEps.set(link, { title: a.innerText.trim(), link: link });
+        });
+        
+        document.getElementById('episode-list').innerHTML = Array.from(uniqueEps.values()).map(function(ep) {
+            return '<div class="ep-item" tabindex="0" onclick="fetchAndPlay(\''+ep.link+'\', \''+ep.title+'\')">'+ep.title+'</div>';
+        }).join('');
+    }
 
+    async function fetchAndPlay(l, t) {
+        state.currentLink = l;
+        document.getElementById('video-title').innerText = "جاري الاتصال بالسيرفر...";
+        document.getElementById('resume-ui').style.display = 'none';
+        video.pause();
+
+        try {
+            var html = await (await fetch(PROXY(l))).text();
+            var m = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            var dl = await (await fetch(PROXY(l.replace('/episode/', '/download/'+m[1]+'/')))).text();
+            var mp4 = new DOMParser().parseFromString(dl, 'text/html').querySelector('a[href*=".mp4"]');
+            
+            if(mp4) {
+                video.src = mp4.href;
+                document.getElementById('video-title').innerText = t;
+                var h = getHist();
+                if(h[l] && h[l] > 10) {
+                    state.savedPos = h[l];
+                    document.getElementById('resume-msg').innerText = "توقفت عند الدقيقة " + Math.floor(h[l]/60);
+                    document.getElementById('resume-ui').style.display = 'flex';
+                    document.getElementById('resume-ui').querySelector('button').focus();
+                } else {
+                    video.play();
+                }
+            }
+        } catch(e) { console.error("Playback error"); }
+    }
+
+    function confirmResume(yes) {
+        document.getElementById('resume-ui').style.display = 'none';
+        if(yes) video.currentTime = state.savedPos;
+        video.play();
+        video.focus();
+    }
+
+    function handleFavoriteAction() {
+        var favs = getFavs();
+        var index = favs.findIndex(function(f) { return f.link === state.currentSeries.link; });
+        if(index > -1) favs.splice(index, 1); else favs.push(state.currentSeries);
+        localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+        updateFavBtnUI();
+        showFavoritesInTop();
+    }
+
+    function updateFavBtnUI() {
+        var isFav = getFavs().some(function(f) { return f.link === state.currentSeries.link; });
+        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
+        document.getElementById('fav-btn').style.background = isFav ? "#e50914" : "#333";
+    }
+
+    function handleAction(i) { if(i.isSeries) loadEpisodes(i); else fetchAndPlay(i.link, i.title); }
+    
+    // Auto-save progress
+    setInterval(function(){
+        if(state.currentLink && !video.paused) {
+            var h = getHist();
+            h[state.currentLink] = Math.floor(video.currentTime);
+            localStorage.setItem(HIST_KEY, JSON.stringify(h));
+        }
+    }, 10000);
+
+    document.getElementById('search-input').onkeydown = function(e) { if(e.key==='Enter') startSearch(this.value); };
+    window.onload = showFavoritesInTop;
+</script>
 </body>
 </html>
- 
