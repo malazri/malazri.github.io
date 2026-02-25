@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.14</title>
+    <title>AlAzri TV v1.15</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
@@ -140,10 +140,9 @@
 
     function toggleMinimizeTop() {
         var top = document.getElementById('discovery');
-        var btn = document.getElementById('min-indicator');
         top.classList.toggle('minimized');
         document.getElementById('top-cont').classList.toggle('is-minimized');
-        btn.innerHTML = top.classList.contains('minimized') ? '<i class="fas fa-chevron-down"></i> تكبير' : '<i class="fas fa-chevron-up"></i> تصغير';
+        document.getElementById('min-indicator').innerHTML = top.classList.contains('minimized') ? '<i class="fas fa-chevron-down"></i> تكبير' : '<i class="fas fa-chevron-up"></i> تصغير';
         setTimeout(updateAllScrollStates, 310);
     }
 
@@ -161,11 +160,10 @@
         if(axis === 'x') {
             var canS = el.scrollWidth > el.clientWidth;
             minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
-            // In RTL: scrollLeft is 0 at start, and goes NEGATIVE as you scroll left.
             var isAtStart = Math.abs(el.scrollLeft) < 5;
             var isAtEnd = Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 5;
-            minBtn.classList.toggle('can-scroll', !isAtStart); // Right button (to scroll right/back to start)
-            maxBtn.classList.toggle('can-scroll', !isAtEnd);   // Left button (to scroll left/more content)
+            minBtn.classList.toggle('can-scroll', !isAtStart);
+            maxBtn.classList.toggle('can-scroll', !isAtEnd);
         } else {
             var canS = el.scrollHeight > el.clientHeight;
             minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
@@ -177,9 +175,22 @@
     function scrollXElem(val) { document.getElementById('discovery').scrollBy({ left: val, behavior: 'smooth' }); }
     function scrollYElem(val) { document.getElementById('side-area').scrollBy({ top: val, behavior: 'smooth' }); }
 
+    // UNIVERSAL ACTION HANDLER (Movie vs Series)
     async function handleAction(i) { 
-        if(i.isSeries) { if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop(); loadEpisodes(i); } 
-        else { fetchAndPlay(i); }
+        if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop();
+        
+        if(i.link.includes('/movie/')) {
+            // It's a Movie: Clear sidebar and play directly
+            document.getElementById('series-title').innerText = "فيلم";
+            document.getElementById('episode-list').innerHTML = `<div class="ep-item active-ep"><span>${i.title}</span></div>`;
+            document.getElementById('fav-btn').style.display = 'block';
+            state.currentSeries = i;
+            updateFavBtnUI();
+            fetchAndPlay(i);
+        } else {
+            // It's a Series: Load episode list
+            loadEpisodes(i);
+        }
     }
 
     function toggleRowManual(id, btnId) {
@@ -202,7 +213,7 @@
                 var img = a.querySelector('img');
                 if(img) {
                     var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src, isSeries: link.includes('/series/') });
+                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
                 }
             });
             document.getElementById('group-search').style.display = 'inline-flex';
@@ -220,7 +231,7 @@
         updateFavBtnUI();
         var res = await fetch(PROXY(item.link));
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        var uniqueEps = new Map(); // Prevent duplicates
+        var uniqueEps = new Map();
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
             var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
             if(!uniqueEps.has(link)) uniqueEps.set(link, a.innerText.trim());
@@ -251,15 +262,20 @@
             document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(record.pos);
             document.getElementById('resume-ui').style.display = 'flex';
         }
+        
+        // Movie or Episode logic for source fetching
+        var typeKey = item.link.includes('/movie/') ? '/movie/' : '/episode/';
+        var dlKey = item.link.includes('/movie/') ? '/download-movie/' : '/download/';
+
         var m = (await (await fetch(PROXY(item.link))).text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
         if(m) {
-            var dl = await (await fetch(PROXY(item.link.replace('/episode/', '/download/'+m[1]+'/')))).text();
+            var dl = await (await fetch(PROXY(item.link.replace(typeKey, dlKey + m[1] + '/')))).text();
             var mp4 = new DOMParser().parseFromString(dl, 'text/html').querySelector('a[href*=".mp4"]');
             if(mp4) {
                 video.src = mp4.href;
                 saveToHistory(item);
                 if(!record || record.pos <= 10) video.play();
-                if(state.currentSeries) loadEpisodes(state.currentSeries);
+                if(state.currentSeries && !item.link.includes('/movie/')) loadEpisodes(state.currentSeries);
             }
         }
     }
