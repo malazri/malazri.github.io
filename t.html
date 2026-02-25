@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.16</title>
+    <title>AlAzri TV v1.17</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
@@ -45,9 +45,7 @@
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
         
-        /* Load More Plus Card */
         .load-more-card { display: inline-flex; min-width: 60px; height: var(--card-h); background: #222; border: 2px dashed #444; border-radius: 4px; cursor: pointer; align-items: center; justify-content: center; margin-left: 12px; color: var(--primary-red); font-size: 2rem; transition: 0.2s; }
-        .load-more-card:hover { background: #333; border-color: var(--primary-red); }
 
         .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
         .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
@@ -69,8 +67,8 @@
 <div class="top-container" id="top-cont">
     <button class="scroll-btn s-right" id="scroll-r" onclick="scrollXElem(300)"><i class="fas fa-chevron-right"></i></button>
     <div class="top-section" id="discovery">
-        <div class="row-group" id="group-history"><div class="row-group-title" style="font-size:0.7rem; color:#888;">واصل المشاهدة</div><div id="content-history" style="display:flex;"></div></div>
-        <div class="row-group" id="group-favs"><div class="row-group-title" style="font-size:0.7rem; color:#888;">المفضلة</div><div id="content-favs" style="display:flex;"></div></div>
+        <div class="row-group" id="group-history" style="display:inline-flex;"><div class="row-group-title" style="font-size:0.7rem; color:#888;">واصل المشاهدة</div><div id="content-history" style="display:flex;"></div></div>
+        <div class="row-group" id="group-favs" style="display:inline-flex;"><div class="row-group-title" style="font-size:0.7rem; color:#888;">المفضلة</div><div id="content-favs" style="display:flex;"></div></div>
         <div class="row-group" id="group-search" style="display:none;"><div class="row-group-title" style="font-size:0.7rem; color:#888;">نتائج البحث</div><div id="content-search" style="display:flex;"></div></div>
     </div>
     <button class="scroll-btn s-left" id="scroll-l" onclick="scrollXElem(-300)"><i class="fas fa-chevron-left"></i></button>
@@ -109,12 +107,28 @@
     function updateAllScrollStates() { updateScrollColors('discovery', 'scroll-r', 'scroll-l', 'x'); updateScrollColors('side-area', 'scroll-u', 'scroll-d', 'y'); }
     function updateScrollColors(eId, bMinId, bMaxId, axis) {
         var el=document.getElementById(eId), minB=document.getElementById(bMinId), maxB=document.getElementById(bMaxId);
+        if(!el || !minB || !maxB) return;
         if(axis==='x'){ var can=el.scrollWidth>el.clientWidth; minB.classList.toggle('active',can); maxB.classList.toggle('active',can); var isS=Math.abs(el.scrollLeft)<5, isE=Math.abs(el.scrollLeft)+el.clientWidth>=el.scrollWidth-5; minB.classList.toggle('can-scroll',!isS); maxB.classList.toggle('can-scroll',!isE); }
         else { var can=el.scrollHeight>el.clientHeight; minB.classList.toggle('active',can); maxB.classList.toggle('active',can); minB.classList.toggle('can-scroll',el.scrollTop>5); maxB.classList.toggle('can-scroll',el.scrollTop+el.clientHeight<el.scrollHeight-5); }
     }
 
     function scrollXElem(v) { document.getElementById('discovery').scrollBy({left:v, behavior:'smooth'}); }
     function scrollYElem(v) { document.getElementById('side-area').scrollBy({top:v, behavior:'smooth'}); }
+
+    // FIXED TOGGLE LOGIC
+    function toggleRowManual(id, btnId) {
+        ensureTopVisible();
+        var el = document.getElementById(id);
+        var btn = document.getElementById(btnId);
+        if (el.style.display === 'none') {
+            el.style.display = 'inline-flex';
+            btn.classList.add('active');
+        } else {
+            el.style.display = 'none';
+            btn.classList.remove('active');
+        }
+        setTimeout(updateAllScrollStates, 50);
+    }
 
     async function handleAction(i) { 
         if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop();
@@ -129,9 +143,11 @@
         if(!q) return; ensureTopVisible();
         if(!append) { 
             state.searchQuery = q; state.searchPage = 1;
+            // Hide History and Favs when searching to prioritize view
             ['group-history','group-favs'].forEach(id=>document.getElementById(id).style.display='none');
             ['btn-hist','btn-fav'].forEach(id=>document.getElementById(id).classList.remove('active'));
             document.getElementById('content-search').innerHTML = "";
+            document.getElementById('group-search').style.display = 'inline-flex';
         }
         
         try {
@@ -148,7 +164,6 @@
                 }
             });
 
-            // Remove existing plus button if it exists
             var plus = document.getElementById('plus-btn');
             if(plus) plus.remove();
 
@@ -156,20 +171,14 @@
             var html = Array.from(unique.values()).map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
             container.innerHTML += html;
 
-            // Add Plus Button if results were found (assuming more might exist)
             if(items.length > 0) {
                 container.innerHTML += `<div id="plus-btn" class="load-more-card" onclick="loadNextPage()"><i class="fas fa-plus"></i></div>`;
             }
-
-            document.getElementById('group-search').style.display = 'inline-flex';
             setTimeout(updateAllScrollStates, 350);
         } catch(e) {}
     }
 
-    function loadNextPage() {
-        state.searchPage++;
-        startSearch(state.searchQuery, true);
-    }
+    function loadNextPage() { state.searchPage++; startSearch(state.searchQuery, true); }
 
     async function loadEpisodes(item) {
         state.currentSeries = item; document.getElementById('series-title').innerText = item.title;
@@ -203,7 +212,7 @@
             document.getElementById('resume-ui').style.display = 'flex';
         }
         var typeKey = item.link.includes('/movie/') ? '/movie/' : '/episode/';
-        var dlKey = item.link.includes('/movie/') ? '/download-movie/' : '/download/';
+        var dlKey = item.link.includes('/movie/') ? '/download/' : '/download/';
         var m = (await (await fetch(PROXY(item.link))).text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
         if(m) {
             var dl = await (await fetch(PROXY(item.link.replace(typeKey, dlKey + m[1] + '/')))).text();
@@ -237,7 +246,7 @@
         localStorage.setItem('alazri_favs', JSON.stringify(favs)); updateFavBtnUI(); refreshTop();
     }
 
-    function updateFavBtnUI() { var isF = (JSON.parse(localStorage.getItem('alazri_favs') || '[]')).some(f => f.link === state.currentSeries.link); var b = document.getElementById('fav-btn'); b.innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة"; b.style.background = isF ? "#444" : "#e50914"; }
+    function updateFavBtnUI() { var isF = (JSON.parse(localStorage.getItem('alazri_favs') || '[]')).some(f => f.link === state.currentSeries.link); var b = document.getElementById('fav-btn'); if(!b) return; b.innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة"; b.style.background = isF ? "#444" : "#e50914"; }
 
     setInterval(() => { if(state.currentLink && !video.paused) { var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]'); var r = h.find(x => x.link === state.currentLink); if(r) { r.pos = Math.floor(video.currentTime); r.ts = Date.now(); localStorage.setItem('alazri_hist', JSON.stringify(h)); document.getElementById('meta-pos').innerText = fmtTime(r.pos); } } }, 10000);
 
