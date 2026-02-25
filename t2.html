@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Stable Build</title>
+    <title>AlAzri TV - Full Stable</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
@@ -11,7 +11,6 @@
         
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* Focus styles for Android TV */
         *:focus {
             outline: 3px solid var(--primary-red) !important;
             box-shadow: 0 0 15px var(--primary-red);
@@ -19,7 +18,6 @@
             transition: all 0.1s ease-in-out;
             z-index: 10;
         }
-        input:focus { transform: none; }
 
         .fixed-header { 
             position: fixed; top: 0; left: 0; right: 0; z-index: 3000; 
@@ -28,14 +26,13 @@
             border-bottom: 1px solid #222;
         }
 
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; padding: 5px; border-radius: 5px; }
-
+        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; }
         .header-actions { display: flex; align-items: center; gap: 15px; }
         .search-container { display: flex; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
         .search-input { background: transparent; border: none; color: white; outline: none; width: 200px; font-size: 1.1rem; }
+        .header-icon { cursor: pointer; font-size: 1.5rem; color: #bbb; padding: 10px; }
         
-        .header-icon { cursor: pointer; font-size: 1.5rem; color: #bbb; padding: 10px; border-radius: 5px; }
-        .btn-action { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1.1rem;}
+        .btn-action { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
         .content-area { flex: 1; overflow-y: auto; padding: 80px 20px 160px 20px; scroll-behavior: smooth; }
 
@@ -45,33 +42,20 @@
         .row-title { font-size: 1.3rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
         
         .row-content { display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; }
-        .row-content::-webkit-scrollbar { display: none; }
-
+        
         .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; }
         .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.9rem; text-align: center; padding: 8px 0; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.9rem; text-align: center; padding: 8px 0; }
 
-        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
-        video { width: 100%; aspect-ratio: 16/9; outline: none; }
+        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; border: 1px solid #333; }
+        video { width: 100%; aspect-ratio: 16/9; }
 
-        /* --- STABLE DEBUG CONSOLE --- */
+        .history-info { background: #111; padding: 10px 15px; border-radius: 8px; margin-top: 10px; border-right: 3px solid #555; font-size: 0.9rem; color: #aaa; display: none; }
+        
         #debug-console {
-            position: fixed;
-            bottom: 5px;
-            left: 5px;
-            right: 5px;
-            height: 110px;
-            background: rgba(0, 0, 0, 0.95);
-            color: #00ff00;
-            font-family: monospace;
-            font-size: 12px;
-            padding: 8px;
-            border: 1px solid #444;
-            overflow-y: auto;
-            z-index: 9999;
-            pointer-events: none;
-            direction: ltr;
-            text-align: left;
+            position: fixed; bottom: 5px; left: 5px; right: 5px; height: 110px;
+            background: rgba(0, 0, 0, 0.95); color: #00ff00; font-family: monospace; font-size: 12px;
+            padding: 8px; border: 1px solid #444; overflow-y: auto; z-index: 9999; pointer-events: none; direction: ltr; text-align: left;
         }
     </style>
 </head>
@@ -80,25 +64,16 @@
 <div class="fixed-header">
     <div class="brand" tabindex="0" onclick="location.reload()">ALAZRI</div>
     <div class="header-actions">
-        <i class="fas fa-heart header-icon" tabindex="0" onclick="toggleFavSection()" title="المفضلة"></i>
+        <i class="fas fa-heart header-icon" tabindex="0" onclick="toggleFavSection()"></i>
         <div class="search-container">
             <input type="text" class="search-input" id="search-input" placeholder="ابحث..." tabindex="0">
         </div>
-        <i class="fas fa-search header-icon" tabindex="0" onclick="startSearch(document.getElementById('search-input').value)"></i>
     </div>
 </div>
 
 <main class="content-area">
-    <div class="row" id="row-search">
-        <div class="row-header"><div class="row-title">نتائج البحث</div></div>
-        <div class="row-content" id="grid-search"></div>
-    </div>
-
-    <div class="row" id="row-favs">
-        <div class="row-header"><div class="row-title">المفضلة</div></div>
-        <div class="row-content" id="grid-favs"></div>
-    </div>
-
+    <div class="row" id="row-search"><div class="row-header"><div class="row-title">نتائج البحث</div></div><div id="grid-search" class="row-content"></div></div>
+    <div class="row" id="row-favs"><div class="row-header"><div class="row-title">المفضلة</div></div><div id="grid-favs" class="row-content"></div></div>
     <div class="row" id="row-episodes">
         <div class="row-header">
             <div class="row-title" id="episodes-label">الحلقات</div>
@@ -106,45 +81,46 @@
                 <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">أضف للمفضلة</span>
             </button>
         </div>
-        <div class="row-content" id="grid-episodes"></div>
+        <div id="grid-episodes" class="row-content"></div>
     </div>
 
     <div id="player-container">
         <video id="main-video" controls autoplay tabindex="0"></video>
         <div style="padding:15px;">
-            <div id="active-episode-title" style="font-weight:bold; font-size: 1.2rem; color:var(--primary-red)"></div>
+            <div id="active-episode-title" style="font-weight:bold; color:var(--primary-red)"></div>
+            <div id="history-box" class="history-info">
+                <span>توقفت عند: <b id="last-pos-text"></b></span> | 
+                <button tabindex="0" class="btn-action" style="padding:4px 8px; font-size:0.8rem;" onclick="resumePlayback()">إكمال</button>
+                <button tabindex="0" class="btn-action" style="padding:4px 8px; font-size:0.8rem; background:#444;" onclick="startOverPlayback()">من البداية</button>
+            </div>
         </div>
     </div>
 </main>
 
-<div id="debug-console"><div>[INIT] Stable Console Started...</div></div>
+<div id="debug-console"><div>[INIT] System Monitoring...</div></div>
 
 <script>
-    // --- Compatibility Check & Error Catching ---
-    window.onerror = function(msg, url, line) {
-        debugLog("CRASH: " + msg + " (L:" + line + ")");
-        return false;
-    };
+    window.onerror = function(msg, url, line) { debugLog("CRASH: " + msg + " (L:" + line + ")"); return false; };
 
     function debugLog(message) {
-        var consoleEl = document.getElementById('debug-console');
-        if (consoleEl) {
+        var el = document.getElementById('debug-console');
+        if (el) {
             var div = document.createElement('div');
-            div.style.borderBottom = "1px solid #222";
             div.textContent = "[" + new Date().toLocaleTimeString() + "] " + message;
-            consoleEl.appendChild(div);
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
         }
-        console.log("[DEBUG] " + message);
     }
 
-    // --- State & Constants ---
     var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
     var BASE = "https://ak.sv";
-    var FAV_KEY = "alazri_tv_favorites";
-    var state = { currentEpisodeLink: "", currentSeries: null };
+    var HISTORY_KEY = "alazri_tv_history";
+    var state = { currentLink: "", currentSeries: null, savedPos: 0 };
+    var video = document.getElementById('main-video');
 
-    // --- Search Function ---
+    function getHistory() { var d = localStorage.getItem(HISTORY_KEY); return d ? JSON.parse(d) : {}; }
+    function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+
     async function startSearch(q) {
         if(!q) return;
         debugLog("Searching: " + q);
@@ -152,187 +128,91 @@
             var res = await fetch(PROXY(BASE + "/search?q=" + q));
             var text = await res.text();
             var doc = new DOMParser().parseFromString(text, 'text/html');
-            var unique = new Map();
-            
-            var elements = doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]');
-            for(var i=0; i < elements.length; i++) {
-                var el = elements[i];
+            var results = [];
+            doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(function(el) {
                 var a = el.tagName === 'A' ? el : el.querySelector('a');
                 var img = el.querySelector('img');
                 if(a && img) {
                     var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
-                    if(!unique.has(link)) {
-                        unique.set(link, { 
-                            title: img.alt, 
-                            link: link, 
-                            img: img.dataset.src || img.src, 
-                            isSeries: link.indexOf('/series/') !== -1 
-                        });
-                    }
+                    results.push({ title: img.alt, link: link, img: img.dataset.src || img.src, isSeries: link.indexOf('/series/') !== -1 });
                 }
-            }
-            
-            var results = Array.from(unique.values());
-            var grid = document.getElementById('grid-search');
-            grid.innerHTML = results.map(function(item) {
-                var itemStr = JSON.stringify(item).replace(/'/g, "&#39;");
-                return '<div class="card" tabindex="0" onclick=\'handleAction(' + itemStr + ')\'>' +
-                       '<img src="' + item.img + '"><div class="card-label">' + item.title + '</div></div>';
-            }).join('') || '<div style="padding:20px;">لا توجد نتائج</div>';
-            
+            });
+            document.getElementById('grid-search').innerHTML = results.map(function(item) {
+                return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(item).replace(/'/g, "&#39;") + ')\'><img src="'+item.img+'"><div class="card-label">'+item.title+'</div></div>';
+            }).join('');
             document.getElementById('row-search').classList.add('visible');
-            grid.querySelector('.card').focus();
-        } catch (e) {
-            debugLog("Search Error: " + e.message);
-        }
+        } catch (e) { debugLog("Search Error: " + e.message); }
     }
 
-    // --- Episode Loader ---
     async function loadEpisodes(item) {
-        debugLog("Loading series: " + item.title);
         state.currentSeries = item;
-        var row = document.getElementById('row-episodes');
-        var grid = document.getElementById('grid-episodes');
-        
-        row.classList.add('visible');
-        grid.innerHTML = 'جاري التحميل...';
-        
-        var btn = document.getElementById('fav-toggle-btn');
-        btn.style.display = 'inline-block';
-        updateFavBtn();
-
+        document.getElementById('row-episodes').classList.add('visible');
+        document.getElementById('fav-toggle-btn').style.display = 'block';
         try {
             var res = await fetch(PROXY(item.link));
             var text = await res.text();
             var doc = new DOMParser().parseFromString(text, 'text/html');
-            var uniqueEps = new Map();
-            
-            var links = doc.querySelectorAll('a[href*="/episode/"]');
-            for(var i=0; i < links.length; i++) {
-                var a = links[i];
+            var eps = [];
+            doc.querySelectorAll('a[href*="/episode/"]').forEach(function(a) {
                 var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
-                if(!uniqueEps.has(link)) {
-                    uniqueEps.set(link, { title: a.innerText.trim(), link: link, img: item.img });
-                }
-            }
-            
-            var eps = Array.from(uniqueEps.values());
-            grid.innerHTML = eps.map(function(ep) {
-                return '<div class="card" tabindex="0" onclick="fetchAndPlay(\'' + ep.link + '\', \'' + ep.title + '\')">' +
-                       '<img src="' + ep.img + '"><div class="card-label">' + ep.title + '</div></div>';
-            }).join('') || '<div>لا توجد حلقات</div>';
-            
-            document.getElementById('episodes-label').innerText = item.title;
-            grid.querySelector('.card').focus();
-        } catch (e) {
-            debugLog("Episode Error: " + e.message);
-        }
+                eps.push({ title: a.innerText.trim(), link: link, img: item.img });
+            });
+            document.getElementById('grid-episodes').innerHTML = eps.map(function(ep) {
+                return '<div class="card" tabindex="0" onclick="fetchAndPlay(\''+ep.link+'\', \''+ep.title+'\')"><img src="'+ep.img+'"><div class="card-label">'+ep.title+'</div></div>';
+            }).join('');
+        } catch (e) { debugLog("Episode Error: " + e.message); }
     }
 
-    // --- Playback Function ---
     async function fetchAndPlay(link, title) {
-        debugLog("Fetching video for: " + title);
-        var container = document.getElementById('player-container');
-        var titleEl = document.getElementById('active-episode-title');
-        var video = document.getElementById('main-video');
+        debugLog("Playing: " + title);
+        state.currentLink = link;
+        state.savedPos = 0;
+        document.getElementById('player-container').style.display = 'block';
+        document.getElementById('history-box').style.display = 'none';
 
-        container.style.display = 'block';
-        titleEl.innerText = "جاري جلب الرابط...";
-        
+        var hist = getHistory();
+        if(hist[link] && hist[link].pos > 10) {
+            state.savedPos = hist[link].pos;
+            var m = Math.floor(state.savedPos / 60);
+            document.getElementById('last-pos-text').innerText = m + " دقيقة";
+            document.getElementById('history-box').style.display = 'block';
+        }
+
         try {
             var res = await fetch(PROXY(link));
             var html = await res.text();
+            var m = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            if(!m) throw new Error("No ID");
             
-            // Standard Regex (Old browser friendly)
-            var match = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-            var id = match ? match[1] : null;
-
-            if (!id) throw new Error("ID not found in page");
-
-            var dlLink = link.replace('/episode/', '/download/' + id + '/');
-            var dlRes = await fetch(PROXY(dlLink));
-            var dlHtml = await dlRes.text();
-            
-            var doc = new DOMParser().parseFromString(dlHtml, 'text/html');
-            var mp4 = doc.querySelector('a[href*=".mp4"]');
+            var dlHtml = await (await fetch(PROXY(link.replace('/episode/', '/download/'+m[1]+'/')))).text();
+            var mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
             
             if(mp4) {
-                debugLog("Success! Starting video.");
                 video.src = mp4.href;
-                titleEl.innerText = title;
-                container.scrollIntoView();
+                document.getElementById('active-episode-title').innerText = title;
                 video.focus();
-            } else {
-                debugLog("No MP4 link found on download page");
-                titleEl.innerText = "تعذر العثور على رابط مباشر";
+                if(state.savedPos === 0) video.play();
             }
-        } catch (e) {
-            debugLog("Video Error: " + e.message);
-            titleEl.innerText = "خطأ في التشغيل";
-        }
+        } catch (e) { debugLog("Play Error: " + e.message); }
     }
 
-    // --- Favorites Logic ---
-    function getFavorites() { 
-        var data = localStorage.getItem(FAV_KEY);
-        return data ? JSON.parse(data) : []; 
-    }
+    function resumePlayback() { video.currentTime = state.savedPos; video.play(); document.getElementById('history-box').style.display='none'; }
+    function startOverPlayback() { video.currentTime = 0; video.play(); document.getElementById('history-box').style.display='none'; }
+
+    // Auto-save progress
+    setInterval(function() {
+        if(state.currentLink && !video.paused && video.currentTime > 5) {
+            var h = getHistory();
+            h[state.currentLink] = { pos: Math.floor(video.currentTime), ts: new Date().getTime() };
+            saveHistory(h);
+        }
+    }, 10000);
+
+    function handleAction(i) { if(i.isSeries) loadEpisodes(i); else fetchAndPlay(i.link, i.title); }
     
-    function toggleFavorite() {
-        var favs = getFavorites();
-        var exists = false;
-        for(var i=0; i<favs.length; i++) {
-            if(favs[i].link === state.currentSeries.link) { exists = true; break; }
-        }
+    document.getElementById('search-input').onkeydown = function(e) { if(e.key==='Enter') startSearch(this.value); };
 
-        if(exists) {
-            favs = favs.filter(function(f) { return f.link !== state.currentSeries.link; });
-            debugLog("Removed from Favorites");
-        } else {
-            favs.push(state.currentSeries);
-            debugLog("Added to Favorites");
-        }
-        localStorage.setItem(FAV_KEY, JSON.stringify(favs));
-        updateFavBtn();
-    }
-
-    function updateFavBtn() {
-        var favs = getFavorites();
-        var isFav = false;
-        for(var i=0; i<favs.length; i++) {
-            if(favs[i].link === state.currentSeries.link) { isFav = true; break; }
-        }
-        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
-        document.getElementById('fav-text').innerText = isFav ? "إزالة من المفضلة" : "أضف للمفضلة";
-    }
-
-    function toggleFavSection() {
-        var row = document.getElementById('row-favs');
-        var grid = document.getElementById('grid-favs');
-        if(row.classList.contains('visible')) {
-            row.classList.remove('visible');
-        } else {
-            var favs = getFavorites();
-            grid.innerHTML = favs.map(function(item) {
-                var itemStr = JSON.stringify(item).replace(/'/g, "&#39;");
-                return '<div class="card" tabindex="0" onclick=\'handleAction(' + itemStr + ')\'>' +
-                       '<img src="' + item.img + '"><div class="card-label">' + item.title + '</div></div>';
-            }).join('') || '<div style="padding:20px;">القائمة فارغة</div>';
-            row.classList.add('visible');
-        }
-    }
-
-    // --- Global Helpers ---
-    function handleAction(item) {
-        if(item.isSeries) loadEpisodes(item); 
-        else fetchAndPlay(item.link, item.title);
-    }
-
-    document.getElementById('search-input').addEventListener('keydown', function(e) {
-        if(e.key === 'Enter') startSearch(this.value);
-    });
-
-    debugLog("System Ready - Version 1.2 Stable");
+    debugLog("TV Ready. Check console logs here.");
 </script>
 </body>
 </html>
