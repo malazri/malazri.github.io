@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.13</title>
+    <title>AlAzri TV v1.14</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary-red: #e50914; --inactive-gray: #555; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
+        :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
         * { box-sizing: border-box; }
         body { 
             background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; 
@@ -41,24 +41,21 @@
         /* SCROLL BUTTONS */
         .scroll-btn { 
             position: absolute; top: 50%; transform: translateY(-50%); 
-            background: var(--inactive-gray); color: white; border: none; 
+            background: var(--inactive-gray); color: #fff; border: none; 
             width: 35px; height: 70px; cursor: pointer; z-index: 10; 
-            display: none; align-items: center; justify-content: center; border-radius: 4px; opacity: 0.8;
+            display: none; align-items: center; justify-content: center; border-radius: 4px;
         }
         .scroll-btn.can-scroll { background: var(--primary-red); }
         .top-container:not(.is-minimized) .scroll-btn.active { display: flex; }
         .s-left { left: 5px; } .s-right { right: 5px; }
 
-        /* MAIN CONTENT AREA (ADJUSTABLE) */
+        /* LAYOUT */
         .main-layout { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
-
-        /* SIDE SECTION */
         .side-container { position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: flex; flex-direction: column; overflow: hidden; }
         .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
         .side-section::-webkit-scrollbar { display: none; }
-        .side-title { padding-bottom: 8px; font-weight: bold; color: var(--primary-red); border-bottom: 1px solid #333; margin-bottom: 10px; font-size: 0.9rem; }
-
-        .v-scroll { background: var(--inactive-gray); color: white; border: none; width: 100%; padding: 6px; cursor: pointer; display: none; }
+        
+        .v-scroll { background: var(--inactive-gray); color: white; border: none; width: 100%; padding: 8px; cursor: pointer; display: none; }
         .v-scroll.can-scroll { background: var(--primary-red); }
         .v-scroll.active { display: block; }
 
@@ -66,14 +63,14 @@
         .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; }
         .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
         #main-video { width: 100%; flex: 1; background: #000; }
-        .player-footer { padding: 6px 20px; background: #000; border-top: 1px solid #111; font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; }
+        .player-footer { padding: 8px 20px; background: #000; border-top: 1px solid #111; font-size: 0.8rem; color: #999; display: flex; justify-content: space-between; }
+        .stat-val { color: #fff; font-weight: bold; }
 
-        /* CARDS & ITEMS */
         .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; }
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
-        .ep-item { padding: 10px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
-        .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; font-weight: bold; }
+        .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
         .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
     </style>
 </head>
@@ -103,7 +100,7 @@
     <div class="side-container">
         <button class="v-scroll" id="scroll-u" onclick="scrollYElem(-200)"><i class="fas fa-chevron-up"></i></button>
         <div class="side-section" id="side-area">
-            <div class="side-title" id="series-title">القائمة</div>
+            <div id="series-title" style="color:var(--primary-red); font-weight:bold; margin-bottom:10px;">القائمة</div>
             <button id="fav-btn" style="display:none; width: 100%; margin-bottom:10px; background:var(--primary-red); color:white; border:none; padding:8px; border-radius:4px;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
             <div id="episode-list"></div>
         </div>
@@ -117,13 +114,13 @@
             <div id="resume-ui" class="resume-overlay">
                 <h2>إكمال المشاهدة؟</h2>
                 <p id="resume-msg" style="color:#aaa; margin-bottom:15px;"></p>
-                <div><button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">نعم</button>
-                <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px; cursor:pointer;">من جديد</button></div>
+                <div><button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px;">نعم</button>
+                <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px;">من جديد</button></div>
             </div>
         </div>
         <div class="player-footer">
-            <div id="meta-date">التاريخ: --</div>
-            <div id="meta-pos">الموقف: --</div>
+            <div>التاريخ والوقت: <span id="meta-date" class="stat-val">--</span></div>
+            <div>الموقف الحالي: <span id="meta-pos" class="stat-val">--</span></div>
         </div>
     </div>
 </div>
@@ -134,12 +131,18 @@
     var state = { currentSeries: null, currentLink: null, savedPos: 0 };
     var video = document.getElementById('main-video');
 
+    function fmtTime(s) {
+        if(!s || isNaN(s)) return "00:00";
+        var m = Math.floor(s / 60);
+        var sec = Math.floor(s % 60);
+        return (m < 10 ? "0"+m : m) + ":" + (sec < 10 ? "0"+sec : sec);
+    }
+
     function toggleMinimizeTop() {
         var top = document.getElementById('discovery');
-        var cont = document.getElementById('top-cont');
         var btn = document.getElementById('min-indicator');
         top.classList.toggle('minimized');
-        cont.classList.toggle('is-minimized');
+        document.getElementById('top-cont').classList.toggle('is-minimized');
         btn.innerHTML = top.classList.contains('minimized') ? '<i class="fas fa-chevron-down"></i> تكبير' : '<i class="fas fa-chevron-up"></i> تصغير';
         setTimeout(updateAllScrollStates, 310);
     }
@@ -147,7 +150,7 @@
     function ensureTopVisible() { if(document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop(); }
 
     function updateAllScrollStates() {
-        updateScrollColors('discovery', 'scroll-l', 'scroll-r', 'x');
+        updateScrollColors('discovery', 'scroll-r', 'scroll-l', 'x');
         updateScrollColors('side-area', 'scroll-u', 'scroll-d', 'y');
     }
 
@@ -155,56 +158,42 @@
         var el = document.getElementById(elemId);
         var minBtn = document.getElementById(btnMinId);
         var maxBtn = document.getElementById(btnMaxId);
-        
-        var isMaxed, isMin;
         if(axis === 'x') {
-            var canScroll = el.scrollWidth > el.clientWidth;
-            minBtn.classList.toggle('active', canScroll);
-            maxBtn.classList.toggle('active', canScroll);
-            isMin = el.scrollLeft >= -5; // RTL Logic
-            isMaxed = Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 5;
+            var canS = el.scrollWidth > el.clientWidth;
+            minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
+            // In RTL: scrollLeft is 0 at start, and goes NEGATIVE as you scroll left.
+            var isAtStart = Math.abs(el.scrollLeft) < 5;
+            var isAtEnd = Math.abs(el.scrollLeft) + el.clientWidth >= el.scrollWidth - 5;
+            minBtn.classList.toggle('can-scroll', !isAtStart); // Right button (to scroll right/back to start)
+            maxBtn.classList.toggle('can-scroll', !isAtEnd);   // Left button (to scroll left/more content)
         } else {
-            var canScroll = el.scrollHeight > el.clientHeight;
-            minBtn.classList.toggle('active', canScroll);
-            maxBtn.classList.toggle('active', canScroll);
-            isMin = el.scrollTop <= 5;
-            isMaxed = el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+            var canS = el.scrollHeight > el.clientHeight;
+            minBtn.classList.toggle('active', canS); maxBtn.classList.toggle('active', canS);
+            minBtn.classList.toggle('can-scroll', el.scrollTop > 5);
+            maxBtn.classList.toggle('can-scroll', el.scrollTop + el.clientHeight < el.scrollHeight - 5);
         }
-
-        minBtn.classList.toggle('can-scroll', !isMin);
-        maxBtn.classList.toggle('can-scroll', !isMaxed);
     }
 
     function scrollXElem(val) { document.getElementById('discovery').scrollBy({ left: val, behavior: 'smooth' }); }
     function scrollYElem(val) { document.getElementById('side-area').scrollBy({ top: val, behavior: 'smooth' }); }
 
-    // Logic for loading series
     async function handleAction(i) { 
-        if(i.isSeries) {
-            if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop();
-            loadEpisodes(i);
-        } else {
-            fetchAndPlay(i);
-        }
+        if(i.isSeries) { if(!document.getElementById('discovery').classList.contains('minimized')) toggleMinimizeTop(); loadEpisodes(i); } 
+        else { fetchAndPlay(i); }
     }
 
     function toggleRowManual(id, btnId) {
         ensureTopVisible();
         var el = document.getElementById(id);
-        var btn = document.getElementById(btnId);
         el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none';
-        btn.classList.toggle('active', el.style.display !== 'none');
+        document.getElementById(btnId).classList.toggle('active', el.style.display !== 'none');
         setTimeout(updateAllScrollStates, 50);
     }
 
     async function startSearch(q) {
-        if(!q) return;
-        ensureTopVisible();
-        document.getElementById('group-history').style.display = 'none';
-        document.getElementById('btn-hist').classList.remove('active');
-        document.getElementById('group-favs').style.display = 'none';
-        document.getElementById('btn-fav').classList.remove('active');
-        
+        if(!q) return; ensureTopVisible();
+        ['group-history','group-favs'].forEach(id => document.getElementById(id).style.display = 'none');
+        ['btn-hist','btn-fav'].forEach(id => document.getElementById(id).classList.remove('active'));
         try {
             var res = await fetch(PROXY(BASE + "/search?q=" + q));
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
@@ -231,12 +220,16 @@
         updateFavBtnUI();
         var res = await fetch(PROXY(item.link));
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        var html = '';
+        var uniqueEps = new Map(); // Prevent duplicates
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
             var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+            if(!uniqueEps.has(link)) uniqueEps.set(link, a.innerText.trim());
+        });
+        var html = '';
+        uniqueEps.forEach((title, link) => {
             var active = state.currentLink === link;
-            html += `<div class="ep-item ${active?'active-ep':''}" onclick='fetchAndPlay(${JSON.stringify({title:a.innerText.trim(), link:link, img:item.img}).replace(/'/g, "&apos;")})'>
-                <span>${a.innerText.trim()}</span> ${active?'<i class="fas fa-play-circle"></i>':''}
+            html += `<div class="ep-item ${active?'active-ep':''}" onclick='fetchAndPlay(${JSON.stringify({title:title, link:link, img:item.img}).replace(/'/g, "&apos;")})'>
+                <span>${title}</span> ${active?'<i class="fas fa-play-circle"></i>':''}
             </div>`;
         });
         document.getElementById('episode-list').innerHTML = html;
@@ -252,9 +245,10 @@
         var record = h.find(x => x.link === item.link);
         if(record && record.pos > 10) {
             state.savedPos = record.pos;
-            document.getElementById('meta-date').innerText = 'المشاهدة: ' + new Date(record.ts).toLocaleDateString('ar-EG');
-            document.getElementById('meta-pos').innerText = 'توقفت عند: ' + Math.floor(record.pos/60) + ' دقيقة';
-            document.getElementById('resume-msg').innerText = "توقفت سابقاً عند الدقيقة " + Math.floor(record.pos/60);
+            var dt = new Date(record.ts);
+            document.getElementById('meta-date').innerText = dt.toLocaleDateString('ar-EG') + " " + dt.toLocaleTimeString('ar-EG');
+            document.getElementById('meta-pos').innerText = fmtTime(record.pos);
+            document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(record.pos);
             document.getElementById('resume-ui').style.display = 'flex';
         }
         var m = (await (await fetch(PROXY(item.link))).text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
@@ -311,15 +305,18 @@
         if(state.currentLink && !video.paused) {
             var h = JSON.parse(localStorage.getItem('alazri_hist') || '[]');
             var r = h.find(x => x.link === state.currentLink);
-            if(r) { r.pos = Math.floor(video.currentTime); r.ts = Date.now(); localStorage.setItem('alazri_hist', JSON.stringify(h)); }
+            if(r) { 
+                r.pos = Math.floor(video.currentTime); 
+                r.ts = Date.now(); 
+                localStorage.setItem('alazri_hist', JSON.stringify(h));
+                document.getElementById('meta-pos').innerText = fmtTime(r.pos);
+            }
         }
     }, 10000);
 
-    // Event Listeners for Scrolling
-    document.getElementById('discovery').onscroll = () => updateScrollColors('discovery', 'scroll-l', 'scroll-r', 'x');
-    document.getElementById('side-area').onscroll = () => updateScrollColors('side-area', 'scroll-u', 'scroll-d', 'y');
+    document.getElementById('discovery').onscroll = updateAllScrollStates;
+    document.getElementById('side-area').onscroll = updateAllScrollStates;
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
-    
     window.onload = refreshTop;
     window.onresize = updateAllScrollStates;
 </script>
