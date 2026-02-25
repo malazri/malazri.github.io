@@ -265,7 +265,7 @@
         
         // Movie or Episode logic for source fetching
         var typeKey = item.link.includes('/movie/') ? '/movie/' : '/episode/';
-        var dlKey = item.link.includes('/movie/') ? '/download-movie/' : '/download/';
+        var dlKey = item.link.includes('/movie/') ? '/download/' : '/download/';
 
         var m = (await (await fetch(PROXY(item.link))).text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
         if(m) {
