@@ -2,19 +2,18 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AlAzri TV v1.10</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlAzri TV v1.11</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary-red: #e50914; --bg-dark: #050505; --panel-bg: #111; --card-w: 130px; --card-h: 185px; }
+        :root { --primary-red: #e50914; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
         
-        /* Force everything into the frame */
         * { box-sizing: border-box; }
         body { 
             background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; 
             margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
             display: grid;
-            grid-template-rows: 60px 200px 1fr; 
+            grid-template-rows: 60px auto 1fr; 
             grid-template-columns: 300px 1fr; 
         }
 
@@ -23,56 +22,59 @@
             background: #000; display: flex; align-items: center; justify-content: space-between; 
             padding: 0 20px; border-bottom: 1px solid #222;
         }
-        .brand { color: var(--primary-red); font-size: 1.4rem; font-weight: 900; }
-        .header-controls { display: flex; gap: 10px; align-items: center; }
-        .toggle-btn { cursor: pointer; color: #888; font-size: 0.8rem; padding: 5px 12px; border-radius: 4px; background: #222; border: none; }
-        .toggle-btn.active { color: white; background: var(--primary-red); }
-        .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 250px; }
-        .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.9rem; }
-
-        /* TOP SECTION */
-        .top-section { 
-            grid-row: 2; grid-column: 1 / span 2; 
-            background: #0a0a0a; overflow-x: auto; overflow-y: hidden; white-space: nowrap; 
-            padding: 10px; border-bottom: 1px solid #222; display: flex; gap: 20px;
-        }
-        .row-group { display: inline-flex; flex-direction: column; height: 100%; }
-        .row-group-title { font-size: 0.75rem; color: #666; margin-bottom: 8px; font-weight: bold; border-right: 3px solid var(--primary-red); padding-right: 8px; }
-
-        /* SIDE SECTION (RIGHT) */
-        .side-section { 
-            grid-row: 3; grid-column: 1; 
-            background: var(--panel-bg); border-left: 1px solid #222; 
-            overflow-y: auto; padding: 10px; height: 100%;
-        }
-        .side-title { padding-bottom: 8px; font-weight: bold; color: var(--primary-red); border-bottom: 1px solid #333; margin-bottom: 10px; font-size: 1rem; }
-
-        /* PLAYER SECTION (MIDDLE) */
-        .middle-section { 
-            grid-row: 3; grid-column: 2; 
-            background: #000; display: flex; flex-direction: column; 
-            position: relative; height: 100%; overflow: hidden;
-        }
+        .brand { color: var(--primary-red); font-size: 1.3rem; font-weight: 900; }
+        .header-controls { display: flex; gap: 8px; align-items: center; }
         
-        /* Player HUDs */
-        .player-header { padding: 10px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1.1rem; }
-        .video-container { flex: 1; background: #000; position: relative; overflow: hidden; }
-        #main-video { width: 100%; height: 100%; object-fit: contain; }
-        .player-footer { padding: 8px 20px; background: #000; border-top: 1px solid #111; font-size: 0.8rem; color: #777; display: flex; justify-content: space-between; }
+        /* Header Toggles */
+        .toggle-btn { cursor: pointer; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; }
+        .toggle-btn.active { color: white; background: var(--primary-red); border-color: var(--primary-red); }
+        .min-btn { background: #333; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.7rem; }
 
-        .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 6px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
-        .ep-item.active-ep { background: #300; border-right: 4px solid var(--primary-red); color: white; font-weight: bold; }
-        .ep-item:focus { outline: 3px solid var(--primary-red); background: #333; }
+        .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 220px; }
+        .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; }
 
-        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; flex-shrink: 0; }
+        /* TOP SECTION (Discovery) */
+        .top-container { grid-row: 2; grid-column: 1 / span 2; position: relative; background: #0a0a0a; border-bottom: 1px solid #222; }
+        .top-section { 
+            display: flex; gap: 15px; padding: 10px 40px; overflow-x: hidden; white-space: nowrap; 
+            transition: max-height 0.3s ease-out; max-height: 200px; 
+        }
+        .top-section.minimized { max-height: 0px; padding-top: 0; padding-bottom: 0; border: none; overflow: hidden; }
+
+        /* Side Scrolling Buttons */
+        .scroll-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(229, 9, 20, 0.7); color: white; border: none; width: 30px; height: 60px; cursor: pointer; z-index: 5; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .scroll-btn:hover { background: var(--primary-red); }
+        .s-left { left: 5px; } .s-right { right: 5px; }
+
+        .row-group { display: inline-flex; flex-direction: column; vertical-align: top; }
+        .row-group-title { font-size: 0.7rem; color: #888; margin-bottom: 5px; font-weight: bold; border-right: 3px solid var(--primary-red); padding-right: 6px; }
+
+        /* SIDE SECTION (Episodes) */
+        .side-container { grid-row: 3; grid-column: 1; position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: flex; flex-direction: column; height: 100%; }
+        .side-section { flex: 1; overflow-y: hidden; padding: 10px; }
+        .side-title { padding-bottom: 8px; font-weight: bold; color: var(--primary-red); border-bottom: 1px solid #333; margin-bottom: 10px; font-size: 0.9rem; }
+
+        .v-scroll { background: #222; color: #aaa; border: none; width: 100%; padding: 5px; cursor: pointer; font-size: 0.8rem; }
+        .v-scroll:hover { background: #333; color: white; }
+
+        /* CARDS */
+        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 10px; flex-shrink: 0; }
         .card img { width: 100%; height: 100%; object-fit: cover; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.7rem; text-align: center; padding: 4px; white-space: normal; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; white-space: normal; line-height: 1.2; }
+
+        /* PLAYER */
+        .middle-section { grid-row: 3; grid-column: 2; background: #000; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
+        .video-container { flex: 1; position: relative; background: #000; }
+        #main-video { width: 100%; height: 100%; object-fit: contain; }
+        .player-footer { padding: 6px 20px; background: #000; border-top: 1px solid #111; font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; }
+
+        .ep-item { padding: 10px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; font-weight: bold; }
+        .ep-item:focus { outline: 2px solid var(--primary-red); background: #333; }
 
         .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
-        .btn-action { background: var(--primary-red); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-thumb { background: #333; }
+        .btn-action { background: var(--primary-red); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.85rem; }
     </style>
 </head>
 <body>
@@ -80,89 +82,114 @@
 <header>
     <div class="brand">ALAZRI TV</div>
     <div class="header-controls">
-        <button class="toggle-btn active" id="btn-hist" onclick="toggleRow('group-history', 'btn-hist')" tabindex="0">المتابعة</button>
-        <button class="toggle-btn active" id="btn-fav" onclick="toggleRow('group-favs', 'btn-fav')" tabindex="0">المفضلة</button>
-        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..." tabindex="0"></div>
+        <button class="min-btn" onclick="toggleMinimizeTop()" id="min-indicator"><i class="fas fa-chevron-up"></i> تصغير</button>
+        <button class="toggle-btn active" id="btn-hist" onclick="toggleRow('group-history', 'btn-hist')">المتابعة</button>
+        <button class="toggle-btn active" id="btn-fav" onclick="toggleRow('group-favs', 'btn-fav')">المفضلة</button>
+        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..." onfocus="ensureTopVisible()"></div>
     </div>
 </header>
 
-<div class="top-section" id="discovery">
-    <div class="row-group" id="group-history">
-        <div class="row-group-title">واصل المشاهدة</div>
-        <div id="content-history" style="display:flex;"></div>
+<div class="top-container">
+    <button class="scroll-btn s-right" onclick="scrollTop('right')"><i class="fas fa-chevron-right"></i></button>
+    <div class="top-section" id="discovery">
+        <div class="row-group" id="group-history"><div class="row-group-title">واصل المشاهدة</div><div id="content-history" style="display:flex;"></div></div>
+        <div class="row-group" id="group-favs"><div class="row-group-title">المفضلة</div><div id="content-favs" style="display:flex;"></div></div>
+        <div class="row-group" id="group-search" style="display:none;"><div class="row-group-title">نتائج البحث</div><div id="content-search" style="display:flex;"></div></div>
     </div>
-    <div class="row-group" id="group-favs">
-        <div class="row-group-title">المفضلة</div>
-        <div id="content-favs" style="display:flex;"></div>
-    </div>
-    <div class="row-group" id="group-search" style="display:none;">
-        <div class="row-group-title">نتائج البحث</div>
-        <div id="content-search" style="display:flex;"></div>
-    </div>
+    <button class="scroll-btn s-left" onclick="scrollTop('left')"><i class="fas fa-chevron-left"></i></button>
 </div>
 
-<div class="side-section">
-    <div class="side-title" id="series-title">قائمة الحلقات</div>
-    <button id="fav-btn" class="btn-action" style="display:none; width: 100%; margin-bottom:12px; font-size:0.8rem;" onclick="handleFavoriteAction()" tabindex="0">أضف للمفضلة</button>
-    <div id="episode-list"></div>
+<div class="side-container">
+    <button class="v-scroll" onclick="scrollSide('up')"><i class="fas fa-chevron-up"></i></button>
+    <div class="side-section" id="side-scroll-area">
+        <div class="side-title" id="series-title">القائمة</div>
+        <button id="fav-btn" class="btn-action" style="display:none; width: 100%; margin-bottom:10px;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
+        <div id="episode-list"></div>
+    </div>
+    <button class="v-scroll" onclick="scrollSide('down')"><i class="fas fa-chevron-down"></i></button>
 </div>
 
 <div class="middle-section">
     <div class="player-header" id="v-title">بانتظار الاختيار...</div>
-    
     <div class="video-container">
-        <video id="main-video" controls tabindex="0"></video>
+        <video id="main-video" controls></video>
         <div id="resume-ui" class="resume-overlay">
-            <h2 style="margin-bottom:5px;">إكمال المشاهدة؟</h2>
-            <p id="resume-msg" style="color:#aaa; margin-bottom:20px;"></p>
+            <h2 style="font-size:1.2rem;">إكمال المشاهدة؟</h2>
+            <p id="resume-msg" style="color:#aaa; font-size:0.9rem; margin-bottom:15px;"></p>
             <div>
-                <button class="btn-action" onclick="confirmResume(true)" tabindex="0">نعم، إكمال</button>
-                <button class="btn-action" style="background:#444; margin-right:10px;" onclick="confirmResume(false)" tabindex="0">البدء من جديد</button>
+                <button class="btn-action" onclick="confirmResume(true)">نعم</button>
+                <button class="btn-action" style="background:#444; margin-right:10px;" onclick="confirmResume(false)">من جديد</button>
             </div>
         </div>
     </div>
-
     <div class="player-footer" id="v-meta">
         <div id="meta-date">التاريخ: --</div>
-        <div id="meta-pos">الوقت المستقطع: --</div>
+        <div id="meta-pos">الموقف: --</div>
     </div>
 </div>
 
 <script>
-    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
+    var PROXY = url => "https://corsproxy.io/?" + encodeURIComponent(url);
     var BASE = "https://ak.sv";
     var state = { currentSeries: null, currentLink: null, savedPos: 0 };
     var video = document.getElementById('main-video');
 
+    // UI Controls
+    function toggleMinimizeTop() {
+        var top = document.getElementById('discovery');
+        var btn = document.getElementById('min-indicator');
+        top.classList.toggle('minimized');
+        if(top.classList.contains('minimized')) {
+            btn.innerHTML = '<i class="fas fa-chevron-down"></i> تكبير';
+        } else {
+            btn.innerHTML = '<i class="fas fa-chevron-up"></i> تصغير';
+        }
+    }
+
+    function ensureTopVisible() {
+        var top = document.getElementById('discovery');
+        if(top.classList.contains('minimized')) toggleMinimizeTop();
+    }
+
+    function scrollTop(dir) {
+        var el = document.getElementById('discovery');
+        el.scrollBy({ left: dir === 'right' ? 300 : -300, behavior: 'smooth' });
+    }
+
+    function scrollSide(dir) {
+        var el = document.getElementById('side-scroll-area');
+        el.scrollBy({ top: dir === 'down' ? 200 : -200, behavior: 'smooth' });
+    }
+
+    // Core Logic
     function getFavs() { return JSON.parse(localStorage.getItem('alazri_favs') || '[]'); }
     function getHist() { return JSON.parse(localStorage.getItem('alazri_hist') || '[]'); }
 
     function toggleRow(id, btnId) {
         var el = document.getElementById(id);
         var btn = document.getElementById(btnId);
+        ensureTopVisible();
         if(el.style.display === 'none') { el.style.display = 'inline-flex'; btn.classList.add('active'); }
         else { el.style.display = 'none'; btn.classList.remove('active'); }
     }
 
     function refreshTop() {
-        var h = getHist();
-        document.getElementById('content-history').innerHTML = h.slice(0, 10).map(function(i) {
-            return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(i).replace(/'/g, "&apos;") + ')\'><img src="'+i.img+'"><div class="card-label">'+i.title+'</div></div>';
-        }).join('');
-        
-        var f = getFavs();
-        document.getElementById('content-favs').innerHTML = f.map(function(i) {
-            return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(i).replace(/'/g, "&apos;") + ')\'><img src="'+i.img+'"><div class="card-label">'+i.title+'</div></div>';
-        }).join('');
+        document.getElementById('content-history').innerHTML = getHist().slice(0, 10).map(i => 
+            `<div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`
+        ).join('');
+        document.getElementById('content-favs').innerHTML = getFavs().map(i => 
+            `<div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`
+        ).join('');
     }
 
     async function startSearch(q) {
         if(!q) return;
+        ensureTopVisible();
         try {
             var res = await fetch(PROXY(BASE + "/search?q=" + q));
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
             var unique = new Map();
-            doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]').forEach(function(a) {
+            doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]').forEach(a => {
                 var img = a.querySelector('img');
                 if(img) {
                     var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
@@ -170,9 +197,9 @@
                 }
             });
             document.getElementById('group-search').style.display = 'inline-flex';
-            document.getElementById('content-search').innerHTML = Array.from(unique.values()).map(function(i) {
-                return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(i).replace(/'/g, "&apos;") + ')\'><img src="'+i.img+'"><div class="card-label">'+i.title+'</div></div>';
-            }).join('');
+            document.getElementById('content-search').innerHTML = Array.from(unique.values()).map(i => 
+                `<div class="card" tabindex="0" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`
+            ).join('');
         } catch(e) {}
     }
 
@@ -181,12 +208,11 @@
         document.getElementById('series-title').innerText = item.title;
         document.getElementById('fav-btn').style.display = 'block';
         updateFavBtnUI();
-
         try {
             var res = await fetch(PROXY(item.link));
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
             var uniqueEps = new Map();
-            doc.querySelectorAll('a[href*="/episode/"]').forEach(function(a) {
+            doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
                 var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
                 if(!uniqueEps.has(link)) uniqueEps.set(link, { title: a.innerText.trim(), link: link, img: item.img });
             });
@@ -195,10 +221,11 @@
     }
 
     function renderEpList(eps) {
-        document.getElementById('episode-list').innerHTML = eps.map(function(ep) {
+        document.getElementById('episode-list').innerHTML = eps.map(ep => {
             var active = state.currentLink === ep.link;
-            return '<div class="ep-item ' + (active ? 'active-ep' : '') + '" tabindex="0" onclick=\'fetchAndPlay(' + JSON.stringify(ep).replace(/'/g, "&apos;") + ')\'>' +
-                '<span>' + ep.title + '</span>' + (active ? '<i class="fas fa-play-circle"></i>' : '') + '</div>';
+            return `<div class="ep-item ${active?'active-ep':''}" tabindex="0" onclick='fetchAndPlay(${JSON.stringify(ep).replace(/'/g, "&apos;")})'>
+                <span>${ep.title}</span> ${active?'<i class="fas fa-play-circle"></i>':''}
+            </div>`;
         }).join('');
     }
 
@@ -208,46 +235,35 @@
         document.getElementById('resume-ui').style.display = 'none';
         video.pause();
 
-        // 1. Check History for Resume
-        var history = getHist();
-        var record = history.find(function(x) { return x.link === item.link; });
-        
+        var record = getHist().find(x => x.link === item.link);
         if(record && record.pos > 10) {
             state.savedPos = record.pos;
-            var d = new Date(record.ts).toLocaleDateString('ar-EG');
-            document.getElementById('meta-date').innerText = 'تاريخ المشاهدة: ' + d;
+            document.getElementById('meta-date').innerText = 'المشاهدة: ' + new Date(record.ts).toLocaleDateString('ar-EG');
             document.getElementById('meta-pos').innerText = 'توقفت عند: ' + Math.floor(record.pos/60) + ' دقيقة';
-            
             document.getElementById('resume-msg').innerText = "توقفت سابقاً عند الدقيقة " + Math.floor(record.pos/60);
             document.getElementById('resume-ui').style.display = 'flex';
-        } else {
-            document.getElementById('meta-date').innerText = 'التاريخ: --';
-            document.getElementById('meta-pos').innerText = 'الموقف: جديد';
         }
 
         try {
             var res = await fetch(PROXY(item.link));
-            var html = await res.text();
-            var m = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            var m = (await res.text()).match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
             if(m) {
                 var dl = await (await fetch(PROXY(item.link.replace('/episode/', '/download/'+m[1]+'/')))).text();
                 var mp4 = new DOMParser().parseFromString(dl, 'text/html').querySelector('a[href*=".mp4"]');
                 if(mp4) {
                     video.src = mp4.href;
-                    saveToHistory(item); // Update TS and add to top
+                    saveToHistory(item);
                     if(!record || record.pos <= 10) video.play();
-                    if(state.currentSeries) renderEpList([]); // trigger visual refresh
-                    loadEpisodes(state.currentSeries || item);
+                    if(state.currentSeries) loadEpisodes(state.currentSeries);
                 }
             }
         } catch(e) {}
     }
 
     function saveToHistory(item) {
-        var h = getHist().filter(function(x) { return x.link !== item.link; });
-        var record = getHist().find(function(x) { return x.link === item.link; });
-        var pos = record ? record.pos : 0;
-        h.unshift({ title: item.title, link: item.link, img: item.img, pos: pos, ts: Date.now() });
+        var h = getHist().filter(x => x.link !== item.link);
+        var existing = getHist().find(x => x.link === item.link);
+        h.unshift({ title: item.title, link: item.link, img: item.img, pos: existing?existing.pos:0, ts: Date.now() });
         localStorage.setItem('alazri_hist', JSON.stringify(h.slice(0, 20)));
         refreshTop();
     }
@@ -260,34 +276,29 @@
 
     function handleFavoriteAction() {
         var favs = getFavs();
-        var idx = favs.findIndex(function(f) { return f.link === state.currentSeries.link; });
+        var idx = favs.findIndex(f => f.link === state.currentSeries.link);
         if(idx > -1) favs.splice(idx, 1); else favs.push(state.currentSeries);
         localStorage.setItem('alazri_favs', JSON.stringify(favs));
         updateFavBtnUI(); refreshTop();
     }
 
     function updateFavBtnUI() {
-        var isF = getFavs().some(function(f) { return f.link === state.currentSeries.link; });
+        var isF = getFavs().some(f => f.link === state.currentSeries.link);
         document.getElementById('fav-btn').innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة";
         document.getElementById('fav-btn').style.background = isF ? "#444" : "#e50914";
     }
 
     function handleAction(i) { if(i.isSeries) loadEpisodes(i); else fetchAndPlay(i); }
 
-    // Auto-Save progress every 10 seconds
-    setInterval(function() {
+    setInterval(() => {
         if(state.currentLink && !video.paused) {
             var h = getHist();
-            var r = h.find(function(x) { return x.link === state.currentLink; });
-            if(r) {
-                r.pos = Math.floor(video.currentTime);
-                r.ts = Date.now();
-                localStorage.setItem('alazri_hist', JSON.stringify(h));
-            }
+            var r = h.find(x => x.link === state.currentLink);
+            if(r) { r.pos = Math.floor(video.currentTime); r.ts = Date.now(); localStorage.setItem('alazri_hist', JSON.stringify(h)); }
         }
     }, 10000);
 
-    document.getElementById('search-input').onkeydown = function(e) { if(e.key==='Enter') startSearch(e.target.value); };
+    document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
     window.onload = refreshTop;
 </script>
 </body>
