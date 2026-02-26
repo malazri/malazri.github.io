@@ -198,7 +198,7 @@
 
     async function fetchAndPlay(item) {
     state.currentLink = item.link; 
-    alert(item);
+    alert(item.link);
     document.getElementById('v-title').innerText = item.title;
     document.getElementById('resume-ui').style.display = 'none'; 
     video.pause();
