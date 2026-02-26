@@ -201,7 +201,7 @@
         document.getElementById('v-title').innerText = item.title;
         document.getElementById('resume-ui').style.display = 'none'; 
         video.pause();
-        video.src = ""; 
+        video.src = ""; // تصفير المشغل لضمان تحميل نظيف
     
         let record = null;
         if(state.user) {
@@ -226,21 +226,21 @@
             if(match && match[1]) {
                 const videoId = match[1];
     
-                // 2. الاستبدال الذكي:
-                // نبحث عن (/episode/ أو /movie/) ونستبدلها بـ (/download/ID/)
-                // الـ Regex التالي يضمن حذف الكلمة وما بعدها في الرابط الأصلي
-                var dlBase = item.link.includes('/movie/') ? '/movie/' : '/episode/';
-                var cleanDownloadUrl = item.link.replace(dlBase, '/download/' + videoId + '/') + (item.link.endsWith('/') ? '' : '/');
-                alert(cleanDownloadUrl);
+                // 2. بناء رابط التحميل الصافي (إزالة /movie/ أو /episode/ وما بعدهما)
+                // النتيجة المطلوبة دائماً: https://ak.sv/download/XXXX/
+                const cleanDownloadUrl = item.link.replace(/\/(movie|episode)\/.*$/, `/download/${videoId}/`);
     
-                // 3. جلب صفحة التحميل الصافية
-                var dlHtml = await (await fetch(PROXY(cleanDownloadUrl))).text();
-                alert(dlHtml);
-                // 4. استخراج رابط mp4 المباشر
-                var mp4Match = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
+                // 3. جلب صفحة التحميل
+                const dlRes = await fetch(PROXY(cleanDownloadUrl));
+                const dlHtml = await dlRes.text();
+                
+                // 4. استخراج رابط mp4 المباشر باستخدام Regex (أكثر دقة من DOMParser)
+                const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
                 
                 if(mp4Match && mp4Match[1]) {
                     let mp4Url = mp4Match[1];
+                    
+                    // تصحيح الرابط إذا كان نسبياً
                     if(mp4Url.startsWith('/')) mp4Url = BASE + mp4Url;
     
                     video.src = mp4Url; 
@@ -256,17 +256,19 @@
                         refreshTop();
                     }
     
+                    // تشغيل تلقائي إذا لم يكن هناك موقف محفوظ
                     if(!record || record.last_position <= 15) {
                         video.play().catch(e => console.log("Playback interaction required"));
                     }
                 } else {
-                    alert("لم يتم العثور على ملف الفيديو في صفحة التحميل");
+                    alert("تعذر استخراج رابط الفيديو المباشر من صفحة التحميل");
                 }
             } else {
-                alert("فشل استخراج معرف الفيديو (ID) من الصفحة");
+                alert("فشل استخراج معرف التحميل (ID) من الصفحة");
             }
         } catch (err) {
             console.error("Fetch error:", err);
+            alert("حدث خطأ أثناء محاولة جلب الفيديو");
         }
     }
 
