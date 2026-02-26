@@ -65,8 +65,9 @@
         <button class="top-toggle" id="manual-toggle-btn" onclick="toggleTopPanel()" title="إظهار/إخفاء القسم العلوي">
             <i class="fas fa-minus"></i>
         </button>
-        <button class="btn-google" id="login-btn" onclick="loginWithGoogle()">دخول</button>
+        <button class="btn-google" id="login-btn" onclick="loginWithGoogle()"><img src="https://www.google.com/favicon.ico" width="14"> دخول</button>
         <button class="btn-logout" id="logout-btn" onclick="handleLogout()" style="display:none;">خروج</button>
+        <button class="toggle-btn active" id="btn-fav" onclick="toggleRowManual('group-favs', 'btn-fav')">المفضلة</button>
         <div class="search-box" style="background:#222; border-radius:4px; padding:2px 10px;">
             <input type="text" id="search-input" placeholder="بحث..." style="background:none; border:none; color:white; outline:none; width: 120px;">
         </div>
