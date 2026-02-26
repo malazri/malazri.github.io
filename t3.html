@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.23</title>
+    <title>AlAzri TV v1.24</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -36,6 +36,11 @@
         .side-container.has-content { display: flex; }
         .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
         
+        /* ميزة التصغير الجديدة */
+        .side-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .toggle-list-btn { background: none; border: 1px solid #444; color: var(--primary-red); cursor: pointer; padding: 2px 8px; border-radius: 4px; display: none; }
+        .episode-list-wrapper.minimized { display: none; }
+
         .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; }
         #main-video { width: 100%; flex: 1; background: #000; }
         .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
@@ -55,7 +60,9 @@
             header { flex-wrap: wrap; height: auto; padding: 10px; }
             .main-layout { display: flex; flex-direction: column; height: auto; }
             .middle-section { order: 1; height: 280px; }
-            .side-container { order: 2; height: 350px; border-left: none; }
+            .side-container { order: 2; height: auto; border-left: none; padding-bottom: 20px; }
+            .side-section { overflow-y: visible; }
+            .toggle-list-btn { display: block; } /* تظهر فقط في الجوال */
             #top-cont { order: 3; }
             .scroll-btn { display: none !important; }
         }
@@ -85,9 +92,14 @@
 <div class="main-layout">
     <div class="side-container" id="side-panel">
         <div class="side-section" id="side-area">
-            <div id="series-title" style="color:var(--primary-red); font-weight:bold; margin-bottom:10px;">القائمة</div>
-            <button id="fav-btn" style="display:none; width: 100%; margin-bottom:10px; background:var(--primary-red); color:white; border:none; padding:8px; border-radius:4px;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
-            <div id="episode-list"></div>
+            <div class="side-header">
+                <div id="series-title" style="color:var(--primary-red); font-weight:bold;">القائمة</div>
+                <button class="toggle-list-btn" onclick="toggleEpisodeList()" id="list-plus-icon"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="episode-list-wrapper" id="ep-wrapper">
+                <button id="fav-btn" style="display:none; width: 100%; margin-bottom:10px; background:var(--primary-red); color:white; border:none; padding:8px; border-radius:4px;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
+                <div id="episode-list"></div>
+            </div>
         </div>
     </div>
     <div class="middle-section">
@@ -132,6 +144,13 @@
     }
     function scrollXElem(v) { document.getElementById('discovery').scrollBy({left: v, behavior: 'smooth'}); }
 
+    function toggleEpisodeList() {
+        const wrapper = document.getElementById('ep-wrapper');
+        const icon = document.getElementById('list-plus-icon');
+        const isMin = wrapper.classList.toggle('minimized');
+        icon.innerHTML = isMin ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    }
+
     async function checkUser() {
         const { data: { session } } = await db.auth.getSession();
         if(session?.user) {
@@ -142,7 +161,7 @@
             setInterval(syncProgressToDB, 10000);
         }
     }
-    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google' }); }
+    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
     async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
     async function startSearch(q) {
@@ -190,6 +209,10 @@
         });
         if(eps.size > 0) {
             document.getElementById('side-panel').classList.add('has-content');
+            // تأكد من فتح القائمة عند تحميل مسلسل جديد
+            document.getElementById('ep-wrapper').classList.remove('minimized');
+            document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
+            
             document.getElementById('episode-list').innerHTML = Array.from(eps).map(([l, t]) => 
                 `<div class="ep-item ${state.currentLink===l?'active-ep':''}" onclick='fetchAndPlay(${JSON.stringify({title:t, link:l, img:item.img}).replace(/'/g, "&apos;")})'>${t}</div>`
             ).join('');
@@ -218,33 +241,27 @@
         }
         
         try {
-            // 1. جلب الصفحة الأصلية لاستخراج المعرف (ID) من رابط go.ak.sv/link/XXXX
+            // 1. جلب الصفحة لاستخراج الـ ID
             const response = await fetch(PROXY(item.link));
             const html = await response.text();
             const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
             
             if(idMatch && idMatch[1]) {
                 const videoId = idMatch[1];
-                
-                // 2. استخراج ما بعد /movie/ أو /episode/ من الرابط الأصلي
-                // مثال: لو الرابط .../episode/1/ سنأخذ "1/"
+                // 2. بناء رابط التحميل: وضع الـ ID بعد كلمة download مباشرة والحفاظ على باقي المسار
+                // مثال: /episode/1/ -> /download/ID/1/
                 const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
+                const downloadPageUrl = BASE + "/download/" + videoId + "/" + pathSuffix;
 
-                // 3. بناء الرابط الجديد: /download/ + ID + / + التكملة
-                const finalDownloadUrl = BASE + "/download/" + videoId + "/" + pathSuffix;
-                alert(finalDownloadUrl);
-
-                // 4. جلب صفحة التحميل النهائية
-                const dlRes = await fetch(PROXY(finalDownloadUrl));
+                const dlRes = await fetch(PROXY(downloadPageUrl));
                 const dlHtml = await dlRes.text();
                 
-                // 5. استخراج رابط mp4 المباشر باستخدام Regex لضمان الدقة
+                // 3. استخراج mp4 باستخدام Regex
                 const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
                 
                 if(mp4Match && mp4Match[1]) {
                     let mp4Url = mp4Match[1];
                     if(mp4Url.startsWith('/')) mp4Url = BASE + mp4Url;
-
                     video.src = mp4Url; 
                     
                     if(state.user) {
@@ -257,19 +274,10 @@
                         }, { onConflict: 'user_id, episode_link' });
                         refreshTop();
                     }
-
-                    if(!record || record.last_position <= 15) {
-                        video.play().catch(e => console.log("Playback interaction required"));
-                    }
-                } else {
-                    alert("تعذر العثور على رابط mp4 في صفحة التحميل");
-                }
-            } else {
-                alert("فشل استخراج معرف الفيديو (ID) من الصفحة");
+                    if(!record || record.last_position <= 15) video.play().catch(e => {});
+                } else { alert("لم يتم العثور على ملف الفيديو"); }
             }
-        } catch (err) {
-            console.error("Fetch error:", err);
-        }
+        } catch (err) { console.error(err); }
     }
 
     async function syncProgressToDB() {
