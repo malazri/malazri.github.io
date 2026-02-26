@@ -229,10 +229,9 @@
                 // 2. الاستبدال الذكي:
                 // نبحث عن (/episode/ أو /movie/) ونستبدلها بـ (/download/ID/)
                 // الـ Regex التالي يضمن حذف الكلمة وما بعدها في الرابط الأصلي
-                const cleanDownloadUrl =  item.link.includes('/movie/') ? item.link.replace('/movie/', '/download/') : item.link.replace('/episode/', '/download/');
-                if(!cleanDownloadUrl.endsWith('/')) dlUrl += '/';
-                var finalDl = cleanDownloadUrl.includes('/download/') ? cleanDownloadUrl.split('/download/')[0] + '/download/' + videoId + '/' : cleanDownloadUrl;
-                alert(finalDl);
+                var dlBase = item.link.includes('/movie/') ? '/movie/' : '/episode/';
+                var cleanDownloadUrl = item.link.replace(dlBase, '/download/') + (item.link.endsWith('/') ? '' : '/');
+                alert(cleanDownloadUrl);
     
                 // 3. جلب صفحة التحميل الصافية
                 const dlRes = await fetch(PROXY(cleanDownloadUrl));
