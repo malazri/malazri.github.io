@@ -218,6 +218,7 @@
             if(m) {
                 // بناء رابط التحميل الموحد /download/ID/
                 var dlUrl = BASE + "/download/" + m[1] + "/";
+                alert(dlUrl);
                 var dlHtml = await (await fetch(PROXY(dlUrl))).text();
                 var mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
                 
