@@ -238,7 +238,7 @@
                 const dlHtml = await dlRes.text();
                 
                 // 4. استخراج رابط mp4 المباشر
-                const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
+                const mp4Match = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
                 
                 if(mp4Match && mp4Match[1]) {
                     let mp4Url = mp4Match[1];
