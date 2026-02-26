@@ -197,80 +197,39 @@
     }
 
     async function fetchAndPlay(item) {
-    state.currentLink = item.link; 
-    document.getElementById('v-title').innerText = item.title;
-    document.getElementById('resume-ui').style.display = 'none'; 
-    video.pause();
-    video.src = ""; // تنظيف المشغل قبل التحميل الجديد
+        state.currentLink = item.link;
+        document.getElementById('v-title').innerText = item.title;
+        document.getElementById('resume-ui').style.display = 'none';
+        video.pause(); video.src = "";
 
-    let record = null;
-    if(state.user) {
-        const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', item.link).maybeSingle();
-        record = data;
-    }
-
-    if(record && record.last_position > 15) {
-        state.savedPos = record.last_position;
-        document.getElementById('meta-date').innerText = new Date(record.updated_at).toLocaleString('ar-EG');
-        document.getElementById('meta-pos').innerText = fmtTime(record.last_position);
-        document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(record.last_position);
-        document.getElementById('resume-ui').style.display = 'flex';
-    }
-    
-    try {
-        // 1. جلب صفحة الفيلم/الحلقة للحصول على معرف التحميل
-        var pageRes = await fetch(PROXY(item.link));
-        var pageHtml = await pageRes.text();
-        
-        // البحث عن المعرف البرمجي للتحميل (مثلاً: go.ak.sv/link/XXXX)
-        var m = pageHtml.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-        
-        if(m && m[1]) {
-            // 2. بناء رابط التحميل الموحد بناءً على طلبك /download/ID/
-            var finalDl = BASE + "/download/" + m[1] + "/";
-
-            // 3. جلب صفحة التحميل
-            var dlRes = await fetch(PROXY(finalDl));
-            var dlHtml = await dlRes.text();
-            
-            // 4. البحث عن رابط mp4 (باستخدام Regex لضمان الدقة)
-            // نبحث عن أي نص يبدأ بـ http وينتهي بـ .mp4
-            var mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
-            
-            if(mp4Match && mp4Match[1]) {
-                var finalMp4Url = mp4Match[1];
-                
-                // إذا كان الرابط نسبياً، نقوم بتحويله إلى رابط كامل
-                if(finalMp4Url.startsWith('/')) finalMp4Url = BASE + finalMp4Url;
-
-                video.src = finalMp4Url; 
-                
-                if(state.user) {
-                    await db.from('watch_history').upsert({ 
-                        user_id: state.user.id, 
-                        episode_link: item.link, 
-                        title: item.title, 
-                        img: item.img, 
-                        updated_at: new Date() 
-                    }, { onConflict: 'user_id, episode_link' });
-                    refreshTop();
-                }
-
-                // تشغيل تلقائي إذا لم يكن هناك موقف محفوظ
-                if(!record || record.last_position <= 15) {
-                    video.play().catch(e => console.log("Autoplay prevented"));
-                }
-            } else {
-                console.error("MP4 link not found in download page");
-                alert("تعذر العثور على رابط الفيديو المباشر");
+        if(state.user) {
+            const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', item.link).maybeSingle();
+            if(data && data.last_position > 15) {
+                state.savedPos = data.last_position;
+                document.getElementById('meta-date').innerText = new Date(data.updated_at).toLocaleString('ar-EG');
+                document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(data.last_position);
+                document.getElementById('resume-ui').style.display = 'flex';
             }
-        } else {
-            alert("فشل استخراج معرف التحميل من الصفحة");
         }
-    } catch (err) {
-        console.error("Error fetching video:", err);
+
+        try {
+            var pageHtml = await (await fetch(PROXY(item.link))).text();
+            var m = pageHtml.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            if(m) {
+                // بناء رابط التحميل الموحد /download/ID/
+                var dlUrl = BASE + "/download/" + m[1] + "/";
+                var dlHtml = await (await fetch(PROXY(dlUrl))).text();
+                var mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
+                
+                if(mp4Match) {
+                    var finalUrl = mp4Match[1].startsWith('/') ? BASE + mp4Match[1] : mp4Match[1];
+                    video.src = finalUrl;
+                    if(!state.savedPos || state.savedPos <= 15) video.play();
+                    if(state.user) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: item.link, title: item.title, img: item.img, updated_at: new Date() });
+                }
+            }
+        } catch(e) { console.error(e); }
     }
-}
 
     async function syncProgressToDB() {
         if(state.user && state.currentLink && !video.paused) {
