@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.26</title>
+    <title>AlAzri TV v1.27</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -11,16 +11,20 @@
         * { box-sizing: border-box; }
         body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        header { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; flex-shrink: 0; z-index: 1000; }
+        header { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; flex-shrink: 0; z-index: 1001; }
         .brand { color: var(--primary-red); font-size: 1.3rem; font-weight: 900; }
         .header-controls { display: flex; gap: 10px; align-items: center; }
         
-        .top-toggle { background: #222; color: white; border: 1px solid #444; padding: 5px 12px; border-radius: 4px; cursor: pointer; }
-        #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; transition: all 0.3s; overflow: hidden; max-height: 250px; opacity: 1; }
-        #top-cont.hidden { max-height: 0; opacity: 0; border-bottom: none; }
+        /* زر التحكم في القسم العلوي */
+        .top-toggle { background: #222; color: white; border: 1px solid #444; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .top-toggle:hover { background: var(--primary-red); border-color: var(--primary-red); }
 
-        .top-section { display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
-        .top-section::-webkit-scrollbar { display: none; }
+        #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden; max-height: 250px; opacity: 1; z-index: 1000; }
+        #top-cont.hidden { max-height: 0; opacity: 0; border-bottom: none; pointer-events: none; }
+
+        .top-section { display: flex; gap: 15px; padding: 15px 45px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+        .top-section::-webkit-scrollbar { height: 4px; }
+        .top-section::-webkit-scrollbar-thumb { background: #333; }
 
         .main-layout { display: grid; grid-template-columns: 320px 1fr; flex: 1; overflow: hidden; }
         .side-container { background: var(--panel-bg); border-left: 1px solid #222; display: none; flex-direction: column; overflow: hidden; }
@@ -31,23 +35,25 @@
 
         .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .player-wrapper { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #000; }
-        #main-video { width: 100%; height: 100%; max-height: 100%; object-fit: contain; }
+        #main-video { width: 100%; height: 100%; max-height: 100%; object-fit: contain; background: #000; }
 
         .player-header { padding: 10px 20px; background: #000; border-bottom: 1px solid #111; color: var(--primary-red); font-weight: bold; }
         .player-footer { padding: 10px 20px; background: #000; border-top: 1px solid #111; font-size: 0.75rem; color: #666; display: flex; justify-content: space-between; }
 
-        .ep-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #1a1a1a; margin-bottom: 6px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #ccc; }
+        .ep-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #1a1a1a; margin-bottom: 6px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; color: #ccc; transition: 0.2s; }
+        .ep-item:hover { background: #252525; }
         .ep-item.active-ep { background: #300; border-right: 4px solid var(--primary-red); color: white; }
-        .ep-progress { font-size: 0.7rem; color: #888; }
+        .ep-progress { font-size: 0.7rem; color: #888; font-family: monospace; }
 
         .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; }
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.6rem; text-align: center; padding: 4px; }
 
         @media (max-width: 768px) {
+            body { overflow-y: auto; height: auto; }
             .main-layout { display: flex; flex-direction: column; }
-            .middle-section { height: 250px; }
-            .side-container { max-height: 300px; }
+            .middle-section { height: 280px; }
+            .side-container { max-height: 400px; }
         }
     </style>
 </head>
@@ -56,10 +62,14 @@
 <header>
     <div class="brand">ALAZRI TV</div>
     <div class="header-controls">
-        <button class="top-toggle" id="toggle-top-btn" onclick="manualToggleTop()"><i class="fas fa-minus"></i></button>
+        <button class="top-toggle" id="manual-toggle-btn" onclick="toggleTopPanel()" title="إظهار/إخفاء القسم العلوي">
+            <i class="fas fa-minus"></i>
+        </button>
         <button class="btn-google" id="login-btn" onclick="loginWithGoogle()">دخول</button>
         <button class="btn-logout" id="logout-btn" onclick="handleLogout()" style="display:none;">خروج</button>
-        <div class="search-box" style="background:#222; border-radius:4px; padding:2px 8px;"><input type="text" id="search-input" placeholder="بحث..." style="background:none; border:none; color:white; outline:none;"></div>
+        <div class="search-box" style="background:#222; border-radius:4px; padding:2px 10px;">
+            <input type="text" id="search-input" placeholder="بحث..." style="background:none; border:none; color:white; outline:none; width: 120px;">
+        </div>
     </div>
 </header>
 
@@ -73,25 +83,25 @@
 <div class="main-layout">
     <div class="side-container" id="side-panel">
         <div class="side-section">
-            <div id="series-title" style="color:var(--primary-red); font-weight:bold; margin-bottom:10px;"></div>
+            <div id="series-title" style="color:var(--primary-red); font-weight:bold; margin-bottom:10px; font-size: 1.1rem;"></div>
             <button id="fav-btn" style="display:none; width:100%; margin-bottom:15px; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer; font-weight:bold;" onclick="handleFavoriteAction()"></button>
             <div id="episode-list"></div>
         </div>
     </div>
     <div class="middle-section">
-        <div class="player-header" id="v-title">اختر فيديو</div>
+        <div class="player-header" id="v-title">اختر فيديو للبدء...</div>
         <div class="player-wrapper">
             <video id="main-video" controls></video>
-            <div id="resume-ui" style="position:absolute; background:rgba(0,0,0,0.95); padding:20px; display:none; flex-direction:column; align-items:center; border:1px solid var(--primary-red); z-index:10;">
-                <p id="resume-msg" style="margin-bottom:15px;"></p>
-                <div>
-                    <button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px;">إكمال</button>
-                    <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px;">إعادة</button>
+            <div id="resume-ui" style="position:absolute; background:rgba(0,0,0,0.95); padding:25px; display:none; flex-direction:column; align-items:center; border:2px solid var(--primary-red); z-index:100; border-radius:8px;">
+                <p id="resume-msg" style="margin-bottom:20px; font-weight:bold;"></p>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:10px 25px; border-radius:4px; cursor:pointer;">إكمال المشاهدة</button>
+                    <button onclick="confirmResume(false)" style="background:#333; color:white; border:none; padding:10px 25px; border-radius:4px; cursor:pointer;">البدء من جديد</button>
                 </div>
             </div>
         </div>
         <div class="player-footer">
-            <div>التاريخ: <span id="meta-date">--</span></div>
+            <div>آخر تحديث: <span id="meta-date">--</span></div>
             <div>الموقف المحفوظ: <span id="meta-pos">--</span></div>
         </div>
     </div>
@@ -109,9 +119,12 @@
 
     function fmtTime(s) { if(!s || isNaN(s)) return ""; let m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
 
-    function manualToggleTop() {
-        const isHidden = document.getElementById('top-cont').classList.toggle('hidden');
-        document.getElementById('toggle-top-btn').innerHTML = isHidden ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    // التحكم اليدوي في القسم العلوي
+    function toggleTopPanel() {
+        const top = document.getElementById('top-cont');
+        const btn = document.getElementById('manual-toggle-btn');
+        const isHidden = top.classList.toggle('hidden');
+        btn.innerHTML = isHidden ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
     }
 
     async function checkUser() {
@@ -128,22 +141,15 @@
 
     async function loadUserHistory() {
         if(!state.user) return;
-        const { data } = await db.from('watch_history').select('episode_link, last_position').eq('user_id', state.user.id);
+        const { data } = await db.from('watch_history').select('episode_link, last_position, updated_at').eq('user_id', state.user.id);
         state.history = data || [];
     }
 
-    async function refreshTop() {
-        if(!state.user) return;
-        const { data } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
-        state.favs = data ? data.map(f => f.series_data) : [];
-        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
-    }
-
     async function handleAction(i) {
-        state.currentSeries = i; // حفظ العمل الحالي (سواء فيلم أو مسلسل) لدعم المفضلة
+        state.currentSeries = i;
         if(i.link.includes('/movie/')) {
             document.getElementById('side-panel').classList.add('has-content');
-            document.getElementById('episode-list').innerHTML = ""; // الأفلام لا تحتوي حلقات
+            document.getElementById('episode-list').innerHTML = "";
             document.getElementById('series-title').innerText = i.title;
             document.getElementById('fav-btn').style.display = 'block';
             updateFavBtnUI();
@@ -185,8 +191,13 @@
     }
 
     async function fetchAndPlay(item) {
-        document.getElementById('top-cont').classList.add('hidden');
-        document.getElementById('toggle-top-btn').innerHTML = '<i class="fas fa-plus"></i>';
+        // إخفاء تلقائي عند التشغيل
+        const top = document.getElementById('top-cont');
+        if (!top.classList.contains('hidden')) {
+            top.classList.add('hidden');
+            document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
+        }
+
         state.currentLink = item.link;
         document.getElementById('v-title').innerText = item.title;
         video.pause(); video.src = "";
@@ -195,6 +206,8 @@
         const hist = state.history.find(h => h.episode_link === item.link);
         if(hist && hist.last_position > 15) {
             state.savedPos = hist.last_position;
+            document.getElementById('meta-date').innerText = new Date(hist.updated_at).toLocaleString('ar-EG');
+            document.getElementById('meta-pos').innerText = fmtTime(hist.last_position);
             document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(hist.last_position);
             document.getElementById('resume-ui').style.display = 'flex';
         }
@@ -209,12 +222,18 @@
                 const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
                 if(mp4Match) {
                     video.src = mp4Match[1].startsWith('/') ? BASE + mp4Match[1] : mp4Match[1];
-                    if(!hist || hist.last_position <= 15) video.play();
-                    // تحديث القائمة لإظهار الحلقة النشطة والوقت
-                    if(state.currentSeries && !item.link.includes('/movie/')) loadEpisodes(state.currentSeries);
+                    if(!hist || hist.last_position <= 15) video.play().catch(e => {});
+                    if(state.currentSeries && !item.link.includes('/movie/')) renderEpisodeListAfterUpdate();
                 }
             }
         } catch(e) {}
+    }
+
+    async function renderEpisodeListAfterUpdate() {
+        // وظيفة مساعدة لإعادة رسم القائمة دون جلب البيانات من الموقع مرة أخرى
+        if(!state.currentSeries) return;
+        await loadUserHistory();
+        loadEpisodes(state.currentSeries);
     }
 
     async function syncProgressToDB() {
@@ -222,10 +241,16 @@
             const pos = Math.floor(video.currentTime);
             if(pos > 5) {
                 await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentLink, last_position: pos, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
-                await loadUserHistory();
                 document.getElementById('meta-pos').innerText = fmtTime(pos);
             }
         }
+    }
+
+    async function refreshTop() {
+        if(!state.user) return;
+        const { data } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
+        state.favs = data ? data.map(f => f.series_data) : [];
+        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
     }
 
     async function handleFavoriteAction() {
