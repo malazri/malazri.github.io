@@ -54,6 +54,26 @@
         .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; vertical-align: top; }
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
+
+.load-more-card { 
+    display: inline-flex; 
+    min-width: 60px; 
+    height: var(--card-h); 
+    background: #222; 
+    border: 2px dashed #444; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    align-items: center; 
+    justify-content: center; 
+    margin-left: 12px; 
+    color: #e50914; /* لون أحمر */
+    font-size: 2rem; 
+    transition: 0.2s; 
+}
+.load-more-card:hover { 
+    background: #333; 
+    border-color: #e50914; 
+}
         
         .ep-item { display: flex; justify-content: space-between; padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: #ccc; }
         .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
@@ -136,7 +156,7 @@
     const db = supabase.createClient(SB_URL, SB_KEY);
     var PROXY = url => "https://corsproxy.io/?" + encodeURIComponent(url);
     var BASE = "https://ak.sv";
-    var state = { user: null, currentSeries: null, currentLink: null, savedPos: 0, favs: [], history: [] };
+    var state = { user: null, currentSeries: null, currentLink: null, savedPos: 0, favs: [], history: [], searchPage: 1 // لتتبع الصفحة الحالية };
     var video = document.getElementById('main-video');
 
     function fmtTime(s) { if(!s || isNaN(s)) return "00:00"; var m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
@@ -188,29 +208,64 @@
     async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
     async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
-    async function startSearch(q) {
-        if(!q) return;
-        document.getElementById('group-favs').style.display = 'none';
-        document.getElementById('btn-fav').classList.remove('active');
+    async function startSearch(q, append = false) {
+    if(!q) return;
+    ensureTopVisible(); // دالة للتأكد من أن قسم البحث مفتوح
+
+    if(!append) { 
+        // إذا كان بحثاً جديداً، نصفر الصفحة والنتائج
+        state.searchQuery = q; 
+        state.searchPage = 1;
         document.getElementById('content-search').innerHTML = "";
-        document.getElementById('group-search').style.display = 'inline-flex';
-        try {
-            var res = await fetch(PROXY(`${BASE}/search?q=${q}`));
-            var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-            var unique = new Map();
-            doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]').forEach(a => {
-                var img = a.querySelector('img');
-                if(img) {
-                    var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
-                }
-            });
-            unique.forEach(i => {
-                document.getElementById('content-search').innerHTML += `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`;
-            });
-            setTimeout(updateScrollState, 500);
-        } catch(e) {}
+        // إخفاء الأقسام الأخرى (اختياري حسب تصميمك)
+        ['group-history','group-favs'].forEach(id=>document.getElementById(id).style.display='none');
     }
+    
+    try {
+        // طلب الصفحة المحددة من الموقع
+        var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var unique = new Map();
+        var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
+        
+        items.forEach(a => {
+            var img = a.querySelector('img');
+            if(img) {
+                var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
+            }
+        });
+
+        // إزالة زر الـ (+) القديم قبل إضافة النتائج الجديدة
+        var plus = document.getElementById('plus-btn');
+        if(plus) plus.remove();
+
+        var container = document.getElementById('content-search');
+        // تحويل النتائج إلى HTML
+        var html = Array.from(unique.values()).map(i => `
+            <div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+                <img src="${i.img}">
+                <div class="card-label">${i.title}</div>
+            </div>
+        `).join('');
+
+        container.innerHTML += html; // إضافة النتائج الجديدة للقديمة
+
+        // إضافة زر الـ (+) في نهاية الصف إذا وجدت نتائج
+        if(items.length > 0) {
+            container.innerHTML += `
+                <div id="plus-btn" class="load-more-card" onclick="loadNextPage()">
+                    <i class="fas fa-plus"></i>
+                </div>`;
+        }
+
+        document.getElementById('group-search').style.display = 'inline-flex';
+        setTimeout(updateAllScrollStates, 350); // تحديث أزرار التمرير (الأسهم)
+    } catch(e) {
+        console.error("خطأ في جلب الصفحة:", e);
+    }
+}
+
 
     async function handleAction(i) {
         state.currentSeries = i;
@@ -289,7 +344,7 @@
                 const dlRes = await fetch(PROXY(downloadPageUrl));
                 const dlHtml = await dlRes.text();
                 const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
-                
+                alert(mp4Match[1]);
                 if(mp4Match) {
                     video.src = mp4Match[1].startsWith('/') ? BASE + mp4Match[1] : mp4Match[1];
                     if(!hist || hist.last_position <= 15) video.play().catch(e => {});
@@ -344,6 +399,11 @@
 
     function confirmResume(y) { document.getElementById('resume-ui').style.display = 'none'; if(y) video.currentTime = state.savedPos; video.play(); }
     function toggleRowManual(id, btnId) { var el = document.getElementById(id); el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none'; document.getElementById(btnId).classList.toggle('active'); setTimeout(updateScrollState, 100); }
+
+function loadNextPage() {
+    state.searchPage++; // زيادة رقم الصفحة
+    startSearch(state.searchQuery, true); // استدعاء البحث مع خاصية الـ append
+}
 
     document.getElementById('discovery').onscroll = updateScrollState;
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
