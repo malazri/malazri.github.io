@@ -201,14 +201,14 @@
         document.getElementById('v-title').innerText = item.title;
         document.getElementById('resume-ui').style.display = 'none'; 
         video.pause();
-        video.src = ""; // تصفير المشغل لضمان تحميل نظيف
-    
+        video.src = ""; 
+
         let record = null;
         if(state.user) {
             const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', item.link).maybeSingle();
             record = data;
         }
-    
+
         if(record && record.last_position > 15) {
             state.savedPos = record.last_position;
             document.getElementById('meta-date').innerText = new Date(record.updated_at).toLocaleString('ar-EG');
@@ -218,31 +218,33 @@
         }
         
         try {
-            // 1. جلب الصفحة الأصلية لاستخراج المعرف (ID)
+            // 1. جلب الصفحة الأصلية لاستخراج المعرف (ID) من رابط go.ak.sv/link/XXXX
             const response = await fetch(PROXY(item.link));
             const html = await response.text();
-            const match = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
             
-            if(match && match[1]) {
-                const videoId = match[1];
-    
-                // 2. بناء رابط التحميل الصافي (إزالة /movie/ أو /episode/ وما بعدهما)
-                // النتيجة المطلوبة دائماً: https://ak.sv/download/XXXX/
-                const cleanDownloadUrl = item.link.replace(/\/(movie|episode)\/.*$/, `/download/${videoId}/`);
-    
-                // 3. جلب صفحة التحميل
-                const dlRes = await fetch(PROXY(cleanDownloadUrl));
+            if(idMatch && idMatch[1]) {
+                const videoId = idMatch[1];
+                
+                // 2. استخراج ما بعد /movie/ أو /episode/ من الرابط الأصلي
+                // مثال: لو الرابط .../episode/1/ سنأخذ "1/"
+                const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
+
+                // 3. بناء الرابط الجديد: /download/ + ID + / + التكملة
+                const finalDownloadUrl = BASE + "/download/" + videoId + "/" + pathSuffix;
+                alert(finalDownloadUrl);
+
+                // 4. جلب صفحة التحميل النهائية
+                const dlRes = await fetch(PROXY(finalDownloadUrl));
                 const dlHtml = await dlRes.text();
                 
-                // 4. استخراج رابط mp4 المباشر باستخدام Regex (أكثر دقة من DOMParser)
+                // 5. استخراج رابط mp4 المباشر باستخدام Regex لضمان الدقة
                 const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i) || dlHtml.match(/'([^']+\.mp4[^']*)'/i);
                 
                 if(mp4Match && mp4Match[1]) {
                     let mp4Url = mp4Match[1];
-                    
-                    // تصحيح الرابط إذا كان نسبياً
                     if(mp4Url.startsWith('/')) mp4Url = BASE + mp4Url;
-    
+
                     video.src = mp4Url; 
                     
                     if(state.user) {
@@ -255,20 +257,18 @@
                         }, { onConflict: 'user_id, episode_link' });
                         refreshTop();
                     }
-    
-                    // تشغيل تلقائي إذا لم يكن هناك موقف محفوظ
+
                     if(!record || record.last_position <= 15) {
                         video.play().catch(e => console.log("Playback interaction required"));
                     }
                 } else {
-                    alert("تعذر استخراج رابط الفيديو المباشر من صفحة التحميل");
+                    alert("تعذر العثور على رابط mp4 في صفحة التحميل");
                 }
             } else {
-                alert("فشل استخراج معرف التحميل (ID) من الصفحة");
+                alert("فشل استخراج معرف الفيديو (ID) من الصفحة");
             }
         } catch (err) {
             console.error("Fetch error:", err);
-            alert("حدث خطأ أثناء محاولة جلب الفيديو");
         }
     }
 
