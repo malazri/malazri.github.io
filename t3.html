@@ -236,7 +236,7 @@
                 // 3. جلب صفحة التحميل الصافية
                 const dlRes = await fetch(PROXY(cleanDownloadUrl));
                 const dlHtml = await dlRes.text();
-                navigator.clipboard.writeText(dlHtml);
+                alert(dlHtml);
                 // 4. استخراج رابط mp4 المباشر
                 const mp4Match = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
                 
