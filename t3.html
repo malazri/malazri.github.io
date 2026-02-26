@@ -230,7 +230,7 @@
                 // نبحث عن (/episode/ أو /movie/) ونستبدلها بـ (/download/ID/)
                 // الـ Regex التالي يضمن حذف الكلمة وما بعدها في الرابط الأصلي
                 var dlBase = item.link.includes('/movie/') ? '/movie/' : '/episode/';
-                var cleanDownloadUrl = item.link.replace(dlBase, '/download/' + videoId) + (item.link.endsWith('/') ? '' : '/');
+                var cleanDownloadUrl = item.link.replace(dlBase, '/download/' + videoId + '/') + (item.link.endsWith('/') ? '' : '/');
                 alert(cleanDownloadUrl);
     
                 // 3. جلب صفحة التحميل الصافية
