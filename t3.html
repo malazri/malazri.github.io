@@ -230,6 +230,7 @@
                 // نبحث عن (/episode/ أو /movie/) ونستبدلها بـ (/download/ID/)
                 // الـ Regex التالي يضمن حذف الكلمة وما بعدها في الرابط الأصلي
                 const cleanDownloadUrl = item.link.replace(/\/(episode|movie)\/.*$/, `/download/${videoId}/`);
+                alert(cleanDownloadUrl);
     
                 // 3. جلب صفحة التحميل الصافية
                 const dlRes = await fetch(PROXY(cleanDownloadUrl));
