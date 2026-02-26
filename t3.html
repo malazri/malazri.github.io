@@ -233,19 +233,64 @@
 
     async function refreshTop() {
         if(!state.user) return;
-        const { data: hist } = await db.from('watch_history').select('*').eq('user_id', state.user.id).order('updated_at', { ascending: false }).limit(15);
+
+        // 1. جلب سجل المشاهدة - مرتب من الأحدث للأقدم
+        const { data: hist, error: hErr } = await db.from('watch_history')
+            .select('*')
+            .eq('user_id', state.user.id)
+            .order('updated_at', { ascending: false })
+            .limit(15);
+
+        if (hErr) console.error("Error fetching history:", hErr);
+
+        // 2. عرض سجل المشاهدة (واصل المشاهدة)
+        const historyContainer = document.getElementById('content-history');
+        if (hist && hist.length > 0) {
+            historyContainer.innerHTML = hist.map(item => {
+                // تأمين البيانات لتجنب undefined
+                const title = item.title || "عنوان غير معروف";
+                const img = item.img || "https://via.placeholder.com/110x155?text=No+Image";
+                const link = item.episode_link;
+                
+                // إنشاء كائن بيانات نظيف للضغط عليه لاحقاً
+                const safeData = btoa(unescape(encodeURIComponent(JSON.stringify({
+                    title: title,
+                    link: link,
+                    img: img
+                }))));
+
+                return `
+                    <div class="card" onclick="handleEncodedAction('${safeData}')">
+                        <img src="${img}" onerror="this.src='https://via.placeholder.com/110x155?text=Error'">
+                        <div class="card-label">${title}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            historyContainer.innerHTML = '<div style="padding:20px; color:#555; font-size:0.8rem;">لا يوجد سجل مشاهدة حالياً</div>';
+        }
+
+        // 3. جلب وعرض المفضلة
         const { data: fvs } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
-        
         state.favs = fvs ? fvs.map(f => f.series_data) : [];
         
-        document.getElementById('content-history').innerHTML = (hist || []).map(i => {
-            const cleanItem = { title: i.title, link: i.episode_link, img: i.img };
-            return `<div class="card" onclick='handleAction(${JSON.stringify(cleanItem).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`;
+        document.getElementById('content-favs').innerHTML = state.favs.map(i => {
+            const safeData = btoa(unescape(encodeURIComponent(JSON.stringify(i))));
+            return `
+                <div class="card" onclick="handleEncodedAction('${safeData}')">
+                    <img src="${i.img}">
+                    <div class="card-label">${i.title}</div>
+                </div>
+            `;
         }).join('');
-
-        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
+        
         updateAllScrollStates();
     }
+    // دالة مساعدة للتعامل مع الضغط على الكروت بأمان
+    window.handleEncodedAction = function(encoded) {
+        const item = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+        handleAction(item);
+    };
 
     async function handleFavoriteAction() {
         if(!state.user) return alert("يرجى تسجيل الدخول");
