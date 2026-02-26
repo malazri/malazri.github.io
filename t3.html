@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.22 (TV & Mobile Optimized)</title>
+    <title>AlAzri TV v1.23</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -22,13 +22,11 @@
         .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 180px; }
         .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; }
 
-        /* Navigation Buttons */
         .scroll-btn { position: absolute; top: 50%; transform: translateY(-50%); background: var(--inactive-gray); color: #fff; border: none; width: 35px; height: 70px; cursor: pointer; z-index: 10; display: none; align-items: center; justify-content: center; border-radius: 4px; opacity: 0.8; }
         .scroll-btn.active { display: flex; }
         .scroll-btn.can-scroll { background: var(--primary-red); opacity: 1; }
         .s-left { left: 5px; } .s-right { right: 5px; }
 
-        /* Layout */
         #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; overflow: hidden; }
         .top-section { display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; max-height: 200px; scroll-behavior: smooth; }
         .top-section::-webkit-scrollbar { display: none; }
@@ -37,7 +35,6 @@
         .side-container { position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: none; flex-direction: column; overflow: hidden; }
         .side-container.has-content { display: flex; }
         .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
-        .side-section::-webkit-scrollbar { display: none; }
         
         .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; }
         #main-video { width: 100%; flex: 1; background: #000; }
@@ -48,7 +45,7 @@
         .card img { width: 100%; height: 100%; object-fit: cover; }
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
         
-        .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: #ccc; display: flex; justify-content: space-between; }
+        .ep-item { padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: #ccc; }
         .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
         
         .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
@@ -56,8 +53,8 @@
         @media (max-width: 768px) {
             body { overflow-y: auto; height: auto; }
             header { flex-wrap: wrap; height: auto; padding: 10px; }
-            .main-layout { display: flex; flex-direction: column; height: auto; overflow: visible; }
-            .middle-section { order: 1; height: 300px; }
+            .main-layout { display: flex; flex-direction: column; height: auto; }
+            .middle-section { order: 1; height: 280px; }
             .side-container { order: 2; height: 350px; border-left: none; }
             #top-cont { order: 3; }
             .scroll-btn { display: none !important; }
@@ -107,7 +104,7 @@
         </div>
         <div class="player-footer">
             <div>التاريخ: <span id="meta-date" style="color:#fff;">--</span></div>
-            <div>الموقع: <span id="meta-pos" style="color:#fff;">--</span></div>
+            <div>الموقف: <span id="meta-pos" style="color:#fff;">--</span></div>
         </div>
     </div>
 </div>
@@ -123,16 +120,14 @@
 
     function fmtTime(s) { if(!s || isNaN(s)) return "00:00"; var m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
     
-    // --- Scroll Logic for Android TV ---
     function updateScrollState() {
         var el = document.getElementById('discovery');
-        var btnL = document.getElementById('scroll-l');
-        var btnR = document.getElementById('scroll-r');
+        var btnL = document.getElementById('scroll-l'), btnR = document.getElementById('scroll-r');
         if(!el || !btnL || !btnR) return;
         var canScroll = el.scrollWidth > el.clientWidth;
         btnL.classList.toggle('active', canScroll);
         btnR.classList.toggle('active', canScroll);
-        btnL.classList.toggle('can-scroll', el.scrollLeft < -5); // RTL scroll is negative
+        btnL.classList.toggle('can-scroll', el.scrollLeft < -5);
         btnR.classList.toggle('can-scroll', Math.abs(el.scrollLeft) + el.clientWidth < el.scrollWidth - 5);
     }
     function scrollXElem(v) { document.getElementById('discovery').scrollBy({left: v, behavior: 'smooth'}); }
@@ -205,7 +200,8 @@
         state.currentLink = item.link;
         document.getElementById('v-title').innerText = item.title;
         document.getElementById('resume-ui').style.display = 'none';
-        
+        video.pause(); video.src = ""; // Clear old source
+
         if(state.user) {
             const { data } = await db.from('watch_history').select('*').eq('user_id', state.user.id).eq('episode_link', item.link).maybeSingle();
             if(data && data.last_position > 10) {
@@ -216,20 +212,30 @@
             }
         }
 
-        var resHtml = await (await fetch(PROXY(item.link))).text();
-        var m = resHtml.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-        if(m) {
-            // تصحيح مسار التحميل ليعمل مع /download/ للجميع
-            var slug = item.link.split('/').filter(Boolean).pop();
-            var dlUrl = BASE + "/download/" + slug + "/";
-            var dlHtml = await (await fetch(PROXY(dlUrl))).text();
-            var mp4 = new DOMParser().parseFromString(dlHtml, 'text/html').querySelector('a[href*=".mp4"]');
-            if(mp4) { 
-                video.src = mp4.href; 
-                video.play().catch(e => console.log("Autoplay blocked"));
-                if(state.user) await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: item.link, title: item.title, img: item.img, updated_at: new Date() });
+        try {
+            var pageHtml = await (await fetch(PROXY(item.link))).text();
+            var downloadMatch = pageHtml.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+            if(downloadMatch) {
+                // استخدام /download/ كما طلبت
+                var dlUrl = BASE + "/download/" + downloadMatch[1] + "/";
+                var dlPage = await (await fetch(PROXY(dlUrl))).text();
+                
+                // البحث عن أول رابط ينتهي بـ mp4
+                var mp4Match = dlPage.match(/href="([^"]+\.mp4[^"]*)"/i);
+                if(mp4Match) {
+                    var finalUrl = mp4Match[1];
+                    video.src = finalUrl;
+                    if(!state.savedPos || state.savedPos <= 10) video.play();
+                    
+                    if(state.user) {
+                        await db.from('watch_history').upsert({ 
+                            user_id: state.user.id, episode_link: item.link, 
+                            title: item.title, img: item.img, updated_at: new Date() 
+                        }, { onConflict: 'user_id, episode_link' });
+                    }
+                } else { alert("لم يتم العثور على ملف الفيديو في صفحة التحميل"); }
             }
-        }
+        } catch(e) { console.error(e); }
     }
 
     async function syncProgressToDB() {
