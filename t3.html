@@ -287,6 +287,7 @@
     async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
     async function handleLogout() { await db.auth.signOut(); location.reload(); }
     function confirmResume(y) { document.getElementById('resume-ui').style.display = 'none'; if(y) video.currentTime = state.savedPos; video.play(); }
+    function toggleRowManual(id, btnId) { var el = document.getElementById(id); el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none'; document.getElementById(btnId).classList.toggle('active'); setTimeout(updateScrollState, 100); }
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
     window.onload = checkUser;
 </script>
