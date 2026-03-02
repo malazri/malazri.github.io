@@ -579,34 +579,7 @@
             min-width: 0;
         }
 
-        .player-title-bar {
-            padding: 10px 18px;
-            background: rgba(0,0,0,0.9);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-
-        .player-title-bar::before {
-            content: '';
-            width: 3px;
-            height: 18px;
-            background: var(--red);
-            border-radius: 3px;
-            flex-shrink: 0;
-        }
-
-        #v-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--red);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
+        /* ---- Video wrapper ---- */
         .video-wrap {
             flex: 1;
             position: relative;
@@ -622,18 +595,279 @@
             display: block;
         }
 
-        .player-footer {
-            padding: 8px 18px;
-            background: rgba(0,0,0,0.9);
-            border-top: 1px solid var(--border);
-            font-size: 0.76rem;
-            color: var(--text-muted);
+        /* ---- Idle / empty state overlay inside video ---- */
+        .video-idle-state {
+            position: absolute;
+            inset: 0;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.4s;
+        }
+        .video-idle-state.hidden { opacity: 0; }
+
+        .idle-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            border: 2px solid rgba(229,9,20,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(229,9,20,0.08);
+        }
+        .idle-icon i { font-size: 1.8rem; color: rgba(229,9,20,0.6); }
+
+        .idle-text {
+            font-size: 0.85rem;
+            color: #444;
+            letter-spacing: 1px;
+        }
+
+        /* ---- INFO PANEL (below video) ---- */
+        .player-info-panel {
+            background: linear-gradient(180deg, #080810 0%, #050508 100%);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top strip: episode title + badges */
+        .info-title-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-accent-bar {
+            width: 3px;
+            height: 20px;
+            background: var(--red);
+            border-radius: 3px;
+            flex-shrink: 0;
+            box-shadow: 0 0 8px var(--red-glow);
+        }
+
+        #v-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--text);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            padding: 3px 9px;
+            border-radius: 30px;
             flex-shrink: 0;
         }
 
-        .player-footer span { color: var(--text); }
+        .badge-live {
+            background: rgba(229,9,20,0.15);
+            color: var(--red);
+            border: 1px solid rgba(229,9,20,0.3);
+        }
+
+        .badge-live .dot {
+            width: 6px; height: 6px;
+            background: var(--red);
+            border-radius: 50%;
+            animation: pulse-dot 1.4s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.7); }
+        }
+
+        /* Main info body: poster thumb + metadata */
+        .info-body {
+            display: flex;
+            gap: 0;
+            min-height: 0;
+        }
+
+        /* Thumbnail / series art */
+        .info-thumb {
+            width: 80px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            background: var(--bg3);
+        }
+
+        .info-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            opacity: 0.9;
+        }
+
+        .info-thumb::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: 30px;
+            background: linear-gradient(to right, transparent, #080810);
+        }
+
+        /* Metadata section */
+        .info-meta {
+            flex: 1;
+            padding: 10px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .series-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--red);
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            align-items: center;
+        }
+
+        .meta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .meta-chip i {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
+        .meta-chip strong {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* Progress bar */
+        .progress-section {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .progress-labels {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-label-left {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .progress-label-right {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--red);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .progress-track {
+            height: 3px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--red), #ff4d57);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 1s linear;
+            box-shadow: 0 0 6px var(--red-glow);
+        }
+
+        /* Date info row */
+        .info-date-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 18px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .date-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .date-item i { font-size: 0.65rem; color: #444; }
+        .date-item span { color: var(--text-dim); font-weight: 600; }
+
+        /* ---- TV overrides for info panel ---- */
+        @media (min-width: 1200px) and (pointer: coarse),
+               (min-width: 1200px) and (hover: none) {
+            .info-title-row { padding: 16px 24px 12px; }
+            #v-title { font-size: 1.1rem; }
+            .info-thumb { width: 110px; }
+            .info-meta { padding: 14px 24px; gap: 10px; }
+            .series-name { font-size: 0.9rem; }
+            .meta-chip { font-size: 0.85rem; }
+            .progress-label-left { font-size: 0.8rem; }
+            .progress-label-right { font-size: 0.88rem; }
+            .progress-track { height: 4px; }
+            .info-date-row { padding: 10px 24px; }
+            .date-item { font-size: 0.82rem; }
+            .idle-icon { width: 90px; height: 90px; }
+            .idle-icon i { font-size: 2.2rem; }
+            .idle-text { font-size: 1rem; }
+        }
+
+        /* ---- Mobile overrides ---- */
+        @media (max-width: 768px) {
+            .info-thumb { width: 65px; }
+            .info-meta { padding: 8px 12px; gap: 6px; }
+            .info-title-row { padding: 10px 14px 7px; }
+            #v-title { font-size: 0.85rem; }
+            .meta-row { gap: 4px 12px; }
+            .meta-chip { font-size: 0.68rem; }
+            .info-date-row { padding: 6px 14px; }
+            .date-item { font-size: 0.66rem; }
+            .idle-icon { width: 56px; height: 56px; }
+            .idle-icon i { font-size: 1.4rem; }
+            .idle-text { font-size: 0.75rem; }
+        }
 
         /* ============================================
            RESUME OVERLAY
@@ -973,10 +1207,8 @@
 
     <!-- PLAYER -->
     <section class="middle-section" aria-label="مشغل الفيديو">
-        <div class="player-title-bar">
-            <div id="v-title">بانتظار الاختيار...</div>
-        </div>
 
+        <!-- Video -->
         <div class="video-wrap">
             <video 
                 id="main-video" 
@@ -984,6 +1216,12 @@
                 preload="none"
                 aria-label="مشغل الفيديو"
             ></video>
+
+            <!-- Idle / empty state -->
+            <div class="video-idle-state" id="idle-state">
+                <div class="idle-icon"><i class="fas fa-play"></i></div>
+                <span class="idle-text">اختر محتوى للمشاهدة</span>
+            </div>
 
             <!-- Resume overlay -->
             <div id="resume-ui" class="resume-overlay" role="dialog" aria-modal="true" aria-labelledby="resume-heading" aria-live="polite">
@@ -996,10 +1234,70 @@
             </div>
         </div>
 
-        <footer class="player-footer" aria-label="معلومات المشاهدة">
-            <div>التاريخ: <span id="meta-date">--</span></div>
-            <div>الموقف: <span id="meta-pos">--</span></div>
-        </footer>
+        <!-- Rich Info Panel -->
+        <div class="player-info-panel" aria-label="معلومات المحتوى">
+
+            <!-- Title row -->
+            <div class="info-title-row">
+                <div class="info-accent-bar"></div>
+                <div id="v-title">بانتظار الاختيار...</div>
+                <div class="status-badge badge-live" id="live-badge" style="display:none;">
+                    <span class="dot"></span> يُشاهد الآن
+                </div>
+            </div>
+
+            <!-- Body: thumbnail + metadata -->
+            <div class="info-body">
+                <!-- Series poster thumbnail -->
+                <div class="info-thumb" id="info-thumb-wrap">
+                    <img id="info-thumb-img" src="" alt="" style="display:none;">
+                </div>
+
+                <!-- Metadata -->
+                <div class="info-meta">
+                    <div class="series-name" id="info-series-name"></div>
+
+                    <div class="meta-row">
+                        <span class="meta-chip" id="chip-date" style="display:none;">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>آخر مشاهدة: <strong id="meta-date">--</strong></span>
+                        </span>
+                        <span class="meta-chip" id="chip-pos" style="display:none;">
+                            <i class="fas fa-clock"></i>
+                            <span>توقفت عند: <strong id="meta-pos">--</strong></span>
+                        </span>
+                        <span class="meta-chip" id="chip-type" style="display:none;">
+                            <i class="fas fa-film"></i>
+                            <span id="chip-type-txt"></span>
+                        </span>
+                    </div>
+
+                    <!-- Playback progress bar -->
+                    <div class="progress-section" id="progress-section" style="display:none;">
+                        <div class="progress-labels">
+                            <span class="progress-label-left">التقدم</span>
+                            <span class="progress-label-right" id="progress-pct">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom date row -->
+            <div class="info-date-row" id="info-date-row">
+                <div class="date-item">
+                    <i class="fas fa-calendar"></i>
+                    التاريخ: <span id="meta-date-bottom">--</span>
+                </div>
+                <div class="date-item">
+                    <i class="fas fa-history"></i>
+                    الموقف: <span id="meta-pos-bottom">--</span>
+                </div>
+            </div>
+
+        </div><!-- /player-info-panel -->
     </section>
 
 </main>
@@ -1336,6 +1634,88 @@
     }
 
     /* ============================================
+       INFO PANEL UPDATER
+    ============================================ */
+    function updateInfoPanel(item) {
+        // Title
+        document.getElementById('v-title').innerText = item.title;
+
+        // Series name (parent)
+        const seriesEl = document.getElementById('info-series-name');
+        if (state.currentSeries && state.currentSeries.title !== item.title) {
+            seriesEl.innerText = state.currentSeries.title;
+            seriesEl.style.display = '';
+        } else {
+            seriesEl.style.display = 'none';
+        }
+
+        // Thumbnail
+        const img = document.getElementById('info-thumb-img');
+        const thumbSrc = item.img || (state.currentSeries && state.currentSeries.img) || '';
+        if (thumbSrc) {
+            img.src = thumbSrc;
+            img.alt = item.title;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+
+        // Content type badge
+        const typeChip = document.getElementById('chip-type');
+        const typeTxt = document.getElementById('chip-type-txt');
+        if (item.link.includes('/movie/')) {
+            typeTxt.innerText = 'فيلم';
+            typeChip.style.display = '';
+        } else if (item.link.includes('/episode/')) {
+            typeTxt.innerText = 'مسلسل';
+            typeChip.style.display = '';
+        } else {
+            typeChip.style.display = 'none';
+        }
+
+        // Watch history
+        const hist = state.history.find(h => h.episode_link === item.link);
+        if (hist && hist.last_position > 5) {
+            const timeStr = fmtTime(hist.last_position);
+            // Pos chips
+            document.getElementById('chip-pos').style.display = '';
+            document.getElementById('meta-pos').innerText = timeStr;
+            document.getElementById('meta-pos-bottom').innerText = timeStr;
+            // Progress bar (needs video duration — show after load)
+            document.getElementById('progress-section').style.display = '';
+            state._lastKnownPos = hist.last_position;
+        } else {
+            document.getElementById('chip-pos').style.display = 'none';
+            document.getElementById('meta-pos-bottom').innerText = '--';
+            document.getElementById('progress-section').style.display = 'none';
+            state._lastKnownPos = 0;
+        }
+
+        // Date
+        const now = new Date().toLocaleDateString('ar-SA');
+        document.getElementById('meta-date').innerText = now;
+        document.getElementById('meta-date-bottom').innerText = now;
+        document.getElementById('chip-date').style.display = hist ? '' : 'none';
+
+        // Live badge & idle state
+        document.getElementById('live-badge').style.display = '';
+        document.getElementById('idle-state').classList.add('hidden');
+    }
+
+    function updateProgressBar() {
+        if (!video.duration || !video.duration > 0) return;
+        const pct = Math.min(100, Math.round((video.currentTime / video.duration) * 100));
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-pct').innerText = pct + '%';
+        // Also keep meta-pos in sync live
+        const posStr = fmtTime(video.currentTime);
+        document.getElementById('meta-pos').innerText = posStr;
+        document.getElementById('meta-pos-bottom').innerText = posStr;
+        document.getElementById('chip-pos').style.display = '';
+        document.getElementById('progress-section').style.display = '';
+    }
+
+    /* ============================================
        FETCH & PLAY
     ============================================ */
     async function fetchAndPlay(item) {
@@ -1347,15 +1727,16 @@
         }
 
         state.currentLink = item.link;
-        document.getElementById('v-title').innerText = item.title;
         document.getElementById('resume-ui').style.display = 'none';
         video.pause();
         video.src = "";
 
+        // Update info panel immediately
+        updateInfoPanel(item);
+
         const hist = state.history.find(h => h.episode_link === item.link);
         if (hist && hist.last_position > 15) {
             state.savedPos = hist.last_position;
-            document.getElementById('meta-pos').innerText = fmtTime(hist.last_position);
             document.getElementById('resume-msg').innerText = "توقفت عند " + fmtTime(hist.last_position);
             document.getElementById('resume-ui').style.display = 'flex';
         }
@@ -1403,7 +1784,9 @@
                     last_position: pos,
                     updated_at: new Date()
                 }, { onConflict: 'user_id, episode_link' });
-                document.getElementById('meta-pos').innerText = fmtTime(pos);
+                const posStr = fmtTime(pos);
+                document.getElementById('meta-pos').innerText = posStr;
+                document.getElementById('meta-pos-bottom').innerText = posStr;
             }
         }
     }
@@ -1495,6 +1878,13 @@
        EVENT LISTENERS
     ============================================ */
     document.getElementById('discovery').onscroll = updateScrollState;
+
+    // Live progress bar update
+    video.addEventListener('timeupdate', updateProgressBar);
+    video.addEventListener('play', () => {
+        document.getElementById('live-badge').style.display = '';
+        document.getElementById('idle-state').classList.add('hidden');
+    });
 
     // Desktop search
     document.getElementById('search-input').onkeydown = e => {
