@@ -344,7 +344,6 @@
         }
         return imdbId;
     }
-    
 
     // Get progress from Stremio for a given imdbId + videoId
     // Accepts our constructed videoId OR any videoId that belongs to that series
@@ -555,12 +554,18 @@
 
         const typeColors = { series: '#7c5cbf', movie: '#e50914', channel: '#2196f3', tv: '#4caf50', other: '#888' };
 
+        // Store items in a safe lookup map — avoids ALL quoting issues with special chars in names
+        stremio._libMap = stremio._libMap || {};
+        items.forEach(i => { stremio._libMap[i._id] = i.name || i._id; });
+
         list.innerHTML = Object.entries(groups).map(([type, arr]) => {
             const color = typeColors[type] || typeColors.other;
             const rows = arr.map(i => {
                 const isMapped = i._id === currentImdb;
                 const lastW = i.state?.lastWatched ? new Date(i.state.lastWatched).toLocaleDateString('ar') : '';
-                return `<div onclick="stremioManualMap('${i._id}', ${JSON.stringify(i.name || i._id)})"
+                // Use data-libid instead of inline onclick args — safe for any name with quotes/apostrophes
+                const safeId = i._id.replace(/"/g, '&quot;');
+                return `<div data-libid="${safeId}"
                     style="padding:5px 8px; background:${isMapped ? '#1a0e2e' : '#0a0a0a'}; border:1px solid ${isMapped ? '#7c5cbf' : '#161616'};
                            border-radius:3px; cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center;"
                     onmouseover="this.style.borderColor='${color}44'" onmouseout="this.style.borderColor='${isMapped ? '#7c5cbf' : '#161616'}'">
@@ -651,6 +656,15 @@
     // Close modal on backdrop click
     document.getElementById('stremio-modal').addEventListener('click', function(e) {
         if (e.target === this) closeStremioModal();
+    });
+
+    // Delegated click for library list — safe for any name with quotes/apostrophes/Arabic
+    document.getElementById('str-lib-list').addEventListener('click', function(e) {
+        const row = e.target.closest('[data-libid]');
+        if (!row) return;
+        const imdbId = row.getAttribute('data-libid');
+        const imdbName = (stremio._libMap || {})[imdbId] || imdbId;
+        stremioManualMap(imdbId, imdbName);
     });
 
 
