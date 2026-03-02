@@ -362,53 +362,41 @@
     // Push progress update to Stremio
     async function stremioPushProgress(imdbId, videoId, timeOffset) {
         if (!stremio.authKey || !stremio.connected) return;
-        const existing = stremio.library.find(i => i._id === imdbId) || {};
+        const existing = stremio.library.find(i => i._id === imdbId);
 
-        // Log real library item so we can see the exact field formats Stremio uses
-        if (existing._id) {
-            console.log('[Stremio] Real library item for reference:', JSON.stringify(existing, null, 2));
+        // CRITICAL: log the raw item so we can see exact types Stremio uses
+        console.log('[Stremio] Raw library item:', JSON.stringify(existing, null, 2));
+
+        if (!existing) {
+            console.warn('[Stremio] Item not in library, cannot push:', imdbId);
+            strToast('المسلسل غير موجود في مكتبة Stremio', true);
+            return;
         }
 
-        // Stremio uses ISO 8601 strings for ALL date fields, not Unix ms integers
-        const nowISO  = new Date().toISOString();
-        const ctimeISO = existing._ctime
-            ? (typeof existing._ctime === 'string' ? existing._ctime : new Date(existing._ctime).toISOString())
-            : nowISO;
+        // Deep clone the original item — do NOT add any fields Stremio didn't originally send
+        // Only update state fields, and match the EXACT type format of the original
+        const updatedItem = JSON.parse(JSON.stringify(existing));
 
-        // lastWatched in state is also ISO string
-        const lastWatchedISO = existing.state && existing.state.lastWatched
-            ? (typeof existing.state.lastWatched === 'string'
-                ? existing.state.lastWatched
-                : new Date(existing.state.lastWatched).toISOString())
-            : nowISO;
+        // _mtime: match whatever format the original uses (string or number)
+        const now = Date.now();
+        const nowISO = new Date(now).toISOString();
+        updatedItem._mtime = typeof existing._mtime === 'string' ? nowISO : now;
 
-        // video_id: Stremio stores it as "seriesId:season:episode" for tt IDs,
-        // but for other addon IDs it may just be the series _id or a custom format.
-        // We use the existing state.video_id prefix if available to match Stremio's own format.
-        const existingVidId = (existing.state || {}).video_id || '';
-        // If Stremio already has a video_id for this series, use its prefix pattern
-        const finalVideoId = videoId; // keep our constructed one, log shows if it mismatches
-
-        const updatedItem = Object.assign({}, existing, {
-            _id:     imdbId,
-            type:    existing.type || 'series',
-            name:    existing.name || imdbId,
-            _mtime:  nowISO,                        // ISO string, not ms integer
-            _ctime:  ctimeISO,                      // ISO string, not ms integer
-            removed: existing.removed || false,
-            temp:    existing.temp    || false,
-            state: Object.assign({}, existing.state || {}, {
-                video_id:           finalVideoId,
-                timeOffset:         timeOffset,
-                lastWatched:        nowISO,          // ISO string, not ms integer
-                timeWatched:        ((existing.state || {}).timeWatched        || 0) + 10,
-                overallTimeWatched: ((existing.state || {}).overallTimeWatched || 0) + 10,
-                timesWatched:       ((existing.state || {}).timesWatched       || 0),
-                flaggedWatched:     ((existing.state || {}).flaggedWatched     || false),
-                duration:           ((existing.state || {}).duration           || 0)
-            })
+        // state fields — match types from existing state
+        const st = existing.state || {};
+        const lwType = typeof st.lastWatched;
+        updatedItem.state = Object.assign({}, st, {
+            video_id:           videoId,
+            timeOffset:         timeOffset,
+            lastWatched:        lwType === 'string' ? nowISO : now,
+            timeWatched:        (st.timeWatched        || 0) + 10,
+            overallTimeWatched: (st.overallTimeWatched || 0) + 10,
+            timesWatched:       (st.timesWatched       || 0),
+            flaggedWatched:     (st.flaggedWatched      || false),
+            duration:           (st.duration            || 0)
         });
-        console.log('[Stremio] Existing video_id was:', existingVidId, '→ sending:', finalVideoId);
+
+        console.log('[Stremio] Sending updatedItem:', JSON.stringify(updatedItem, null, 2));
 
         // Update local cache immediately
         const idx = stremio.library.findIndex(i => i._id === imdbId);
