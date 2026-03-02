@@ -333,15 +333,18 @@
         stremio.seriesCache[seriesLink] = imdbId;
         // Persist mapping
         if (state.user) {
-            await db.from('stremio_series_mapping').upsert({
+            const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
                 user_id: state.user.id,
                 aksv_link: seriesLink,
                 imdb_id: imdbId,
                 series_title: seriesTitle
             }, { onConflict: 'user_id, aksv_link' });
+            if (mapErr) console.error('[Stremio] Auto-mapping save failed:', mapErr.message, mapErr.code);
+            else console.log('[Stremio] Auto-mapping saved:', seriesTitle, '→', imdbId);
         }
         return imdbId;
     }
+    
 
     // Get progress from Stremio for a given imdbId + videoId
     // Accepts our constructed videoId OR any videoId that belongs to that series
@@ -600,12 +603,21 @@
             if (raw) stremio.library.push(raw);
         }
         if (state.user) {
-            await db.from('stremio_series_mapping').upsert({
+            const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
                 user_id: state.user.id,
                 aksv_link: state.currentSeries.link,
                 imdb_id: imdbId,
                 series_title: state.currentSeries.title
             }, { onConflict: 'user_id, aksv_link' });
+            if (mapErr) {
+                console.error('[Stremio] Mapping save failed:', mapErr);
+                strToast(`❌ فشل الحفظ: ${mapErr.message}`, true);
+                return;
+            }
+            console.log('[Stremio] Mapping saved OK →', imdbId);
+        } else {
+            strToast('⚠ سجّل دخولك لحفظ الربط', true);
+            return;
         }
         strToast(`✓ تم الربط: ${state.currentSeries.title} ← ${imdbName}`);
         stremioShowDebug();
