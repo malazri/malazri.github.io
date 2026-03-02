@@ -363,32 +363,62 @@
     async function stremioPushProgress(imdbId, videoId, timeOffset) {
         if (!stremio.authKey || !stremio.connected) return;
         const existing = stremio.library.find(i => i._id === imdbId) || {};
+        const now = Date.now();
+
+        // Stremio requires _mtime, _ctime, and a complete libraryItem structure
         const updatedItem = {
+            // Preserve ALL original fields from the library item
             ...existing,
-            _id: imdbId,
-            type: 'series',
+            // Required identity fields
+            _id:   imdbId,
+            type:  existing.type || 'series',
+            name:  existing.name  || '',
+            // Required timestamp fields — Stremio rejects without these
+            _mtime: now,
+            _ctime: existing._ctime || now,
+            // Updated state
             state: {
                 ...(existing.state || {}),
-                video_id:      videoId,
-                timeOffset:    timeOffset,
-                lastWatched:   Date.now(),
-                timeWatched:   (existing.state?.timeWatched || 0) + 10,
-                timesWatched:  existing.state?.timesWatched || 0,
-                flaggedWatched: existing.state?.flaggedWatched || false
+                video_id:       videoId,
+                timeOffset:     timeOffset,
+                lastWatched:    now,
+                timeWatched:    (existing.state?.timeWatched  || 0) + 10,
+                timesWatched:   existing.state?.timesWatched  || 0,
+                flaggedWatched: existing.state?.flaggedWatched || false,
+                duration:       existing.state?.duration      || 0,
+                overallTimeWatched: (existing.state?.overallTimeWatched || 0) + 10
             }
         };
+
         // Update local cache immediately
         const idx = stremio.library.findIndex(i => i._id === imdbId);
         if (idx >= 0) stremio.library[idx] = updatedItem;
         else stremio.library.push(updatedItem);
 
         try {
-            await strAPI('/api/datastorePut', {
-                authKey: stremio.authKey,
-                collection: 'libraryItem',
-                changes: [updatedItem]
+            const r = await fetch(STR_API + '/api/datastorePut', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    authKey:    stremio.authKey,
+                    collection: 'libraryItem',
+                    changes:    [updatedItem]
+                })
             });
-            console.log('[Stremio] Pushed', videoId, fmtTime(timeOffset));
+            // Log full error body on failure so we can debug
+            if (!r.ok) {
+                const errBody = await r.text();
+                console.error('[Stremio] Push HTTP', r.status, errBody);
+                strToast('فشل الإرسال إلى Stremio (' + r.status + ')', true);
+                return;
+            }
+            const json = await r.json();
+            if (json.error) {
+                console.error('[Stremio] Push API error:', json.error);
+                strToast('فشل الإرسال: ' + json.error, true);
+                return;
+            }
+            console.log('[Stremio] Pushed OK', videoId, fmtTime(timeOffset));
         } catch(e) {
             console.warn('[Stremio] Push failed:', e.message);
             strToast('فشل الإرسال إلى Stremio', true);
