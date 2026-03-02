@@ -264,11 +264,16 @@
             collection: 'libraryItem',
             all: true
         });
-        // Keep only series with a valid imdb id
-        stremio.library = (json.result || []).filter(i =>
-            i.type === 'series' && i._id && i._id.startsWith('tt')
-        );
-        document.getElementById('str-count').innerText = stremio.library.length;
+        const all = json.result || [];
+        // Full raw list for browsing — everything Stremio has
+        stremio.allItems = all;
+        // Filtered list used for sync (series with tt IDs only)
+        stremio.library  = all.filter(i => i.type === 'series' && i._id && i._id.startsWith('tt'));
+        // Count breakdown
+        const byType = {};
+        all.forEach(i => { byType[i.type || 'unknown'] = (byType[i.type || 'unknown'] || 0) + 1; });
+        const breakdown = Object.entries(byType).map(([t, n]) => `${t}: ${n}`).join(' · ');
+        document.getElementById('str-count').innerText = `${all.length} (${breakdown})`;
         // Load mapping cache from Supabase
         if (state.user) {
             const { data } = await db.from('stremio_series_mapping')
@@ -521,9 +526,14 @@
     function stremioRenderLibraryList(filter) {
         const list = document.getElementById('str-lib-list');
         const fl   = filter.toLowerCase();
-        const items = stremio.library
-            .filter(i => !fl || (i.name || '').toLowerCase().includes(fl))
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        const all  = stremio.allItems || [];
+
+        const items = all.filter(i => {
+            if (!fl) return true;
+            return (i.name || '').toLowerCase().includes(fl) ||
+                   (i._id  || '').toLowerCase().includes(fl) ||
+                   (i.type || '').toLowerCase().includes(fl);
+        }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
         if (!items.length) {
             list.innerHTML = '<div style="color:#444; font-size:0.68rem; padding:6px;">لا توجد نتائج</div>';
@@ -531,15 +541,38 @@
         }
 
         const currentImdb = state.currentSeries ? stremio.seriesCache[state.currentSeries.link] : null;
-        list.innerHTML = items.map(i => {
-            const isMapped = i._id === currentImdb;
-            return `<div onclick="stremioManualMap('${i._id}', ${JSON.stringify(i.name || '')})"
-                style="padding:6px 8px; background:${isMapped ? '#1a0e2e' : '#0d0d0d'}; border:1px solid ${isMapped ? '#7c5cbf' : '#1a1a1a'};
-                       border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;
-                       transition:background 0.15s;"
-                onmouseover="this.style.background='#141428'" onmouseout="this.style.background='${isMapped ? '#1a0e2e' : '#0d0d0d'}'">
-                <span style="color:${isMapped ? '#b39ddb' : '#aaa'}; font-size:0.72rem;">${i.name || i._id}</span>
-                <span style="color:#333; font-size:0.62rem;">${i._id}</span>
+
+        // Group by type
+        const groups = {};
+        items.forEach(i => {
+            const t = i.type || 'other';
+            if (!groups[t]) groups[t] = [];
+            groups[t].push(i);
+        });
+
+        const typeColors = { series: '#7c5cbf', movie: '#e50914', channel: '#2196f3', tv: '#4caf50', other: '#888' };
+
+        list.innerHTML = Object.entries(groups).map(([type, arr]) => {
+            const color = typeColors[type] || typeColors.other;
+            const rows = arr.map(i => {
+                const isMapped = i._id === currentImdb;
+                const lastW = i.state?.lastWatched ? new Date(i.state.lastWatched).toLocaleDateString('ar') : '';
+                return `<div onclick="stremioManualMap('${i._id}', ${JSON.stringify(i.name || i._id)})"
+                    style="padding:5px 8px; background:${isMapped ? '#1a0e2e' : '#0a0a0a'}; border:1px solid ${isMapped ? '#7c5cbf' : '#161616'};
+                           border-radius:3px; cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center;"
+                    onmouseover="this.style.borderColor='${color}44'" onmouseout="this.style.borderColor='${isMapped ? '#7c5cbf' : '#161616'}'">
+                    <span style="color:${isMapped ? '#b39ddb' : '#bbb'}; font-size:0.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i.name || '(بلا اسم)'}</span>
+                    <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+                        ${lastW ? `<span style="color:#333; font-size:0.6rem;">${lastW}</span>` : ''}
+                        <span style="color:#2a2a2a; font-size:0.6rem; font-family:monospace;">${i._id}</span>
+                        ${isMapped ? '<span style="color:#7c5cbf; font-size:0.65rem;">✓</span>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div style="margin-bottom:6px;">
+                <div style="color:${color}; font-size:0.65rem; font-weight:bold; padding:3px 0; letter-spacing:0.05em; text-transform:uppercase; border-bottom:1px solid ${color}22; margin-bottom:4px;">${type} <span style="color:#333; font-weight:normal;">(${arr.length})</span></div>
+                ${rows}
             </div>`;
         }).join('');
     }
@@ -555,6 +588,12 @@
         }
         // Save mapping
         stremio.seriesCache[state.currentSeries.link] = imdbId;
+        // Ensure this item is in stremio.library for sync (even if filtered out before)
+        const inLib = stremio.library.find(i => i._id === imdbId);
+        if (!inLib) {
+            const raw = (stremio.allItems || []).find(i => i._id === imdbId);
+            if (raw) stremio.library.push(raw);
+        }
         if (state.user) {
             await db.from('stremio_series_mapping').upsert({
                 user_id: state.user.id,
