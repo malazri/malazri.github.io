@@ -277,8 +277,15 @@
         // Load mapping cache from Supabase
         if (state.user) {
             const { data } = await db.from('stremio_series_mapping')
-                .select('aksv_link, imdb_id').eq('user_id', state.user.id);
-            if (data) data.forEach(r => stremio.seriesCache[r.aksv_link] = r.imdb_id);
+                .select('aksv_link, imdb_id, series_title').eq('user_id', state.user.id);
+            if (data) {
+                data.forEach(r => {
+                    stremio.seriesCache[r.aksv_link] = r.imdb_id;
+                    // Reverse index: imdb_id → { aksv_link, series_title }
+                    stremio.reverseCache = stremio.reverseCache || {};
+                    stremio.reverseCache[r.imdb_id] = { aksv_link: r.aksv_link, series_title: r.series_title };
+                });
+            }
         }
     }
 
@@ -306,26 +313,21 @@
     function parseEpNumbers(title) {
         if (!title) return { season: 1, episode: 1 };
         let season = 1, episode = 1;
-        const arWords = {'الأولى':1,'الاولى':1,'الثانية':2,'الثالثة':3,'الرابعة':4,
-                         'الخامسة':5,'السادسة':6,'السابعة':7,'الثامنة':8,'التاسعة':9,'العاشرة':10,
-                         'الحادية عشرة':11,'الثانية عشرة':12,'الثالثة عشرة':13,'الرابعة عشرة':14,'الخامسة عشرة':15,
-                         'الأول':1,'الاول':1,'الثاني':2,'الثالث':3,'الرابع':4,'الخامس':5,
-                         'السادس':6,'السابع':7,'الثامن':8,'التاسع':9,'العاشر':10};
-        // English: S1E5
-        const enSE = title.match(/[Ss](\d+)[Ee](\d+)/);
-        // Arabic digit: الحلقة 5
+        const arWords = {
+            'الأولى':1,'الاولى':1,'الثانية':2,'الثالثة':3,'الرابعة':4,'الخامسة':5,
+            'السادسة':6,'السابعة':7,'الثامنة':8,'التاسعة':9,'العاشرة':10,
+            'الأول':1,'الاول':1,'الثاني':2,'الثالث':3,'الرابع':4,'الخامس':5,
+            'السادس':6,'السابع':7,'الثامن':8,'التاسع':9,'العاشر':10
+        };
+        const enSE   = title.match(/[Ss](\d+)[Ee](\d+)/);
         const epArNum  = title.match(/الحلقة\s*(\d+)/);
-        // Arabic word: الحلقة الخامسة
-        const epArWord = title.match(/الحلقة\s+([\u0600-\u06ff\s]+?)(?:\s|$|-|–)/);
-        // Season
-        const snAr = title.match(/الموسم\s*(\d+)/);
-        const enEp = title.match(/[Ee]p(?:isode)?\s*(\d+)/i);
-        const enSn = title.match(/[Ss]eason\s*(\d+)/i);
+        const epArWord = title.match(/الحلقة\s+([\u0600-\u06ff]+)/);
+        const snAr   = title.match(/الموسم\s*(\d+)/);
+        const enEp   = title.match(/[Ee]p(?:isode)?\s*(\d+)/i);
+        const enSn   = title.match(/[Ss]eason\s*(\d+)/i);
 
-        if (enSE) {
-            season = parseInt(enSE[1]);
-            episode = parseInt(enSE[2]);
-        } else {
+        if (enSE) { season = parseInt(enSE[1]); episode = parseInt(enSE[2]); }
+        else {
             if (epArNum)       episode = parseInt(epArNum[1]);
             else if (epArWord) episode = arWords[epArWord[1].trim()] || 1;
             else if (enEp)     episode = parseInt(enEp[1]);
@@ -592,14 +594,23 @@
         stremioRenderLibraryList(val);
     }
 
-    // ── Unified library item click handler ──────────────────
+    // ── Click handler for Stremio library items ─────────────
     async function stremioLibItemClick(imdbId, imdbName) {
-        // Case 1: A series is already open in ak.sv → just map it
+        // Case 1: Series already open in ak.sv → map it
         if (state.currentSeries) {
             await stremioManualMap(imdbId, imdbName);
             return;
         }
-        // Case 2: Nothing open → check Supabase for a saved aksv_link
+        // Case 2: Check reverseCache (already loaded mappings) first — no DB call needed
+        stremio.reverseCache = stremio.reverseCache || {};
+        const cached = stremio.reverseCache[imdbId];
+        if (cached?.aksv_link) {
+            closeStremioModal();
+            strToast(`⏩ جارٍ تحميل: ${cached.series_title}`);
+            await handleAction({ title: cached.series_title, link: cached.aksv_link, img: '' });
+            return;
+        }
+        // Case 3: Check Supabase for saved mapping
         if (state.user) {
             const { data } = await db.from('stremio_series_mapping')
                 .select('aksv_link, series_title')
@@ -607,14 +618,15 @@
                 .eq('imdb_id', imdbId)
                 .maybeSingle();
             if (data?.aksv_link) {
+                // Cache it for future use
+                stremio.reverseCache[imdbId] = { aksv_link: data.aksv_link, series_title: data.series_title };
                 closeStremioModal();
                 strToast(`⏩ جارٍ تحميل: ${data.series_title}`);
                 await handleAction({ title: data.series_title, link: data.aksv_link, img: '' });
-                stremio.seriesCache[data.aksv_link] = imdbId;
                 return;
             }
         }
-        // Case 3: No saved mapping → search ak.sv by title
+        // Case 4: No saved mapping → search ak.sv by title, auto-map when user picks result
         closeStremioModal();
         strToast(`🔍 جارٍ البحث عن: ${imdbName}`);
         document.getElementById('search-input').value = imdbName;
@@ -628,26 +640,36 @@
             strToast('افتح مسلسلاً أولاً', true);
             return;
         }
-        // Save mapping
+        // Save to in-memory caches
         stremio.seriesCache[state.currentSeries.link] = imdbId;
-        // Ensure this item is in stremio.library for sync (even if filtered out before)
+        stremio.reverseCache = stremio.reverseCache || {};
+        stremio.reverseCache[imdbId] = { aksv_link: state.currentSeries.link, series_title: state.currentSeries.title };
+        // Ensure item is in stremio.library for sync
         const inLib = stremio.library.find(i => i._id === imdbId);
         if (!inLib) {
             const raw = (stremio.allItems || []).find(i => i._id === imdbId);
             if (raw) stremio.library.push(raw);
         }
+        // Persist to Supabase (requires login)
         if (state.user) {
-            await db.from('stremio_series_mapping').upsert({
+            const { error } = await db.from('stremio_series_mapping').upsert({
                 user_id: state.user.id,
                 aksv_link: state.currentSeries.link,
                 imdb_id: imdbId,
                 series_title: state.currentSeries.title
             }, { onConflict: 'user_id, aksv_link' });
+            if (error) {
+                console.error('[Stremio] Mapping save failed:', error.message);
+                strToast('فشل حفظ الربط في قاعدة البيانات', true);
+                return;
+            }
+        } else {
+            strToast('⚠️ سجّل دخولك لحفظ الربط بشكل دائم', true);
         }
         strToast(`✓ تم الربط: ${state.currentSeries.title} ← ${imdbName}`);
         stremioShowDebug();
         stremioRenderLibraryList(document.getElementById('str-lib-search').value);
-        // Re-sync progress for current episode after mapping
+        // Re-sync progress for currently playing episode immediately
         if (state.currentLink && !state.currentLink.includes('/movie/')) {
             const epTitle = document.getElementById('v-title').innerText;
             const { season, episode } = parseEpNumbers(epTitle);
@@ -810,7 +832,7 @@
             loadEpisodes(i); 
         }
         if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
-        // Auto-apply pending Stremio map after series loads
+        // Auto-apply pending Stremio map (set when clicking Stremio library item with no saved mapping)
         if (stremio._pendingMap) {
             const { imdbId, imdbName } = stremio._pendingMap;
             stremio._pendingMap = null;
