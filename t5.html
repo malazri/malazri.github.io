@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlAzri TV v1.29 - Fixed</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
+        * { box-sizing: border-box; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        header { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; flex-shrink: 0; z-index: 2000; }
+        .brand { color: var(--primary-red); font-size: 1.3rem; font-weight: 900; }
+        .header-controls { display: flex; gap: 8px; align-items: center; }
+
+        .top-toggle-btn { background: #333; color: #fff; border: 1px solid #555; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .top-toggle-btn:hover { background: var(--primary-red); border-color: var(--primary-red); }
+
+        .btn-google { background: white; color: black; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; }
+        .btn-logout { background: #222; color: #888; border: 1px solid #333; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; display: none; }
+        .toggle-btn { cursor: pointer; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; }
+        .toggle-btn.active { color: white; background: var(--primary-red); border-color: var(--primary-red); }
+        .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 140px; }
+        .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; }
+
+        .scroll-btn { position: absolute; top: 50%; transform: translateY(-50%); background: var(--inactive-gray); color: #fff; border: none; width: 35px; height: 70px; cursor: pointer; z-index: 10; display: none; align-items: center; justify-content: center; border-radius: 4px; opacity: 0.8; }
+        .scroll-btn.active { display: flex; }
+        .scroll-btn.can-scroll { background: var(--primary-red); opacity: 1; }
+        .s-left { left: 5px; } .s-right { right: 5px; }
+
+        #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; transition: all 0.4s ease; overflow: hidden; max-height: 250px; opacity: 1; z-index: 1000; }
+        #top-cont.hidden { max-height: 0 !important; opacity: 0 !important; border-bottom: none; pointer-events: none; }
+
+        .top-section { display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+        .top-section::-webkit-scrollbar { display: none; }
+
+        .main-layout { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
+        .side-container { position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: none; flex-direction: column; overflow: hidden; }
+        .side-container.has-content { display: flex; }
+        .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
+
+        .side-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .toggle-list-btn { background: none; border: 1px solid #444; color: var(--primary-red); cursor: pointer; padding: 2px 8px; border-radius: 4px; display: none; }
+        .episode-list-wrapper.minimized { display: none; }
+
+        .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        #main-video { width: 100%; flex: 1; background: #000; object-fit: contain; }
+        .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
+        .player-footer { padding: 8px 20px; background: #000; border-top: 1px solid #111; font-size: 0.8rem; color: #999; display: flex; justify-content: space-between; flex-shrink: 0; }
+
+        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; vertical-align: top; }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
+
+        .load-more-card { display: inline-flex; min-width: 60px; height: var(--card-h); background: #222; border: 2px dashed #444; border-radius: 4px; cursor: pointer; align-items: center; justify-content: center; margin-left: 12px; color: #e50914; font-size: 2rem; transition: 0.2s; }
+        .load-more-card:hover { background: #333; border-color: #e50914; }
+
+        .ep-item { display: flex; justify-content: space-between; padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: #ccc; }
+        .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
+        .ep-progress { font-size: 0.7rem; color: #888; }
+
+        .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
+
+        /* ── Stremio Sync ─────────────────────────────────── */
+        .stremio-btn { background: #1a1a2e; color: #7c5cbf; border: 1px solid #7c5cbf; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; font-size: 0.75rem; font-weight: bold; }
+        .stremio-btn:hover, .stremio-btn.connected { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
+        .stremio-btn.syncing { animation: strPulse 1s infinite; }
+        @keyframes strPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+        #stremio-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; }
+        #stremio-modal.open { display:flex; }
+        .str-box { background:#111; border:1px solid #7c5cbf; border-radius:8px; padding:24px; width:320px; }
+        .str-box h3 { color:#7c5cbf; margin:0 0 4px; font-size:1rem; }
+        .str-box p { color:#888; font-size:0.75rem; margin:0 0 16px; }
+        .str-box input { width:100%; background:#1a1a1a; border:1px solid #333; color:#fff; padding:8px 10px; border-radius:4px; margin-bottom:10px; font-size:0.85rem; outline:none; }
+        .str-box input:focus { border-color:#7c5cbf; }
+        .str-box .str-row { display:flex; gap:8px; }
+        .str-box button { flex:1; padding:9px; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem; font-weight:bold; }
+        .str-save { background:#7c5cbf; color:#fff; }
+        .str-cancel { background:#222; color:#888; }
+        .str-status { font-size:0.72rem; margin-top:10px; text-align:center; min-height:16px; }
+        .str-status.ok { color:#4caf50; } .str-status.err { color:#e50914; }
+
+        .stremio-badge { position:absolute; top:-4px; right:-4px; width:8px; height:8px; border-radius:50%; background:#4caf50; border:1px solid #000; display:none; }
+        .stremio-badge.show { display:block; }
+
+        .str-source-tag { font-size:0.65rem; padding:1px 5px; border-radius:3px; margin-right:4px; }
+        .str-source-tag.stremio { background:#7c5cbf22; color:#7c5cbf; border:1px solid #7c5cbf44; }
+        .str-source-tag.local { background:#e5091422; color:#e50914; border:1px solid #e5091444; }
+
+        @media (max-width: 768px) {
+            body { overflow-y: auto; height: auto; }
+            header { flex-wrap: wrap; height: auto; padding: 10px; }
+            .main-layout { display: flex; flex-direction: column; height: auto; }
+            .middle-section { order: 1; height: 280px; }
+            .side-container { order: 2; height: auto; border-left: none; padding-bottom: 20px; }
+            .side-section { overflow-y: visible; }
+            .toggle-list-btn { display: block; }
+            #top-cont { order: 3; }
+            .scroll-btn { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">ALAZRI TV</div>
+    <div class="header-controls">
+        <button class="top-toggle-btn" id="manual-toggle-btn" onclick="toggleTopPanel()" title="إظهار/إخفاء">
+            <i class="fas fa-minus"></i>
+        </button>
+        <div style="position:relative;">
+            <button class="stremio-btn" id="stremio-btn" onclick="openStremioModal()" title="Stremio Sync">S</button>
+            <span class="stremio-badge" id="stremio-badge"></span>
+        </div>
+        <button class="btn-google" id="login-btn" onclick="loginWithGoogle()"><img src="https://www.google.com/favicon.ico" width="14"> دخول</button>
+        <button class="btn-logout" id="logout-btn" onclick="handleLogout()">خروج</button>
+        <button class="toggle-btn active" id="btn-fav" onclick="toggleRowManual('group-favs', 'btn-fav')">المفضلة</button>
+        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..."></div>
+    </div>
+</header>
+
+<div id="top-cont">
+    <button class="scroll-btn s-right" id="scroll-r" onclick="scrollXElem(300)"><i class="fas fa-chevron-right"></i></button>
+    <div class="top-section" id="discovery">
+        <div class="row-group" id="group-favs" style="display:inline-flex;"><div id="content-favs" style="display:flex;"></div></div>
+        <div class="row-group" id="group-search" style="display:none;"><div id="content-search" style="display:flex;"></div></div>
+    </div>
+    <button class="scroll-btn s-left" id="scroll-l" onclick="scrollXElem(-300)"><i class="fas fa-chevron-left"></i></button>
+</div>
+
+<div class="main-layout">
+    <div class="side-container" id="side-panel">
+        <div class="side-section" id="side-area">
+            <div class="side-header">
+                <div id="series-title" style="color:var(--primary-red); font-weight:bold;">القائمة</div>
+                <button class="toggle-list-btn" onclick="toggleEpisodeList()" id="list-plus-icon"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="episode-list-wrapper" id="ep-wrapper">
+                <button id="fav-btn" style="display:none; width: 100%; margin-bottom:10px; background:var(--primary-red); color:white; border:none; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
+                <div id="episode-list"></div>
+            </div>
+        </div>
+    </div>
+    <div class="middle-section">
+        <div class="player-header" id="v-title">بانتظار الاختيار...</div>
+        <div style="flex:1; position:relative; overflow:hidden;"><video id="main-video" controls></video>
+            <div id="resume-ui" class="resume-overlay">
+                <h3>إكمال المشاهدة؟</h3>
+                <p id="resume-msg" style="color:#aaa; margin-bottom:15px;"></p>
+                <div>
+                    <button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">نعم</button>
+                    <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px; cursor:pointer;">لا</button>
+                </div>
+            </div>
+        </div>
+        <div class="player-footer">
+            <div>التاريخ: <span id="meta-date" style="color:#fff;">--</span></div>
+            <div>الموقف: <span id="meta-pos" style="color:#fff;">--</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- Stremio Sync Modal -->
+<div id="stremio-modal">
+    <div class="str-box">
+        <h3>⚡ Stremio Sync</h3>
+        <p>ربط تقدم المشاهدة مع Stremio (المسلسلات فقط)</p>
+        <input type="email" id="str-email" placeholder="Stremio Email" autocomplete="email">
+        <input type="password" id="str-pass" placeholder="Stremio Password" autocomplete="current-password">
+        <div class="str-row">
+            <button class="str-save" onclick="stremioSaveLogin()">ربط</button>
+            <button class="str-cancel" onclick="closeStremioModal()">إلغاء</button>
+        </div>
+        <div id="str-status" class="str-status"></div>
+        <div id="str-info" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #222;">
+            <div style="color:#aaa; font-size:0.72rem; margin-bottom:8px;">متصل بـ <span id="str-email-display" style="color:#7c5cbf;"></span></div>
+            <div style="color:#666; font-size:0.7rem;">مسلسلات Stremio: <span id="str-count" style="color:#fff;">0</span></div>
+            <div style="margin-top:8px; display:flex; gap:6px;">
+                <button onclick="stremioForcSync()" style="flex:1; background:#1a1a2e; color:#7c5cbf; border:1px solid #7c5cbf; padding:6px; border-radius:4px; cursor:pointer; font-size:0.75rem;">مزامنة الآن</button>
+                <button onclick="stremioDisconnect()" style="flex:1; background:#1a1a1a; color:#555; border:1px solid #333; padding:6px; border-radius:4px; cursor:pointer; font-size:0.75rem;">قطع الاتصال</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
+    const db = supabase.createClient(SB_URL, SB_KEY);
+    var PROXY = url => "https://corsproxy.io/?" + encodeURIComponent(url);
+    var BASE = "https://ak.sv";
+
+    // ── Stremio State ────────────────────────────────────────
+    var STR_API = "https://api.strem.io";
+    var stremio = {
+        authKey: localStorage.getItem('str_auth') || null,
+        email:   localStorage.getItem('str_email') || null,
+        library: [],       // Stremio library items (series only)
+        seriesCache: {},   // aksv_link → imdbId
+        connected: false
+    };
+
+    // ── Stremio API helpers ──────────────────────────────────
+    async function strAPI(endpoint, body) {
+        const r = await fetch(PROXY(STR_API + endpoint), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return r.json();
+    }
+
+    async function stremioInit() {
+        if (!stremio.authKey) return;
+        try {
+            await stremioLoadLibrary();
+            stremio.connected = true;
+            updateStremioUI();
+        } catch(e) {
+            console.warn('Stremio init failed', e);
+        }
+    }
+
+    async function stremioLoadLibrary() {
+        const json = await strAPI('/api/datastoreGet', {
+            authKey: stremio.authKey,
+            collection: 'libraryItem',
+            all: true
+        });
+        // Keep only series with a valid imdb id
+        stremio.library = (json.result || []).filter(i =>
+            i.type === 'series' && i._id && i._id.startsWith('tt')
+        );
+        document.getElementById('str-count').innerText = stremio.library.length;
+        // Load mapping cache from Supabase
+        if (state.user) {
+            const { data } = await db.from('stremio_series_mapping')
+                .select('aksv_link, imdb_id').eq('user_id', state.user.id);
+            if (data) data.forEach(r => stremio.seriesCache[r.aksv_link] = r.imdb_id);
+        }
+    }
+
+    // Fuzzy title match – returns best Stremio library item or null
+    function stremioMatchByTitle(title) {
+        if (!title || !stremio.library.length) return null;
+        const clean = t => t.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff\s]/g, '').trim();
+        const ct = clean(title);
+        let best = null, bestScore = 0;
+        for (const item of stremio.library) {
+            const cs = clean(item.name || '');
+            if (!cs) continue;
+            // Exact
+            if (cs === ct) return item;
+            // Contains
+            if (cs.includes(ct) || ct.includes(cs)) {
+                const score = Math.min(cs.length, ct.length) / Math.max(cs.length, ct.length);
+                if (score > bestScore) { bestScore = score; best = item; }
+            }
+        }
+        return bestScore > 0.6 ? best : null;
+    }
+
+    // Parse Arabic/English episode title → { season, episode }
+    function parseEpNumbers(title) {
+        if (!title) return { season: 1, episode: 1 };
+        let season = 1, episode = 1;
+        // Arabic patterns: الحلقة X, الموسم X
+        const epAr = title.match(/الحلقة\s*(\d+)/);
+        const snAr = title.match(/الموسم\s*(\d+)/);
+        // English patterns: S1E5, Season 1 Episode 5, Ep 5
+        const enSE = title.match(/[Ss](\d+)[Ee](\d+)/);
+        const enEp = title.match(/[Ee]p(?:isode)?\s*(\d+)/i);
+        const enSn = title.match(/[Ss]eason\s*(\d+)/i);
+
+        if (enSE) { season = parseInt(enSE[1]); episode = parseInt(enSE[2]); }
+        else {
+            if (epAr) episode = parseInt(epAr[1]);
+            else if (enEp) episode = parseInt(enEp[1]);
+            if (snAr) season = parseInt(snAr[1]);
+            else if (enSn) season = parseInt(enSn[1]);
+        }
+        return { season, episode };
+    }
+
+    // Get or create Stremio imdbId for current aksv series link
+    async function stremioGetImdbId(seriesLink, seriesTitle) {
+        if (stremio.seriesCache[seriesLink]) return stremio.seriesCache[seriesLink];
+        const match = stremioMatchByTitle(seriesTitle);
+        if (!match) return null;
+        const imdbId = match._id;
+        stremio.seriesCache[seriesLink] = imdbId;
+        // Persist mapping
+        if (state.user) {
+            await db.from('stremio_series_mapping').upsert({
+                user_id: state.user.id,
+                aksv_link: seriesLink,
+                imdb_id: imdbId,
+                series_title: seriesTitle
+            }, { onConflict: 'user_id, aksv_link' });
+        }
+        return imdbId;
+    }
+
+    // Get progress for a specific video_id from Stremio library
+    function stremioGetProgress(imdbId, videoId) {
+        const item = stremio.library.find(i => i._id === imdbId);
+        if (!item) return null;
+        if (item.state?.video_id === videoId) {
+            return { timeOffset: item.state.timeOffset || 0, lastWatched: item.state.lastWatched || 0 };
+        }
+        return null;
+    }
+
+    // Push progress update to Stremio
+    async function stremioPushProgress(imdbId, videoId, timeOffset) {
+        if (!stremio.authKey || !stremio.connected) return;
+        const existing = stremio.library.find(i => i._id === imdbId) || {};
+        const updatedItem = {
+            ...existing,
+            _id: imdbId,
+            type: 'series',
+            state: {
+                ...(existing.state || {}),
+                video_id: videoId,
+                timeOffset: timeOffset,
+                lastWatched: Date.now()
+            }
+        };
+        // Update local cache too
+        const idx = stremio.library.findIndex(i => i._id === imdbId);
+        if (idx >= 0) stremio.library[idx] = updatedItem;
+
+        try {
+            await strAPI('/api/datastorePut', {
+                authKey: stremio.authKey,
+                collection: 'libraryItem',
+                changes: [updatedItem]
+            });
+        } catch(e) { console.warn('Stremio push failed', e); }
+    }
+
+    // Compare Supabase vs Stremio progress, return winner
+    async function stremioResolveProgress(episodeLink, stremioImdbId, stremioVideoId) {
+        if (!stremio.connected || !stremioImdbId) return null;
+        const strProg = stremioGetProgress(stremioImdbId, stremioVideoId);
+        if (!strProg || strProg.timeOffset < 5) return null;
+
+        const sbProg = state.history.find(h => h.episode_link === episodeLink);
+        const sbTime = sbProg?.last_position || 0;
+        const sbUpdatedAt = sbProg?.updated_at ? new Date(sbProg.updated_at).getTime() : 0;
+        const strTime = strProg.timeOffset;
+        const strUpdatedAt = strProg.lastWatched || 0;
+
+        // Stremio is newer or no Supabase record
+        if (strUpdatedAt > sbUpdatedAt && strTime > sbTime) {
+            // Sync Stremio → Supabase
+            if (state.user) {
+                await db.from('watch_history').upsert({
+                    user_id: state.user.id,
+                    episode_link: episodeLink,
+                    last_position: strTime,
+                    updated_at: new Date(strUpdatedAt)
+                }, { onConflict: 'user_id, episode_link' });
+                // Update local state
+                const hi = state.history.find(h => h.episode_link === episodeLink);
+                if (hi) hi.last_position = strTime;
+                else state.history.push({ episode_link: episodeLink, last_position: strTime });
+            }
+            return strTime; // Use Stremio time
+        }
+        return null; // Use Supabase time (handled by existing code)
+    }
+
+    // ── Stremio UI ───────────────────────────────────────────
+    function updateStremioUI() {
+        const btn = document.getElementById('stremio-btn');
+        const badge = document.getElementById('stremio-badge');
+        if (stremio.connected) {
+            btn.classList.add('connected');
+            badge.classList.add('show');
+            document.getElementById('str-email-display').innerText = stremio.email || '';
+            document.getElementById('str-info').style.display = 'block';
+            document.getElementById('str-email').style.display = 'none';
+            document.getElementById('str-pass').style.display = 'none';
+        } else {
+            btn.classList.remove('connected');
+            badge.classList.remove('show');
+            document.getElementById('str-info').style.display = 'none';
+            document.getElementById('str-email').style.display = 'block';
+            document.getElementById('str-pass').style.display = 'block';
+        }
+    }
+
+    function openStremioModal() {
+        updateStremioUI();
+        document.getElementById('stremio-modal').classList.add('open');
+    }
+    function closeStremioModal() {
+        document.getElementById('stremio-modal').classList.remove('open');
+        document.getElementById('str-status').innerText = '';
+    }
+
+    async function stremioSaveLogin() {
+        const email = document.getElementById('str-email').value.trim();
+        const pass  = document.getElementById('str-pass').value;
+        const st    = document.getElementById('str-status');
+        if (!email || !pass) { st.className='str-status err'; st.innerText='أدخل البريد وكلمة المرور'; return; }
+        st.className='str-status'; st.innerText='جارٍ الاتصال...';
+        try {
+            const json = await strAPI('/api/login', { type:'Auth', email, password: pass });
+            if (!json.result?.authKey) throw new Error(json.error || 'Login failed');
+            stremio.authKey = json.result.authKey;
+            stremio.email   = email;
+            localStorage.setItem('str_auth',  stremio.authKey);
+            localStorage.setItem('str_email', stremio.email);
+            await stremioLoadLibrary();
+            stremio.connected = true;
+            updateStremioUI();
+            st.className='str-status ok';
+            st.innerText = `✓ متصل — ${stremio.library.length} مسلسل`;
+        } catch(e) {
+            st.className='str-status err';
+            st.innerText = 'فشل الاتصال: ' + e.message;
+        }
+    }
+
+    async function stremioForcSync() {
+        const btn = document.getElementById('stremio-btn');
+        btn.classList.add('syncing');
+        try {
+            await stremioLoadLibrary();
+            document.getElementById('str-status').className='str-status ok';
+            document.getElementById('str-status').innerText='✓ تمت المزامنة';
+        } catch(e) {}
+        btn.classList.remove('syncing');
+    }
+
+    function stremioDisconnect() {
+        stremio.authKey = null; stremio.email = null;
+        stremio.connected = false; stremio.library = [];
+        localStorage.removeItem('str_auth'); localStorage.removeItem('str_email');
+        updateStremioUI();
+        document.getElementById('str-status').className='str-status';
+        document.getElementById('str-status').innerText='';
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('stremio-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeStremioModal();
+    });
+
+
+
+    // تصحيح كائن الحالة (State)
+    var state = { 
+        user: null, 
+        currentSeries: null, 
+        currentLink: null, 
+        savedPos: 0, 
+        favs: [], 
+        history: [], 
+        searchQuery: "", 
+        searchPage: 1 
+    };
+
+    var video = document.getElementById('main-video');
+
+    function fmtTime(s) { if(!s || isNaN(s)) return "00:00"; var m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
+
+    function ensureTopVisible() {
+        const top = document.getElementById('top-cont');
+        if (top.classList.contains('hidden')) toggleTopPanel();
+    }
+
+    function toggleTopPanel() {
+        const top = document.getElementById('top-cont');
+        const btn = document.getElementById('manual-toggle-btn');
+        const isHidden = top.classList.toggle('hidden');
+        btn.innerHTML = isHidden ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    }
+
+    function updateScrollState() {
+        var el = document.getElementById('discovery');
+        var btnL = document.getElementById('scroll-l'), btnR = document.getElementById('scroll-r');
+        if(!el || !btnL || !btnR) return;
+        var canScroll = el.scrollWidth > el.clientWidth;
+        btnL.classList.toggle('active', canScroll);
+        btnR.classList.toggle('active', canScroll);
+        btnL.classList.toggle('can-scroll', el.scrollLeft < -5);
+        btnR.classList.toggle('can-scroll', Math.abs(el.scrollLeft) + el.clientWidth < el.scrollWidth - 5);
+    }
+    function scrollXElem(v) { document.getElementById('discovery').scrollBy({left: v, behavior: 'smooth'}); }
+
+    function toggleEpisodeList() {
+        const wrapper = document.getElementById('ep-wrapper');
+        const icon = document.getElementById('list-plus-icon');
+        const isMin = wrapper.classList.toggle('minimized');
+        icon.innerHTML = isMin ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    }
+
+    async function checkUser() {
+        const { data: { session } } = await db.auth.getSession();
+        if(session?.user) {
+            state.user = session.user;
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'block';
+            await loadUserHistory();
+            await refreshTop();
+            setInterval(syncProgressToDB, 10000);
+            // Init Stremio sync
+            await stremioInit();
+        }
+    }
+
+    async function loadUserHistory() {
+        if(!state.user) return;
+        const { data } = await db.from('watch_history').select('episode_link, last_position').eq('user_id', state.user.id);
+        state.history = data || [];
+    }
+
+    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
+    async function handleLogout() { await db.auth.signOut(); location.reload(); }
+
+    async function startSearch(q, append = false) {
+        if(!q) return;
+        ensureTopVisible();
+
+        if(!append) { 
+            state.searchQuery = q; 
+            state.searchPage = 1;
+            document.getElementById('content-search').innerHTML = "";
+            document.getElementById('group-favs').style.display = 'none';
+            document.getElementById('btn-fav').classList.remove('active');
+        }
+
+        try {
+            var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
+            var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+            var unique = new Map();
+            var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
+
+            items.forEach(a => {
+                var img = a.querySelector('img');
+                if(img) {
+                    var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
+                }
+            });
+
+            var plus = document.getElementById('plus-btn');
+            if(plus) plus.remove();
+
+            var container = document.getElementById('content-search');
+            var html = Array.from(unique.values()).map(i => `
+                <div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+                    <img src="${i.img}">
+                    <div class="card-label">${i.title}</div>
+                </div>
+            `).join('');
+
+            container.innerHTML += html;
+
+            if(items.length > 0) {
+                container.innerHTML += `
+                    <div id="plus-btn" class="load-more-card" onclick="loadNextPage()">
+                        <i class="fas fa-plus"></i>
+                    </div>`;
+            }
+
+            document.getElementById('group-search').style.display = 'inline-flex';
+            setTimeout(updateScrollState, 350); 
+        } catch(e) { console.error("Search Error:", e); }
+    }
+
+    async function handleAction(i) {
+        state.currentSeries = i;
+        if(i.link.includes('/movie/')) {
+            document.getElementById('side-panel').classList.add('has-content');
+            document.getElementById('episode-list').innerHTML = "";
+            document.getElementById('series-title').innerText = i.title;
+            document.getElementById('fav-btn').style.display = 'block';
+            updateFavBtnUI();
+            fetchAndPlay(i);
+        } else { 
+            loadEpisodes(i); 
+        }
+        if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    async function loadEpisodes(item) {
+        state.currentSeries = item;
+        document.getElementById('series-title').innerText = item.title;
+        document.getElementById('fav-btn').style.display = 'block';
+        updateFavBtnUI();
+        var res = await fetch(PROXY(item.link));
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var eps = [];
+        doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
+            var l = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+            if(!eps.find(e => e.link === l)) eps.push({link: l, title: a.innerText.trim()});
+        });
+        if(eps.length > 0) {
+            document.getElementById('side-panel').classList.add('has-content');
+            document.getElementById('ep-wrapper').classList.remove('minimized');
+            document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
+            renderEpisodeList(eps, item.img);
+        }
+    }
+
+    function renderEpisodeList(eps, img) {
+        document.getElementById('episode-list').innerHTML = eps.map(e => {
+            const hist = state.history.find(h => h.episode_link === e.link);
+            const timeStr = hist ? fmtTime(hist.last_position) : "";
+            const activeClass = state.currentLink === e.link ? 'active-ep' : '';
+            return `<div class="ep-item ${activeClass}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'>
+                    <span>${e.title}</span><span class="ep-progress">${timeStr}</span></div>`;
+        }).join('');
+    }
+
+    async function fetchAndPlay(item) {
+        const top = document.getElementById('top-cont');
+        if (!top.classList.contains('hidden')) {
+            top.classList.add('hidden');
+            document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
+        }
+
+        state.currentLink = item.link; 
+        document.getElementById('v-title').innerText = item.title;
+        document.getElementById('resume-ui').style.display = 'none'; 
+        video.pause(); video.src = ""; 
+
+        // ── Check Stremio progress (series only) ──────────────
+        let stremioTime = null;
+        if (stremio.connected && state.currentSeries && !item.link.includes('/movie/')) {
+            const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+            if (imdbId) {
+                const { season, episode } = parseEpNumbers(item.title);
+                const videoId = `${imdbId}:${season}:${episode}`;
+                stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
+            }
+        }
+
+        // ── Resume logic (Stremio takes precedence if newer) ──
+        const hist = state.history.find(h => h.episode_link === item.link);
+        const resumePos = stremioTime !== null ? stremioTime : (hist?.last_position || 0);
+        const resumeSource = stremioTime !== null ? '(Stremio)' : '';
+
+        if(resumePos > 15) {
+            state.savedPos = resumePos;
+            document.getElementById('meta-pos').innerText = fmtTime(resumePos);
+            document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(resumePos)} ${resumeSource}`;
+            document.getElementById('resume-ui').style.display = 'flex';
+        }
+
+        try {
+            const response = await fetch(PROXY(item.link));
+            const html = await response.text();
+            const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+
+            if(idMatch) {
+                const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
+                const downloadPageUrl = BASE + "/download/" + idMatch[1] + "/" + pathSuffix;
+                const dlRes = await fetch(PROXY(downloadPageUrl));
+                const dlHtml = await dlRes.text();
+                const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
+
+                if(mp4Match) {
+                    video.src = mp4Match[1].startsWith('/') ? BASE + mp4Match[1] : mp4Match[1];
+                    if(resumePos <= 15) video.play().catch(e => {});
+                    if(state.currentSeries && !item.link.includes('/movie/')) {
+                        await loadUserHistory();
+                        loadEpisodes(state.currentSeries);
+                    }
+                }
+            }
+        } catch (err) {}
+    }
+
+    async function syncProgressToDB() {
+        if(state.user && state.currentLink && !video.paused) {
+            const pos = Math.floor(video.currentTime);
+            if(pos > 5) {
+                await db.from('watch_history').upsert({ 
+                    user_id: state.user.id, 
+                    episode_link: state.currentLink, 
+                    last_position: pos, 
+                    updated_at: new Date() 
+                }, { onConflict: 'user_id, episode_link' });
+                document.getElementById('meta-pos').innerText = fmtTime(pos);
+
+                // Stremio sync: push progress if this series is mapped
+                if (stremio.connected && state.currentSeries && !state.currentLink.includes('/movie/')) {
+                    const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+                    if (imdbId) {
+                        const epTitle = document.getElementById('v-title').innerText;
+                        const { season, episode } = parseEpNumbers(epTitle);
+                        const videoId = `${imdbId}:${season}:${episode}`;
+                        await stremioPushProgress(imdbId, videoId, pos);
+                    }
+                }
+            }
+        }
+    }
+
+    async function refreshTop() {
+        if(!state.user) return;
+        const { data: fvs } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
+        state.favs = fvs ? fvs.map(f => f.series_data) : [];
+        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
+        setTimeout(updateScrollState, 500);
+    }
+
+    async function handleFavoriteAction() {
+        if(!state.user) return alert("سجل دخولك أولاً");
+        const isF = state.favs.some(f => f.link === state.currentSeries.link);
+        if(isF) { await db.from('favorites').delete().eq('user_id', state.user.id).filter('series_data->>link', 'eq', state.currentSeries.link); }
+        else { await db.from('favorites').insert([{ user_id: state.user.id, series_data: state.currentSeries }]); }
+        await refreshTop(); updateFavBtnUI();
+    }
+
+    function updateFavBtnUI() { 
+        if(!state.currentSeries) return;
+        var isF = state.favs.some(f => f.link === state.currentSeries.link); 
+        var b = document.getElementById('fav-btn');
+        b.innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة"; 
+        b.style.background = isF ? "#444" : "#e50914"; 
+    }
+
+    function confirmResume(y) { document.getElementById('resume-ui').style.display = 'none'; if(y) video.currentTime = state.savedPos; video.play(); }
+    function toggleRowManual(id, btnId) { var el = document.getElementById(id); el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none'; document.getElementById(btnId).classList.toggle('active'); setTimeout(updateScrollState, 100); }
+
+    function loadNextPage() {
+        state.searchPage++;
+        startSearch(state.searchQuery, true);
+    }
+
+    document.getElementById('discovery').onscroll = updateScrollState;
+    document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
+    window.onload = checkUser;
+    window.onresize = updateScrollState;
+</script>
+</body>
+</html>
