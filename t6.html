@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlAzri TV v1.30 - Stremio Fix</title>
+    <title>AlAzri TV v1.31 - Stremio Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -33,7 +33,7 @@
         .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
         .ep-item { display: flex; justify-content: space-between; padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); }
-        .stremio-btn { background: #1a1a2e; color: #7c5cbf; border: 1px solid #7c5cbf; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .stremio-btn { background: #1a1a2e; color: #7c5cbf; border: 1px solid #7c5cbf; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
         .stremio-btn.connected { background: #7c5cbf; color: #fff; }
         #stremio-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; }
         #stremio-modal.open { display:flex; }
@@ -108,24 +108,43 @@
 
     function fmtTime(s) { if(!s) return "00:00"; var m=Math.floor(s/60), sec=Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
 
-    // --- Stremio Core Logic ---
+    // --- Stremio Core Logic (Updated for CORS) ---
     async function strAPI(endpoint, body) {
-        const r = await fetch("https://api.strem.io" + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const url = PROXY("https://api.strem.io" + endpoint);
+        const r = await fetch(url, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(body) 
+        });
+        if (!r.ok) throw new Error("Stremio HTTP Error");
         return r.json();
     }
 
     async function stremioInit() {
         if (!stremio.authKey) return;
+        const btn = document.getElementById('stremio-btn');
         try {
-            const json = await strAPI('/api/datastoreGet', { authKey: stremio.authKey, collection: 'libraryItem', all: true });
-            stremio.library = (json.result || []).filter(i => i.type === 'series');
-            stremio.connected = true;
-            document.getElementById('stremio-btn').classList.add('connected');
-            if (state.user) {
-                const { data } = await db.from('stremio_series_mapping').select('aksv_link, imdb_id').eq('user_id', state.user.id);
-                if (data) data.forEach(r => stremio.seriesCache[r.aksv_link] = r.imdb_id);
+            const json = await strAPI('/api/datastoreGet', { 
+                authKey: stremio.authKey, 
+                collection: 'libraryItem', 
+                all: true,
+                merge: true
+            });
+            if (json && json.result) {
+                stremio.library = json.result.filter(i => i.type === 'series' && !i.removed);
+                stremio.connected = true;
+                btn.classList.add('connected');
+                console.log(`[Stremio] Data Loaded: ${stremio.library.length} series`);
+                
+                if (state.user) {
+                    const { data } = await db.from('stremio_series_mapping').select('aksv_link, imdb_id').eq('user_id', state.user.id);
+                    if (data) data.forEach(r => stremio.seriesCache[r.aksv_link] = r.imdb_id);
+                }
             }
-        } catch(e) { console.error("Stremio Init Error", e); }
+        } catch(e) { 
+            console.error("Stremio Init Error", e);
+            btn.classList.remove('connected');
+        }
     }
 
     function parseEpNumbers(title) {
@@ -140,8 +159,7 @@
 
     async function getImdbId(series) {
         if (stremio.seriesCache[series.link]) return stremio.seriesCache[series.link];
-        // محاولة مطابقة الاسم تلقائياً
-        const match = stremio.library.find(i => i.name.toLowerCase().includes(series.title.toLowerCase()) || series.title.toLowerCase().includes(i.name.toLowerCase()));
+        const match = stremio.library.find(i => (i.name && series.title) && (i.name.toLowerCase().includes(series.title.toLowerCase()) || series.title.toLowerCase().includes(i.name.toLowerCase())));
         if (match) {
             stremio.seriesCache[series.link] = match._id;
             if (state.user) await db.from('stremio_series_mapping').upsert({ user_id: state.user.id, aksv_link: series.link, imdb_id: match._id });
@@ -160,6 +178,7 @@
         const videoId = `${imdbId}:${season}:${episode}`;
 
         const existing = stremio.library.find(i => i._id === imdbId) || { _id: imdbId, type: 'series', state: {} };
+        existing.state = existing.state || {};
         existing.state.video_id = videoId;
         existing.state.timeOffset = pos;
         existing.state.lastWatched = new Date().toISOString();
@@ -215,7 +234,6 @@
         document.getElementById('v-title').innerText = item.title;
         document.getElementById('resume-ui').style.display = 'none';
         
-        // جلب آخر موضع
         const hist = state.history.find(h => h.episode_link === item.link);
         if (hist && hist.last_position > 10) {
             state.savedPos = hist.last_position;
@@ -228,7 +246,6 @@
             const html = await res.text();
             const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
             if (idMatch) {
-                // استخدام /download/ الموحد كما في التعليمات
                 const dlUrl = `${BASE}/download/${idMatch[1]}/`;
                 const dlRes = await fetch(PROXY(dlUrl));
                 const dlHtml = await dlRes.text();
@@ -257,7 +274,6 @@
         video.play();
     }
 
-    // Auth functions
     async function checkUser() {
         const { data: { session } } = await db.auth.getSession();
         if (session) {
@@ -280,13 +296,22 @@
     async function stremioSaveLogin() {
         const email = document.getElementById('str-email').value;
         const pass = document.getElementById('str-pass').value;
-        const res = await strAPI('/api/login', { type: 'Auth', email, password: pass });
-        if (res.result && res.result.authKey) {
-            localStorage.setItem('str_auth', res.result.authKey);
-            location.reload();
-        } else {
-            document.getElementById('str-status').innerText = "خطأ في تسجيل الدخول";
-        }
+        const status = document.getElementById('str-status');
+        status.innerText = "جاري التحقق...";
+        try {
+            const res = await strAPI('/api/login', { type: 'Auth', email, password: pass });
+            if (res.result && res.result.authKey) {
+                localStorage.setItem('str_auth', res.result.authKey);
+                stremio.authKey = res.result.authKey;
+                status.style.color = "green";
+                status.innerText = "تم الربط بنجاح!";
+                await stremioInit();
+                setTimeout(closeStremioModal, 1500);
+            } else {
+                status.style.color = "red";
+                status.innerText = "خطأ في تسجيل الدخول";
+            }
+        } catch(e) { status.innerText = "فشل الاتصال"; }
     }
 
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
