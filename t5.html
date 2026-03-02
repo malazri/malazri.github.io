@@ -189,8 +189,6 @@
                 </div>
                 <div id="str-debug" style="color:#666; font-size:0.68rem; line-height:1.6;"></div>
                 <button onclick="stremioShowDebug()" style="margin-top:6px; width:100%; background:#0a0a0a; color:#444; border:1px solid #222; padding:4px; border-radius:4px; cursor:pointer; font-size:0.68rem;">فحص الربط</button>
-                <button onclick="stremioTestInsert()" style="margin-top:4px; width:100%; background:#0a0a1a; color:#e50914; border:1px solid #e5091444; padding:4px; border-radius:4px; cursor:pointer; font-size:0.68rem;">🔬 اختبار الحفظ المباشر</button>
-                <div id="str-test-result" style="font-size:0.68rem; margin-top:6px; line-height:1.6; word-break:break-all;"></div>
 
                 <!-- Library browser -->
                 <div id="str-lib-panel" style="display:none; margin-top:10px;">
@@ -278,9 +276,8 @@
         document.getElementById('str-count').innerText = `${all.length} (${breakdown})`;
         // Load mapping cache from Supabase
         if (state.user) {
-            const { data, error } = await db.from('stremio_series_mapping')
+            const { data } = await db.from('stremio_series_mapping')
                 .select('aksv_link, imdb_id, series_title').eq('user_id', state.user.id);
-            if (error) console.warn('[Stremio] Load mappings error:', error);
             if (data) {
                 stremio.reverseCache = stremio.reverseCache || {};
                 data.forEach(r => {
@@ -595,81 +592,26 @@
         stremioRenderLibraryList(val);
     }
 
-    // ── Direct insert test — bypasses all logic, writes one row ──
-    async function stremioTestInsert() {
-        const el = document.getElementById('str-test-result');
-        el.innerHTML = '<span style="color:#888">جارٍ الاختبار...</span>';
-
-        // Step 1: Check login
-        if (!state.user) {
-            el.innerHTML = '<span style="color:#e50914">❌ غير مسجّل الدخول — state.user فارغ</span>';
-            return;
-        }
-        el.innerHTML += `<br><span style="color:#4caf50">✓ مسجّل: ${state.user.id.substring(0,12)}...</span>`;
-
-        // Step 2: Check Supabase session
-        const { data: { session } } = await db.auth.getSession();
-        if (!session) {
-            el.innerHTML += '<br><span style="color:#e50914">❌ لا يوجد session في Supabase</span>';
-            return;
-        }
-        el.innerHTML += `<br><span style="color:#4caf50">✓ Session نشط</span>`;
-
-        // Step 3: Try SELECT first (read access check)
-        const { data: rows, error: selErr } = await db.from('stremio_series_mapping')
-            .select('*').eq('user_id', state.user.id).limit(1);
-        if (selErr) {
-            el.innerHTML += `<br><span style="color:#e50914">❌ SELECT فشل: ${selErr.code} — ${selErr.message}</span>`;
-        } else {
-            el.innerHTML += `<br><span style="color:#4caf50">✓ SELECT نجح (${rows.length} صف)</span>`;
-        }
-
-        // Step 4: Try INSERT a test row
-        const testRow = {
-            user_id:      state.user.id,
-            aksv_link:    'https://test.link/series/diagnostic',
-            imdb_id:      'tt0000000',
-            series_title: 'اختبار تشخيصي'
-        };
-        const { data: ins, error: insErr } = await db.from('stremio_series_mapping')
-            .insert(testRow).select();
-        if (insErr) {
-            el.innerHTML += `<br><span style="color:#e50914">❌ INSERT فشل: ${insErr.code}<br>${insErr.message}<br>${insErr.hint || ''}</span>`;
-        } else {
-            el.innerHTML += `<br><span style="color:#4caf50">✓ INSERT نجح! id=${ins[0]?.id}</span>`;
-            // Clean up test row
-            await db.from('stremio_series_mapping').delete().eq('imdb_id','tt0000000').eq('user_id', state.user.id);
-            el.innerHTML += `<br><span style="color:#4caf50">✓ تم حذف صف الاختبار</span>`;
-        }
-
-        // Step 5: Try UPSERT with correct conflict key
-        const { data: ups, error: upsErr } = await db.from('stremio_series_mapping')
-            .upsert({ ...testRow, aksv_link: 'https://test.link/series/upsert' }, { onConflict: 'user_id,aksv_link' })
-            .select();
-        if (upsErr) {
-            el.innerHTML += `<br><span style="color:#e50914">❌ UPSERT فشل: ${upsErr.code}<br>${upsErr.message}<br>${upsErr.hint || ''}</span>`;
-        } else {
-            el.innerHTML += `<br><span style="color:#4caf50">✓ UPSERT نجح!</span>`;
-            await db.from('stremio_series_mapping').delete().eq('imdb_id','tt0000000').eq('user_id', state.user.id);
-        }
-
-        el.innerHTML += '<br><span style="color:#7c5cbf">— اكتمل الاختبار —</span>';
-    }
-
-    // ── Unified library item click ───────────────────────────
+    // Called when user clicks any item in the Stremio library panel
     async function stremioLibItemClick(imdbId, imdbName) {
+
+        // ── CASE A: Series already open in ak.sv → just save the mapping ──
         if (state.currentSeries) {
             await stremioManualMap(imdbId, imdbName);
             return;
         }
+
+        // ── CASE B: Check if we already saved this imdbId before ──
         stremio.reverseCache = stremio.reverseCache || {};
-        const mem = stremio.reverseCache[imdbId];
-        if (mem?.aksv_link) {
+        const cached = stremio.reverseCache[imdbId];
+        if (cached?.aksv_link) {
             closeStremioModal();
-            strToast(`⏩ جارٍ تحميل: ${mem.series_title}`);
-            await handleAction({ title: mem.series_title, link: mem.aksv_link, img: '' });
+            strToast(`⏩ جارٍ تحميل: ${cached.series_title}`);
+            await handleAction({ title: cached.series_title, link: cached.aksv_link, img: '' });
             return;
         }
+
+        // Also check Supabase in case reverseCache wasn't built
         if (state.user) {
             const { data } = await db.from('stremio_series_mapping')
                 .select('aksv_link, series_title')
@@ -684,53 +626,56 @@
                 return;
             }
         }
+
+        // ── CASE C: No mapping anywhere → search ak.sv and auto-map on selection ──
         closeStremioModal();
-        strToast(`🔍 جارٍ البحث عن: ${imdbName}`);
         document.getElementById('search-input').value = imdbName;
         stremio._pendingMap = { imdbId, imdbName };
+        strToast(`🔍 جارٍ البحث عن: ${imdbName}`);
         await startSearch(imdbName);
-        strToast(`اختر المسلسل من نتائج البحث`);
+        strToast(`اختر المسلسل الصحيح من نتائج البحث`);
     }
 
+    // Saves mapping between currently-open ak.sv series and a Stremio imdbId
     async function stremioManualMap(imdbId, imdbName) {
         if (!state.currentSeries) {
             strToast('افتح مسلسلاً أولاً', true);
             return;
         }
+
+        // Update in-memory caches
         stremio.seriesCache[state.currentSeries.link] = imdbId;
         stremio.reverseCache = stremio.reverseCache || {};
         stremio.reverseCache[imdbId] = { aksv_link: state.currentSeries.link, series_title: state.currentSeries.title };
+
+        // Add to library array if not already there
         if (!stremio.library.find(i => i._id === imdbId)) {
             const raw = (stremio.allItems || []).find(i => i._id === imdbId);
             if (raw) stremio.library.push(raw);
         }
+
+        // Save to Supabase
         if (!state.user) {
             strToast('⚠️ سجّل دخولك لحفظ الربط', true);
-            stremioShowDebug();
-            stremioRenderLibraryList(document.getElementById('str-lib-search').value);
-            return;
-        }
-        const payload = {
-            user_id:      state.user.id,
-            aksv_link:    state.currentSeries.link,
-            imdb_id:      imdbId,
-            series_title: state.currentSeries.title
-        };
-        const { data, error } = await db.from('stremio_series_mapping')
-            .upsert(payload, { onConflict: 'user_id,aksv_link' })
-            .select();
-        if (error) {
-            // Fallback to plain insert
-            const { error: e2 } = await db.from('stremio_series_mapping').insert(payload);
-            if (e2) {
-                strToast(`❌ فشل الحفظ: ${e2.message}`, true);
+        } else {
+            const { error } = await db.from('stremio_series_mapping')
+                .upsert({
+                    user_id:      state.user.id,
+                    aksv_link:    state.currentSeries.link,
+                    imdb_id:      imdbId,
+                    series_title: state.currentSeries.title
+                }, { onConflict: 'user_id,aksv_link' });
+            if (error) {
+                strToast(`❌ فشل الحفظ: ${error.message}`, true);
                 return;
             }
         }
+
         strToast(`✓ تم الربط: ${state.currentSeries.title} ← ${imdbName}`);
         stremioShowDebug();
         stremioRenderLibraryList(document.getElementById('str-lib-search').value);
-        // Re-sync episode progress immediately
+
+        // Immediately pull Stremio progress for current episode
         if (state.currentLink && !state.currentLink.includes('/movie/')) {
             const epTitle = document.getElementById('v-title').innerText;
             const { season, episode } = parseEpNumbers(epTitle);
@@ -893,6 +838,7 @@
             loadEpisodes(i); 
         }
         if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
+        // Auto-map pending Stremio item after series loads from search
         if (stremio._pendingMap) {
             const { imdbId, imdbName } = stremio._pendingMap;
             stremio._pendingMap = null;
