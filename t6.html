@@ -365,27 +365,27 @@
         const existing = stremio.library.find(i => i._id === imdbId) || {};
         const now = Date.now();
 
-        // Build a clean, minimal libraryItem — spreading unknown fields can cause JSON unmarshal errors
-        const updatedItem = {
-            _id:    imdbId,
-            type:   existing.type  || 'series',
-            name:   existing.name  || imdbId,
-            poster: existing.poster || '',
-            _mtime: now,
-            _ctime: existing._ctime || now,
-            removed:  false,
-            temp:     false,
-            state: {
-                lastWatched:        now,
-                timeWatched:        (existing.state && existing.state.timeWatched  || 0) + 10,
-                timesWatched:       (existing.state && existing.state.timesWatched || 0),
-                overallTimeWatched: (existing.state && existing.state.overallTimeWatched || 0) + 10,
-                flaggedWatched:     false,
-                duration:           existing.state && existing.state.duration || 0,
+        // Merge with existing — keep all original fields, only update state fields
+        // Stremio rejects if required fields from the original item are missing
+        const updatedItem = Object.assign({}, existing, {
+            _id:     imdbId,
+            type:    existing.type  || 'series',
+            name:    existing.name  || imdbId,
+            _mtime:  now,
+            _ctime:  existing._ctime || now,
+            removed: existing.removed || false,
+            temp:    existing.temp    || false,
+            state: Object.assign({}, existing.state || {}, {
                 video_id:           videoId,
-                timeOffset:         timeOffset
-            }
-        };
+                timeOffset:         timeOffset,
+                lastWatched:        now,
+                timeWatched:        ((existing.state || {}).timeWatched        || 0) + 10,
+                overallTimeWatched: ((existing.state || {}).overallTimeWatched || 0) + 10,
+                timesWatched:       ((existing.state || {}).timesWatched       || 0),
+                flaggedWatched:     ((existing.state || {}).flaggedWatched     || false),
+                duration:           ((existing.state || {}).duration           || 0)
+            })
+        });
 
         // Update local cache immediately
         const idx = stremio.library.findIndex(i => i._id === imdbId);
@@ -393,14 +393,16 @@
         else stremio.library.push(updatedItem);
 
         try {
+            const pushPayload = {
+                authKey:    stremio.authKey,
+                collection: 'libraryItem',
+                changes:    [updatedItem]
+            };
+            console.log('[Stremio] Sending payload:', JSON.stringify(pushPayload, null, 2));
             const r = await fetch(STR_API + '/api/datastorePut', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    authKey:    stremio.authKey,
-                    collection: 'libraryItem',
-                    changes:    [updatedItem]
-                })
+                body: JSON.stringify(pushPayload)
             });
             if (!r.ok) {
                 const errBody = await r.text();
@@ -833,6 +835,28 @@
         document.getElementById('series-title').innerText = item.title;
         document.getElementById('fav-btn').style.display = 'block';
         updateFavBtnUI();
+
+        // ── Auto-link to Stremio when series is opened ──
+        if (stremio.connected && !stremio.seriesCache[item.link]) {
+            const match = stremioMatchByTitle(item.title);
+            if (match) {
+                stremio.seriesCache[item.link] = match._id;
+                strToast(`🔗 ربط تلقائي: ${item.title} ← ${match.name}`);
+                if (state.user) {
+                    const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
+                        user_id: state.user.id,
+                        aksv_link: item.link,
+                        imdb_id: match._id,
+                        series_title: item.title
+                    }, { onConflict: 'user_id, aksv_link' });
+                    if (mapErr) console.error('[Stremio] Auto-link save failed:', mapErr.message);
+                    else console.log('[Stremio] Auto-link saved:', item.title, '→', match._id);
+                }
+            } else {
+                console.log('[Stremio] No auto-match for:', item.title);
+            }
+        }
+
         var res = await fetch(PROXY(item.link));
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         var eps = [];
