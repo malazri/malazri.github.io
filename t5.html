@@ -183,9 +183,20 @@
                 <button onclick="stremioDisconnect()" style="flex:1; background:#1a1a1a; color:#555; border:1px solid #333; padding:6px; border-radius:4px; cursor:pointer; font-size:0.75rem;">قطع الاتصال</button>
             </div>
             <div style="margin-top:10px; padding-top:10px; border-top:1px solid #1a1a1a;">
-                <div style="color:#555; font-size:0.7rem; margin-bottom:6px;">تشخيص — المسلسل الحالي:</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <div style="color:#555; font-size:0.7rem;">تشخيص — المسلسل الحالي:</div>
+                    <button onclick="stremioToggleLibrary()" id="str-lib-toggle" style="background:#0a0a0a; color:#555; border:1px solid #222; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:0.68rem;">عرض المكتبة</button>
+                </div>
                 <div id="str-debug" style="color:#666; font-size:0.68rem; line-height:1.6;"></div>
                 <button onclick="stremioShowDebug()" style="margin-top:6px; width:100%; background:#0a0a0a; color:#444; border:1px solid #222; padding:4px; border-radius:4px; cursor:pointer; font-size:0.68rem;">فحص الربط</button>
+
+                <!-- Library browser -->
+                <div id="str-lib-panel" style="display:none; margin-top:10px;">
+                    <div style="color:#555; font-size:0.68rem; margin-bottom:5px;">مكتبة Stremio — اضغط على اسم لربطه بالمسلسل الحالي:</div>
+                    <input id="str-lib-search" type="text" placeholder="بحث في المكتبة..." oninput="stremioFilterLibrary(this.value)"
+                        style="width:100%; background:#0d0d0d; border:1px solid #2a2a2a; color:#aaa; padding:5px 8px; border-radius:4px; margin-bottom:6px; font-size:0.72rem; outline:none;">
+                    <div id="str-lib-list" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:3px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -479,23 +490,82 @@
         el.innerHTML = `عنوان المسلسل: <span style="color:#aaa">${state.currentSeries.title}</span><br>`;
         const cached = stremio.seriesCache[state.currentSeries.link];
         if (cached) {
-            el.innerHTML += `IMDB: <span style="color:#7c5cbf">${cached}</span> (مخزن)<br>`;
+            const libItem = stremio.library.find(i => i._id === cached);
+            el.innerHTML += `IMDB: <span style="color:#7c5cbf">${cached}</span> — <span style="color:#4caf50">${libItem?.name || 'مربوط'}</span><br>`;
         } else {
             const match = stremioMatchByTitle(state.currentSeries.title);
             if (match) {
                 el.innerHTML += `IMDB: <span style="color:#4caf50">${match._id}</span> — ${match.name}<br>`;
             } else {
-                el.innerHTML += `<span style="color:#e50914">لم يُعثر على تطابق في مكتبة Stremio</span><br>`;
-                // Show top 3 library items for manual comparison
-                const top3 = stremio.library.slice(0, 3).map(i => i.name).join('، ');
-                el.innerHTML += `<span style="color:#444">أمثلة من المكتبة: ${top3}</span>`;
+                el.innerHTML += `<span style="color:#e50914">❌ لم يُعثر على تطابق تلقائي</span><br>`;
+                el.innerHTML += `<span style="color:#555; font-size:0.65rem;">استخدم "عرض المكتبة" لربطه يدوياً ↑</span>`;
             }
         }
         if (state.currentLink && !state.currentLink.includes('/movie/')) {
             const epTitle = document.getElementById('v-title').innerText;
             const { season, episode } = parseEpNumbers(epTitle);
-            el.innerHTML += `الحلقة المحللة: موسم ${season}، حلقة ${episode}`;
+            el.innerHTML += `<br>الحلقة المحللة: موسم ${season}، حلقة ${episode}`;
         }
+    }
+
+    function stremioToggleLibrary() {
+        const panel = document.getElementById('str-lib-panel');
+        const btn   = document.getElementById('str-lib-toggle');
+        const open  = panel.style.display === 'none';
+        panel.style.display = open ? 'block' : 'none';
+        btn.style.color     = open ? '#7c5cbf' : '#555';
+        btn.style.borderColor = open ? '#7c5cbf' : '#222';
+        if (open) stremioRenderLibraryList('');
+    }
+
+    function stremioRenderLibraryList(filter) {
+        const list = document.getElementById('str-lib-list');
+        const fl   = filter.toLowerCase();
+        const items = stremio.library
+            .filter(i => !fl || (i.name || '').toLowerCase().includes(fl))
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        if (!items.length) {
+            list.innerHTML = '<div style="color:#444; font-size:0.68rem; padding:6px;">لا توجد نتائج</div>';
+            return;
+        }
+
+        const currentImdb = state.currentSeries ? stremio.seriesCache[state.currentSeries.link] : null;
+        list.innerHTML = items.map(i => {
+            const isMapped = i._id === currentImdb;
+            return `<div onclick="stremioManualMap('${i._id}', ${JSON.stringify(i.name || '')})"
+                style="padding:6px 8px; background:${isMapped ? '#1a0e2e' : '#0d0d0d'}; border:1px solid ${isMapped ? '#7c5cbf' : '#1a1a1a'};
+                       border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+                       transition:background 0.15s;"
+                onmouseover="this.style.background='#141428'" onmouseout="this.style.background='${isMapped ? '#1a0e2e' : '#0d0d0d'}'">
+                <span style="color:${isMapped ? '#b39ddb' : '#aaa'}; font-size:0.72rem;">${i.name || i._id}</span>
+                <span style="color:#333; font-size:0.62rem;">${i._id}</span>
+            </div>`;
+        }).join('');
+    }
+
+    function stremioFilterLibrary(val) {
+        stremioRenderLibraryList(val);
+    }
+
+    async function stremioManualMap(imdbId, imdbName) {
+        if (!state.currentSeries) {
+            strToast('افتح مسلسلاً أولاً', true);
+            return;
+        }
+        // Save mapping
+        stremio.seriesCache[state.currentSeries.link] = imdbId;
+        if (state.user) {
+            await db.from('stremio_series_mapping').upsert({
+                user_id: state.user.id,
+                aksv_link: state.currentSeries.link,
+                imdb_id: imdbId,
+                series_title: state.currentSeries.title
+            }, { onConflict: 'user_id, aksv_link' });
+        }
+        strToast(`✓ تم الربط: ${state.currentSeries.title} ← ${imdbName}`);
+        stremioShowDebug();
+        stremioRenderLibraryList(document.getElementById('str-lib-search').value);
     }
 
     function stremioDisconnect() {
