@@ -268,7 +268,7 @@
         // Full raw list for browsing — everything Stremio has
         stremio.allItems = all;
         // Filtered list used for sync (series with tt IDs only)
-        stremio.library  = all.filter(i => i.type === 'series' && i._id && i._id.startsWith('tt'));
+        stremio.library  = all.filter(i => i._id); // keep all items — tt, kitsu, tmdb, youtube, etc.
         // Count breakdown
         const byType = {};
         all.forEach(i => { byType[i.type || 'unknown'] = (byType[i.type || 'unknown'] || 0) + 1; });
@@ -365,28 +365,25 @@
         const existing = stremio.library.find(i => i._id === imdbId) || {};
         const now = Date.now();
 
-        // Stremio requires _mtime, _ctime, and a complete libraryItem structure
+        // Build a clean, minimal libraryItem — spreading unknown fields can cause JSON unmarshal errors
         const updatedItem = {
-            // Preserve ALL original fields from the library item
-            ...existing,
-            // Required identity fields
-            _id:   imdbId,
-            type:  existing.type || 'series',
-            name:  existing.name  || '',
-            // Required timestamp fields — Stremio rejects without these
+            _id:    imdbId,
+            type:   existing.type  || 'series',
+            name:   existing.name  || imdbId,
+            poster: existing.poster || '',
             _mtime: now,
             _ctime: existing._ctime || now,
-            // Updated state
+            removed:  false,
+            temp:     false,
             state: {
-                ...(existing.state || {}),
-                video_id:       videoId,
-                timeOffset:     timeOffset,
-                lastWatched:    now,
-                timeWatched:    (existing.state?.timeWatched  || 0) + 10,
-                timesWatched:   existing.state?.timesWatched  || 0,
-                flaggedWatched: existing.state?.flaggedWatched || false,
-                duration:       existing.state?.duration      || 0,
-                overallTimeWatched: (existing.state?.overallTimeWatched || 0) + 10
+                lastWatched:        now,
+                timeWatched:        (existing.state && existing.state.timeWatched  || 0) + 10,
+                timesWatched:       (existing.state && existing.state.timesWatched || 0),
+                overallTimeWatched: (existing.state && existing.state.overallTimeWatched || 0) + 10,
+                flaggedWatched:     false,
+                duration:           existing.state && existing.state.duration || 0,
+                video_id:           videoId,
+                timeOffset:         timeOffset
             }
         };
 
@@ -405,7 +402,6 @@
                     changes:    [updatedItem]
                 })
             });
-            // Log full error body on failure so we can debug
             if (!r.ok) {
                 const errBody = await r.text();
                 console.error('[Stremio] Push HTTP', r.status, errBody);
@@ -414,8 +410,8 @@
             }
             const json = await r.json();
             if (json.error) {
-                console.error('[Stremio] Push API error:', json.error);
-                strToast('فشل الإرسال: ' + json.error, true);
+                console.error('[Stremio] Push API error:', JSON.stringify(json.error));
+                strToast('فشل الإرسال: ' + (json.error.message || json.error), true);
                 return;
             }
             console.log('[Stremio] Pushed OK', videoId, fmtTime(timeOffset));
@@ -603,7 +599,7 @@
                     <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
                         ${lastW ? `<span style="color:#333; font-size:0.6rem;">${lastW}</span>` : ''}
                         <span style="color:#555; font-size:0.6rem; font-family:monospace;">${i._id}</span>
-                        ${!i._id.startsWith('tt') ? '<span title="لا يدعم المزامنة" style="color:#e50914; font-size:0.6rem;">⚠</span>' : ''}
+
                         ${isMapped ? '<span style="color:#7c5cbf; font-size:0.65rem;">✓</span>' : ''}
                     </div>
                 </div>`;
@@ -625,10 +621,7 @@
             strToast('افتح مسلسلاً أولاً', true);
             return;
         }
-        if (!imdbId.startsWith('tt')) {
-            strToast(`⚠ هذا المعرف (${imdbId}) لا يدعم مزامنة التقدم — يجب أن يبدأ بـ tt`, true);
-            return;
-        }
+        // Allow any addon ID format (tt, kitsu, tmdb, youtube, etc.)
         // Save mapping
         stremio.seriesCache[state.currentSeries.link] = imdbId;
         // Ensure this item is in stremio.library for sync (even if filtered out before)
