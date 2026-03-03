@@ -462,13 +462,17 @@
             // ── Stremio record — videosState first, fallback to library item ──
             let strTimeSec = 0, strMs = 0, strDurMs = 0, strFlagged = false;
 
+            const libItem = stremio.library.find(i => i._id === seriesId);
+            const libState = libItem?.state || {};
+
             const epData = stremioEpMap[videoId];
             if (epData) {
                 strTimeSec = Math.floor((epData.timeOffsetMs || 0) / 1000);
                 strMs      = typeof epData.lastWatched === 'string'
                     ? new Date(epData.lastWatched).getTime()
                     : (epData.lastWatched || 0);
-                strDurMs   = epData.durationMs   || 0;
+                // videosState may have duration, else use library item duration
+                strDurMs   = epData.durationMs || libState.duration || 0;
                 strFlagged = epData.flaggedWatched || false;
             } else {
                 const libProgress = stremioGetProgress(seriesId, videoId);
@@ -477,11 +481,19 @@
                     strMs      = typeof libProgress.lastWatched === 'string'
                         ? new Date(libProgress.lastWatched).getTime()
                         : (libProgress.lastWatched || 0);
-                    const libItem = stremio.library.find(i => i._id === seriesId);
-                    strDurMs   = libItem?.state?.duration || 0;
-                    strFlagged = !!(libItem?.state?.flaggedWatched);
+                    // libItem.state.duration is the episode duration (last watched ep) in ms
+                    // Only trust it if this episode's videoId matches the library item's video_id
+                    const libVidId = libState.video_id || '';
+                    strDurMs   = libVidId === videoId ? (libState.duration || 0) : 0;
+                    strFlagged = !!(libState.flaggedWatched);
                 }
             }
+
+            // Duration in seconds:
+            // 1. libItem.state.duration (ms→s) if it belongs to this episode
+            // 2. sbRec.duration — recorded by our player on previous watch
+            // 3. 0 — will be filled when episode is played
+            const resolvedDurSec = Math.floor(strDurMs / 1000) || sbRec?.duration || 0;
 
             // Skip only if truly nothing on either side — no time and no watched flag
             const strHasData = strTimeSec >= 5 || strFlagged;
@@ -515,23 +527,23 @@
 
             if (!winner) continue;
 
-            const strDurSec  = Math.floor(strDurMs / 1000);
-            const strWatched = strFlagged || (strDurMs > 0 && (strTimeSec * 1000) >= strDurMs - 30000);
+            const strWatched = strFlagged ||
+                (resolvedDurSec > 0 && strTimeSec >= resolvedDurSec - 30);
 
             if (winner === 'stremio') {
                 // Stremio → Supabase
-                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)}s (ts:${new Date(strMs).toISOString()}) watched:${strWatched}`);
+                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)}s dur:${fmtTime(resolvedDurSec)} watched:${strWatched}`);
                 sbUpserts.push({
                     user_id:       state.user.id,
                     episode_link:  ep.link,
                     last_position: strTimeSec,
-                    duration:      strDurSec,
+                    duration:      resolvedDurSec,
                     watched:       strWatched,
                     updated_at:    new Date(strMs || Date.now()).toISOString()
                 });
                 const hi = state.history.find(h => h.episode_link === ep.link);
-                if (hi) { hi.last_position = strTimeSec; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
-                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
+                if (hi) { hi.last_position = strTimeSec; hi.duration = resolvedDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
+                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: resolvedDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
 
             } else {
                 // Supabase → Stremio
