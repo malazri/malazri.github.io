@@ -665,6 +665,100 @@
 
   .signout-btn:hover { border-color: var(--error); color: #fca5a5; }
 
+  /* ── ADDON MANAGER ── */
+  .addon-panel-wrap {
+    margin-bottom: 1.5rem;
+  }
+
+  .addon-panel-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    user-select: none;
+  }
+  .addon-panel-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .addon-panel-toggle .left { display: flex; align-items: center; gap: 0.5rem; }
+  .addon-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.6rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .addon-panel-body {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 1rem;
+  }
+  .addon-panel-body.open { display: block; }
+
+  .addon-add-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .addon-add-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.45rem 0.75rem;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    outline: none;
+  }
+  .addon-add-row input:focus { border-color: var(--accent); }
+  .addon-add-row input::placeholder { color: var(--text-dim); }
+
+  #addon-add-status {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-bottom: 0.75rem;
+    min-height: 1rem;
+  }
+
+  #addon-list { display: flex; flex-direction: column; gap: 0.35rem; max-height: 240px; overflow-y: auto; scrollbar-width: thin; }
+
+  .addon-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--surface2);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .addon-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .addon-info { flex: 1; min-width: 0; }
+  .addon-name { font-size: 0.75rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .addon-meta { font-size: 0.62rem; color: var(--text-dim); }
+  .addon-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .addon-remove:hover { color: #fca5a5; background: rgba(239,68,68,0.1); }
+
   @media (max-width: 640px) {
     header { padding: 0 1rem; }
     main { padding: 1.25rem 1rem 3rem; }
@@ -761,6 +855,30 @@
       <div class="stat"><div class="stat-val" id="stat-episodes">0</div><div class="stat-label">Episodes tracked</div></div>
     </div>
 
+    <!-- ADDON MANAGER -->
+    <div class="addon-panel-wrap" id="addon-manager">
+      <div class="addon-panel-toggle" onclick="toggleAddonPanel()">
+        <div class="left">
+          🧩 Addon Manager
+          <span class="addon-badge" id="addon-count">0</span>
+        </div>
+        <span id="addon-panel-arrow" style="font-size:0.65rem;color:var(--text-dim)">▼</span>
+      </div>
+      <div class="addon-panel-body" id="addon-panel-body">
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.6rem">
+          Add an addon by URL (e.g. <code style="color:#a78bfa;background:var(--surface2);padding:1px 5px;border-radius:3px">https://arabcity.to/manifest.json</code>)
+        </div>
+        <div class="addon-add-row">
+          <input id="addon-url-input" type="text" placeholder="https://your-addon.com/manifest.json"
+            onkeydown="if(event.key==='Enter')addAddonByUrl(this.value)">
+          <button class="btn btn-ghost" style="white-space:nowrap" onclick="addAddonByUrl(document.getElementById('addon-url-input').value)">Add</button>
+        </div>
+        <div id="addon-add-status"></div>
+        <div style="font-size:0.68rem;color:var(--text-dim);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.06em">Loaded Addons</div>
+        <div id="addon-list"><div style="color:var(--text-dim);font-size:0.75rem">Loading…</div></div>
+      </div>
+    </div>
+
     <div class="series-grid" id="series-grid"></div>
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">📺</div>
@@ -779,9 +897,11 @@ let loadedSeries = new Set();
 const STREMIO_API = 'https://api.strem.io/api';
 
 // ── ADDONS ──
-let installedAddons = [];
+let installedAddons = []; // { name, _base, types, resources, _url, _ok }
 
 async function loadAddons() {
+  // 1. Try addonCollectionGet (synced user addons)
+  let rawAddons = [];
   try {
     const res = await fetch(`${STREMIO_API}/addonCollectionGet`, {
       method: 'POST',
@@ -789,34 +909,134 @@ async function loadAddons() {
       body: JSON.stringify({ type: 'AddonCollectionGet', authKey, update: true })
     });
     const data = await res.json();
-    const addons = (data.result && data.result.addons) ? data.result.addons : [];
-    const manifests = await Promise.allSettled(
-      addons.slice(0, 25).map(a => fetchManifest(a.transportUrl || a.url || ''))
-    );
-    installedAddons = manifests
-      .filter(r => r.status === 'fulfilled' && r.value)
-      .map(r => r.value);
-    console.log(`[Addons] Loaded ${installedAddons.length} manifests:`, installedAddons.map(m => m.name));
+    // Result can be { addons: [...] } or directly an array
+    const result = data.result || {};
+    rawAddons = result.addons || (Array.isArray(result) ? result : []);
+    console.log('[Addons] Raw addons from API:', rawAddons.length, rawAddons.map(a => a.transportUrl || a.url || a.manifest?.name));
   } catch(e) {
-    console.warn('[Addons] Could not load:', e.message);
-    installedAddons = [];
+    console.warn('[Addons] addonCollectionGet failed:', e.message);
+  }
+
+  // 2. Also try datastoreGet for addons collection (older API path some clients use)
+  if (rawAddons.length === 0) {
+    try {
+      const res2 = await fetch(`${STREMIO_API}/datastoreGet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'DatastoreGet', authKey, collection: 'addonCollection', ids: [], all: true })
+      });
+      const data2 = await res2.json();
+      const result2 = Array.isArray(data2.result) ? data2.result : [];
+      rawAddons = result2;
+      console.log('[Addons] Fallback datastoreGet addons:', rawAddons.length);
+    } catch(e) {
+      console.warn('[Addons] datastoreGet fallback failed:', e.message);
+    }
+  }
+
+  // 3. Fetch manifests for ALL addons (no cap)
+  const urlsToFetch = rawAddons
+    .map(a => a.transportUrl || a.url || (a.manifest && a._id) || '')
+    .filter(u => u && u.startsWith('http'));
+
+  console.log('[Addons] Fetching manifests for URLs:', urlsToFetch);
+
+  const results = await Promise.allSettled(urlsToFetch.map(u => fetchManifest(u)));
+  installedAddons = results
+    .map((r, i) => r.status === 'fulfilled' && r.value ? r.value : null)
+    .filter(Boolean);
+
+  // 4. Always ensure Cinemeta is present
+  ensureBuiltinAddons();
+
+  console.log('[Addons] Final loaded addons:', installedAddons.length, installedAddons.map(m => m.name));
+  renderAddonList();
+}
+
+function ensureBuiltinAddons() {
+  const builtins = [
+    { name: 'Cinemeta', _base: 'https://v3-cinemeta.strem.io', types: ['movie','series'], resources: ['meta','catalog'] }
+  ];
+  for (const b of builtins) {
+    if (!installedAddons.some(m => (m._base||'').includes(b._base.replace('https://','')))) {
+      installedAddons.push(b);
+    }
   }
 }
 
 async function fetchManifest(transportUrl) {
   if (!transportUrl) return null;
+  // transportUrl might already be the manifest URL or just the base
   const base = transportUrl.replace(/\/manifest\.json$/, '').replace(/\/$/, '');
   try {
-    const res = await fetch(`${base}/manifest.json`, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(`${base}/manifest.json`, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const m = await res.json();
     m._base = base;
+    m._url = `${base}/manifest.json`;
     return m;
-  } catch { return null; }
+  } catch(e) {
+    console.warn('[Addons] Failed to fetch manifest for', base, e.message);
+    return null;
+  }
+}
+
+// Manually add an addon by URL
+async function addAddonByUrl(url) {
+  const clean = url.trim().replace(/\/manifest\.json$/, '').replace(/\/$/, '');
+  const statusEl = document.getElementById('addon-add-status');
+  statusEl.textContent = 'Fetching manifest…';
+  statusEl.style.color = 'var(--text-muted)';
+  const m = await fetchManifest(clean);
+  if (!m) {
+    statusEl.textContent = 'Failed to load manifest from that URL.';
+    statusEl.style.color = '#fca5a5';
+    return;
+  }
+  if (installedAddons.some(a => a._base === m._base)) {
+    statusEl.textContent = `"${m.name}" is already in your list.`;
+    statusEl.style.color = 'var(--warning)';
+    return;
+  }
+  installedAddons.push(m);
+  statusEl.textContent = `✓ Added "${m.name}"`;
+  statusEl.style.color = 'var(--success)';
+  document.getElementById('addon-url-input').value = '';
+  renderAddonList();
+}
+
+function removeAddon(base) {
+  installedAddons = installedAddons.filter(a => a._base !== base);
+  renderAddonList();
+  // Reset loaded episode cache so they re-query
+  loadedSeries.clear();
+}
+
+function renderAddonList() {
+  const el = document.getElementById('addon-list');
+  if (!el) return;
+  if (!installedAddons.length) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:0.75rem;padding:0.5rem 0">No addons loaded.</div>';
+    return;
+  }
+  el.innerHTML = installedAddons.map(m => {
+    const types = (m.types || []).join(', ') || '?';
+    const hasMeta = (m.resources || []).some(r => typeof r === 'string' ? r === 'meta' : r.name === 'meta');
+    return `<div class="addon-item">
+      <div class="addon-dot" style="background:${hasMeta ? 'var(--success)' : 'var(--text-dim)'}"></div>
+      <div class="addon-info">
+        <div class="addon-name">${escHtml(m.name || m._base)}</div>
+        <div class="addon-meta">${escHtml(types)} · ${hasMeta ? 'meta ✓' : 'no meta'}</div>
+      </div>
+      <button class="addon-remove" onclick="removeAddon('${escHtml(m._base||'')}')">✕</button>
+    </div>`;
+  }).join('');
+  const countEl = document.getElementById('addon-count');
+  if (countEl) countEl.textContent = installedAddons.length;
 }
 
 function getMetaAddons(type) {
-  const matches = installedAddons.filter(m => {
+  return installedAddons.filter(m => {
     const types = m.types || [];
     const resources = m.resources || [];
     const hasType = types.includes(type);
@@ -825,16 +1045,6 @@ function getMetaAddons(type) {
     );
     return hasType && hasMeta;
   });
-  // Always ensure Cinemeta is present as a fallback for standard content
-  if (!matches.some(m => (m._base||'').includes('cinemeta'))) {
-    matches.push({
-      name: 'Cinemeta',
-      _base: 'https://v3-cinemeta.strem.io',
-      types: ['movie','series'],
-      resources: ['meta']
-    });
-  }
-  return matches;
 }
 
 async function fetchMetaFromAddon(base, type, id) {
@@ -847,12 +1057,18 @@ async function fetchMetaFromAddon(base, type, id) {
     const videos = meta.videos || [];
     if (!videos.length) return null;
     return { meta, videos };
-  } catch { return null; }
+  } catch(e) {
+    console.warn('[Meta] Failed from', base, e.message);
+    return null;
+  }
 }
 
-// Query all compatible addons, merge unique episodes
 async function fetchEpisodesFromAllAddons(type, id, statusEl) {
   const addons = getMetaAddons(type);
+  if (!addons.length) {
+    if (statusEl) statusEl.textContent = 'No compatible addons found for type: ' + type;
+    return null;
+  }
   let bestMeta = null;
   const allVideos = [];
   const seenKeys = new Set();
@@ -899,7 +1115,8 @@ async function loginWithCredentials() {
     if (!data.result || !data.result.authKey) throw new Error(data.error || 'Login failed. Check credentials.');
     authKey = data.result.authKey;
     localStorage.setItem('stremio_auth_key', authKey);
-    await Promise.all([loadLibrary(), loadAddons()]);
+    loadAddons(); // fire and forget - runs in background
+    await loadLibrary();
   } catch(e) {
     showErr(errEl, e.message);
     btn.disabled = false;
@@ -914,12 +1131,20 @@ async function loadWithKey() {
   if (!key) { showErr(errEl, 'Please paste your authKey.'); return; }
   authKey = key;
   localStorage.setItem('stremio_auth_key', authKey);
-  await Promise.all([loadLibrary(), loadAddons()]);
+  loadAddons(); // fire and forget
+  await loadLibrary();
 }
 
 function showErr(el, msg) {
   el.textContent = msg;
   el.style.display = 'block';
+}
+
+function toggleAddonPanel() {
+  const body = document.getElementById('addon-panel-body');
+  const arrow = document.getElementById('addon-panel-arrow');
+  body.classList.toggle('open');
+  arrow.textContent = body.classList.contains('open') ? '▲' : '▼';
 }
 
 function signOut() {
@@ -957,7 +1182,7 @@ async function loadLibrary() {
 
     updateStats();
     renderLibrary();
-    setStatus('connected', `${allSeries.length} series`);
+    setStatus('connected', `${allSeries.length} items`);
     document.getElementById('signout-btn').style.display = 'inline-block';
     hideLoading();
 
@@ -1198,7 +1423,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('stremio_auth_key');
   if (saved) {
     authKey = saved;
-    Promise.all([loadLibrary(), loadAddons()]);
+    loadAddons(); // fire and forget
+    loadLibrary();
   }
 });
 </script>
