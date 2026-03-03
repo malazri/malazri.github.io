@@ -432,8 +432,10 @@
             results.forEach(r => {
                 if (r && r._id && r.state) {
                     stremioEpMap[r._id] = {
-                        timeOffsetMs:  r.state.timeOffset  || 0,
-                        lastWatched:   r.state.lastWatched || 0
+                        timeOffsetMs:   r.state.timeOffset     || 0,
+                        lastWatched:    r.state.lastWatched    || 0,
+                        durationMs:     r.state.duration       || 0,
+                        flaggedWatched: r.state.flaggedWatched || false
                     };
                 }
             });
@@ -444,53 +446,71 @@
         }
 
         // Step 2: compare each episode and sync in the winning direction
-        const sbUpserts   = []; // episodes to update in Supabase
-        const strPushes   = []; // episodes to push to Stremio
+        const sbUpserts = []; // episodes to update in Supabase
+        const strPushes = []; // episodes to push to Stremio
 
         for (const ep of eps) {
             const episode = epNumFromUrl(ep.link);
             const videoId = stremioVideoId(seriesId, episode, ep.link);
 
-            // Supabase time (seconds)
-            const sbRec  = state.history.find(h => h.episode_link === ep.link);
-            const sbTimeSec  = sbRec?.last_position || 0;
-            const sbMs       = sbRec?.updated_at ? new Date(sbRec.updated_at).getTime() : 0;
+            // ── Supabase record ──
+            const sbRec     = state.history.find(h => h.episode_link === ep.link);
+            const sbTimeSec = sbRec?.last_position || 0;
+            const sbMs      = sbRec?.updated_at ? new Date(sbRec.updated_at).getTime() : 0;
+            const sbWatched = sbRec?.watched || false;
 
-            // Stremio time — check videosState first, fall back to library item
-            let strTimeSec = 0, strMs = 0;
-            if (stremioEpMap[videoId]) {
-                strTimeSec = Math.floor(stremioEpMap[videoId].timeOffsetMs / 1000);
-                strMs = typeof stremioEpMap[videoId].lastWatched === 'string'
-                    ? new Date(stremioEpMap[videoId].lastWatched).getTime()
-                    : stremioEpMap[videoId].lastWatched;
+            // ── Stremio record — videosState first, fallback to library item ──
+            let strTimeSec = 0, strMs = 0, strDurMs = 0, strFlagged = false;
+
+            const epData = stremioEpMap[videoId];
+            if (epData) {
+                strTimeSec = Math.floor((epData.timeOffsetMs || 0) / 1000);
+                strMs      = typeof epData.lastWatched === 'string'
+                    ? new Date(epData.lastWatched).getTime()
+                    : (epData.lastWatched || 0);
+                strDurMs   = epData.durationMs   || 0;
+                strFlagged = epData.flaggedWatched || false;
             } else {
-                // fallback: use library item if it matches this episode
                 const libProgress = stremioGetProgress(seriesId, videoId);
                 if (libProgress) {
-                    strTimeSec = libProgress.timeOffset; // already in seconds
-                    strMs = typeof libProgress.lastWatched === 'string'
+                    strTimeSec = libProgress.timeOffset; // already seconds
+                    strMs      = typeof libProgress.lastWatched === 'string'
                         ? new Date(libProgress.lastWatched).getTime()
-                        : libProgress.lastWatched;
+                        : (libProgress.lastWatched || 0);
+                    const libItem = stremio.library.find(i => i._id === seriesId);
+                    strDurMs   = libItem?.state?.duration || 0;
+                    strFlagged = !!(libItem?.state?.flaggedWatched);
                 }
             }
 
-            if (strTimeSec < 5 && sbTimeSec < 5) continue; // nothing to sync
+            // Skip if both have nothing meaningful
+            if (strTimeSec < 5 && sbTimeSec < 5) continue;
 
-            const strIsNewer = strTimeSec > 0 && (strMs > sbMs || strTimeSec > sbTimeSec);
-            const sbIsNewer  = sbTimeSec  > 0 && (sbMs  > strMs || sbTimeSec  > strTimeSec) && !strIsNewer;
+            // ── Winner decision ──
+            // Primary:  bigger timeOffset wins (more watched = more accurate)
+            // Tiebreak: newer timestamp wins (more recent watch session)
+            let winner = null; // 'stremio' | 'supabase' | null
+            if (strTimeSec > sbTimeSec) {
+                winner = 'stremio';
+            } else if (sbTimeSec > strTimeSec) {
+                winner = 'supabase';
+            } else if (strTimeSec === sbTimeSec && strTimeSec > 0) {
+                // Same progress — use newer timestamp
+                winner = strMs >= sbMs ? 'stremio' : 'supabase';
+            }
 
-            if (strIsNewer) {
-                // Stremio wins → update Supabase
-                // Get duration and watched status from Stremio item
-                const strDurSec = Math.floor((stremioEpMap[videoId]?.timeOffsetMs
-                    ? (stremio.library.find(i => i._id === seriesId)?.state?.duration || 0)
-                    : (stremio.library.find(i => i._id === seriesId)?.state?.duration || 0)) / 1000);
-                // flaggedWatched or timeOffset >= duration means watched
-                const strItemState = stremio.library.find(i => i._id === seriesId)?.state || {};
-                const strDurMs = strItemState.duration || 0;
-                const strWatched = !!(strItemState.flaggedWatched) ||
-                    (strDurMs > 0 && (strTimeSec * 1000) >= strDurMs - 30000);
-                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)} watched:${strWatched}`);
+            // Also check watched flag — if one side is fully watched and other isn't, watched wins
+            if (!winner && strFlagged && !sbWatched) winner = 'stremio';
+            if (!winner && sbWatched && !strFlagged) winner = 'supabase';
+
+            if (!winner) continue;
+
+            const strDurSec  = Math.floor(strDurMs / 1000);
+            const strWatched = strFlagged || (strDurMs > 0 && (strTimeSec * 1000) >= strDurMs - 30000);
+
+            if (winner === 'stremio') {
+                // Stremio → Supabase
+                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)}s (ts:${new Date(strMs).toISOString()}) watched:${strWatched}`);
                 sbUpserts.push({
                     user_id:       state.user.id,
                     episode_link:  ep.link,
@@ -499,15 +519,14 @@
                     watched:       strWatched,
                     updated_at:    new Date(strMs || Date.now()).toISOString()
                 });
-                // Update local history cache
                 const hi = state.history.find(h => h.episode_link === ep.link);
-                if (hi) { hi.last_position = strTimeSec; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs).toISOString(); }
-                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs).toISOString() });
+                if (hi) { hi.last_position = strTimeSec; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
+                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
 
-            } else if (sbIsNewer) {
-                // Supabase wins → push to Stremio
-                console.log(`[Sync] SB→Stremio ep${episode}: ${fmtTime(sbTimeSec)} > ${fmtTime(strTimeSec)}`);
-                strPushes.push({ videoId, timeOffset: sbTimeSec });
+            } else {
+                // Supabase → Stremio
+                console.log(`[Sync] SB→Stremio ep${episode}: ${fmtTime(sbTimeSec)}s (ts:${new Date(sbMs).toISOString()}) watched:${sbWatched}`);
+                strPushes.push({ videoId, timeOffset: sbTimeSec, watched: sbWatched });
             }
         }
 
@@ -520,8 +539,8 @@
         }
 
         // Push to Stremio sequentially (avoid rate limits)
-        for (const { videoId, timeOffset } of strPushes) {
-            await stremioPushProgress(seriesId, videoId, timeOffset);
+        for (const { videoId, timeOffset, watched } of strPushes) {
+            await stremioPushProgress(seriesId, videoId, timeOffset, watched);
         }
 
         const total = sbUpserts.length + strPushes.length;
@@ -533,7 +552,7 @@
     }
 
     // Push progress update to Stremio
-    async function stremioPushProgress(imdbId, videoId, timeOffset) {
+    async function stremioPushProgress(imdbId, videoId, timeOffset, forceWatched) {
         if (!stremio.authKey || !stremio.connected) return;
         const existing = stremio.library.find(i => i._id === imdbId);
 
@@ -576,7 +595,10 @@
         // Determine if this episode should be marked as watched
         // (timeOffset in ms >= duration in ms - 30s, or duration is 0 and we have big offset)
         const durMs = st.duration || 0;
-        const isWatchedPush = durMs > 0 && (timeOffset * 1000) >= durMs - 30000;
+        // forceWatched passed from sync (Supabase record), otherwise calculate from timeOffset
+        const isWatchedPush = forceWatched !== undefined
+            ? !!forceWatched
+            : (durMs > 0 && (timeOffset * 1000) >= durMs - 30000);
         updatedItem.state = Object.assign({}, st, {
             video_id:           videoId,
             // watched: preserved from st.watched — never reconstructed (contains base64 hash)
