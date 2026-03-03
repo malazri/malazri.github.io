@@ -324,11 +324,12 @@
         return { season, episode };
     }
 
-    // Build correct video_id + watched matching the ArabCity addon format:
-    // video_id = seriesId:episodeNumber:encodedEpisodeUrl
-    // watched  = seriesId:episodeNumber:encodedEpisodeUrl:episodeNumber:base64(zlib)
+    // Build video_id matching ArabCity addon format:
+    // seriesId:episodeNumber:encodedEpisodeUrl
     function stremioVideoId(seriesId, episodeNumber, episodeUrl) {
-        const encodedUrl = encodeURIComponent(episodeUrl);
+        // episodeUrl may already be encoded — decode first to avoid double-encoding
+        const decoded = decodeURIComponent(episodeUrl);
+        const encodedUrl = encodeURIComponent(decoded);
         return seriesId + ':' + episodeNumber + ':' + encodedUrl;
     }
     // stremioWatched: not constructed — always preserved from existing library item
@@ -354,17 +355,45 @@
         return imdbId;
     }
 
-    // Get progress from Stremio for a given imdbId + videoId
-    // Accepts our constructed videoId OR any videoId that belongs to that series
+    // Get progress from Stremio for a specific episode
+    // video_id format: seriesId:episodeNumber:encodedEpisodeUrl
+    // We match by comparing the encoded episode URL segment inside the stored video_id
     function stremioGetProgress(imdbId, videoId) {
         const item = stremio.library.find(i => i._id === imdbId);
         if (!item || !item.state) return null;
         const storedVid = item.state.video_id || '';
-        // Accept if: exact match, OR storedVid starts with imdbId (same series, any ep)
-        // but we only use it when it matches our specific episode's videoId
+
+        // Exact match
         if (storedVid === videoId) {
-            return { timeOffset: item.state.timeOffset || 0, lastWatched: item.state.lastWatched || 0 };
+            console.log('[Stremio] Progress exact match:', storedVid);
+            // timeOffset from Stremio is ms — convert to seconds for our video player
+            return { timeOffset: Math.floor((item.state.timeOffset || 0) / 1000), lastWatched: item.state.lastWatched || 0 };
         }
+
+        // Match by episode URL: extract the encoded URL part from both and compare
+        // Format: seriesId:epNum:encodedUrl  — the encodedUrl starts after the 2nd colon after seriesId
+        // Since seriesId itself contains colons, we extract the last two segments
+        const extractEpUrl = vid => {
+            // Split from end: last segment is encodedUrl, second-to-last is epNum
+            const parts = vid.split(':');
+            // Find the encoded URL part — it starts with 'http' when decoded
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const decoded = decodeURIComponent(parts[i]);
+                if (decoded.startsWith('http')) return parts[i];
+            }
+            return '';
+        };
+
+        const storedEpUrl = extractEpUrl(storedVid);
+        const requestedEpUrl = extractEpUrl(videoId);
+
+        if (storedEpUrl && requestedEpUrl && storedEpUrl === requestedEpUrl) {
+            console.log('[Stremio] Progress URL match:', decodeURIComponent(storedEpUrl));
+            // timeOffset from Stremio is ms — convert to seconds for our video player
+            return { timeOffset: Math.floor((item.state.timeOffset || 0) / 1000), lastWatched: item.state.lastWatched || 0 };
+        }
+
+        console.log('[Stremio] No progress match — stored:', storedVid, '| requested:', videoId);
         return null;
     }
 
@@ -382,32 +411,44 @@
             return;
         }
 
-        // Deep clone the original item — do NOT add any fields Stremio didn't originally send
-        // Only update state fields, and match the EXACT type format of the original
+        // Deep clone original — preserve all fields exactly as Stremio sent them
         const updatedItem = JSON.parse(JSON.stringify(existing));
 
-        // _mtime: match whatever format the original uses (string or number)
-        const now = Date.now();
-        const nowISO = new Date(now).toISOString();
-        updatedItem._mtime = typeof existing._mtime === 'string' ? nowISO : now;
+        const nowISO = new Date().toISOString();
 
-        // state fields — match types from existing state
+        // timeOffset in Stremio is milliseconds (1 second = 1000)
+        const timeOffsetMs = timeOffset * 1000;
+
+        // _mtime: always ISO string
+        updatedItem._mtime = nowISO;
+
+        // type: preserve original addon type — do NOT override to 'series'
+        // behaviorHints: required field, preserve from existing or use defaults
+        if (!updatedItem.behaviorHints) {
+            updatedItem.behaviorHints = {
+                defaultVideoId:      null,
+                featuredVideoId:     null,
+                hasScheduledVideos:  false
+            };
+        }
+
+        // Remove empty string fields that are not in the real payload
+        ['background', 'logo', 'year'].forEach(k => {
+            if (updatedItem[k] === '') delete updatedItem[k];
+        });
+
         const st = existing.state || {};
-        const lwType = typeof st.lastWatched;
         updatedItem.state = Object.assign({}, st, {
             video_id:           videoId,
-            // watched: preserved from existing st.watched — never reconstructed
-            timeOffset:         timeOffset,
-            lastWatched:        lwType === 'string' ? nowISO : now,
+            // watched: preserved from st.watched — never reconstructed (contains base64 hash)
+            timeOffset:         timeOffsetMs,
+            lastWatched:        nowISO,
             timeWatched:        (st.timeWatched        || 0) + 10,
             overallTimeWatched: (st.overallTimeWatched || 0) + 10,
             timesWatched:       (st.timesWatched       || 0),
-            flaggedWatched:     (st.flaggedWatched      || false),
-            duration:           (st.duration            || 0)
+            flaggedWatched:     typeof st.flaggedWatched === 'number' ? 0 : false,
+            duration:           (st.duration           || 0)
         });
-
-        // type must be a standard Stremio type — custom addon types cause unmarshal error
-        updatedItem.type = 'series';
 
         console.log('[Stremio] Sending updatedItem:', JSON.stringify(updatedItem, null, 2));
 
