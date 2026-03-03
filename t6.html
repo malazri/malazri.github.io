@@ -481,17 +481,28 @@
 
             if (strIsNewer) {
                 // Stremio wins → update Supabase
-                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)} > ${fmtTime(sbTimeSec)}`);
+                // Get duration and watched status from Stremio item
+                const strDurSec = Math.floor((stremioEpMap[videoId]?.timeOffsetMs
+                    ? (stremio.library.find(i => i._id === seriesId)?.state?.duration || 0)
+                    : (stremio.library.find(i => i._id === seriesId)?.state?.duration || 0)) / 1000);
+                // flaggedWatched or timeOffset >= duration means watched
+                const strItemState = stremio.library.find(i => i._id === seriesId)?.state || {};
+                const strDurMs = strItemState.duration || 0;
+                const strWatched = !!(strItemState.flaggedWatched) ||
+                    (strDurMs > 0 && (strTimeSec * 1000) >= strDurMs - 30000);
+                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)} watched:${strWatched}`);
                 sbUpserts.push({
                     user_id:       state.user.id,
                     episode_link:  ep.link,
                     last_position: strTimeSec,
+                    duration:      strDurSec,
+                    watched:       strWatched,
                     updated_at:    new Date(strMs || Date.now()).toISOString()
                 });
                 // Update local history cache
                 const hi = state.history.find(h => h.episode_link === ep.link);
-                if (hi) { hi.last_position = strTimeSec; hi.updated_at = new Date(strMs).toISOString(); }
-                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, updated_at: new Date(strMs).toISOString() });
+                if (hi) { hi.last_position = strTimeSec; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs).toISOString(); }
+                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs).toISOString() });
 
             } else if (sbIsNewer) {
                 // Supabase wins → push to Stremio
@@ -562,6 +573,10 @@
         });
 
         const st = existing.state || {};
+        // Determine if this episode should be marked as watched
+        // (timeOffset in ms >= duration in ms - 30s, or duration is 0 and we have big offset)
+        const durMs = st.duration || 0;
+        const isWatchedPush = durMs > 0 && (timeOffset * 1000) >= durMs - 30000;
         updatedItem.state = Object.assign({}, st, {
             video_id:           videoId,
             // watched: preserved from st.watched — never reconstructed (contains base64 hash)
@@ -570,7 +585,9 @@
             timeWatched:        (st.timeWatched        || 0) + 10,
             overallTimeWatched: (st.overallTimeWatched || 0) + 10,
             timesWatched:       (st.timesWatched       || 0),
-            flaggedWatched:     typeof st.flaggedWatched === 'number' ? 0 : false,
+            flaggedWatched:     typeof st.flaggedWatched === 'number'
+                                    ? (isWatchedPush ? 1 : 0)
+                                    : isWatchedPush,
             duration:           (st.duration           || 0)
         });
 
@@ -628,15 +645,22 @@
         if (strTime > sbTime || strMs > sbMs) {
             console.log(`[Stremio] Pull win — Str:${fmtTime(strTime)} vs SB:${fmtTime(sbTime)}`);
             if (state.user) {
+                const strLibItem = stremio.library.find(i => i._id === stremioImdbId);
+                const strDurMs   = strLibItem?.state?.duration || 0;
+                const strDurSec  = Math.floor(strDurMs / 1000);
+                const strWatched = !!(strLibItem?.state?.flaggedWatched) ||
+                    (strDurMs > 0 && (strTime * 1000) >= strDurMs - 30000);
                 await db.from('watch_history').upsert({
-                    user_id: state.user.id,
-                    episode_link: episodeLink,
+                    user_id:       state.user.id,
+                    episode_link:  episodeLink,
                     last_position: strTime,
-                    updated_at: new Date(strMs || Date.now())
+                    duration:      strDurSec,
+                    watched:       strWatched,
+                    updated_at:    new Date(strMs || Date.now())
                 }, { onConflict: 'user_id, episode_link' });
                 const hi = state.history.find(h => h.episode_link === episodeLink);
-                if (hi) { hi.last_position = strTime; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
-                else state.history.push({ episode_link: episodeLink, last_position: strTime, updated_at: new Date(strMs || Date.now()).toISOString() });
+                if (hi) { hi.last_position = strTime; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
+                else state.history.push({ episode_link: episodeLink, last_position: strTime, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
             }
             strToast(`استُعيد من Stremio: ${fmtTime(strTime)}`);
             return strTime;
@@ -945,7 +969,7 @@
 
     async function loadUserHistory() {
         if(!state.user) return;
-        const { data } = await db.from('watch_history').select('episode_link, last_position, updated_at').eq('user_id', state.user.id);
+        const { data } = await db.from('watch_history').select('episode_link, last_position, duration, watched, updated_at').eq('user_id', state.user.id);
         state.history = data || [];
     }
 
@@ -1072,9 +1096,13 @@
     function renderEpisodeList(eps, img) {
         document.getElementById('episode-list').innerHTML = eps.map(e => {
             const hist = state.history.find(h => h.episode_link === e.link);
-            const timeStr = hist ? fmtTime(hist.last_position) : "";
+            const isWatched = hist?.watched;
+            const timeStr = isWatched
+                ? '<span style="color:#4caf50; font-size:0.75rem;">✓ شوهد</span>'
+                : (hist?.last_position > 0 ? fmtTime(hist.last_position) : "");
             const activeClass = state.currentLink === e.link ? 'active-ep' : '';
-            return `<div class="ep-item ${activeClass}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'>
+            const watchedStyle = isWatched ? 'opacity:0.55;' : '';
+            return `<div class="ep-item ${activeClass}" style="${watchedStyle}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'>
                     <span>${e.title}</span><span class="ep-progress">${timeStr}</span></div>`;
         }).join('');
     }
@@ -1143,12 +1171,21 @@
         if(state.user && state.currentLink && !video.paused) {
             const pos = Math.floor(video.currentTime);
             if(pos > 5) {
+                const dur = Math.floor(video.duration) || 0;
+                // Mark as watched if within 30s of end or timeOffset >= duration
+                const isWatched = dur > 0 && (pos >= dur - 30);
                 await db.from('watch_history').upsert({ 
                     user_id: state.user.id, 
                     episode_link: state.currentLink, 
-                    last_position: pos, 
+                    last_position: pos,
+                    duration: dur,
+                    watched: isWatched,
                     updated_at: new Date() 
                 }, { onConflict: 'user_id, episode_link' });
+                // Update local cache
+                const hi = state.history.find(h => h.episode_link === state.currentLink);
+                if (hi) { hi.last_position = pos; hi.duration = dur; hi.watched = isWatched; }
+                else state.history.push({ episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date().toISOString() });
                 document.getElementById('meta-pos').innerText = fmtTime(pos);
 
                 // Stremio sync: push progress if this series is mapped
