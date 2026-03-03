@@ -331,12 +331,7 @@
         const encodedUrl = encodeURIComponent(episodeUrl);
         return seriesId + ':' + episodeNumber + ':' + encodedUrl;
     }
-    function stremioWatched(seriesId, episodeNumber, episodeUrl) {
-        const encodedUrl = encodeURIComponent(episodeUrl);
-        // The last segment is a zlib-compressed base64 — we cannot reproduce it,
-        // so we omit it and let Stremio handle it (it is optional for progress tracking)
-        return seriesId + ':' + episodeNumber + ':' + encodedUrl + ':' + episodeNumber;
-    }
+    // stremioWatched: not constructed — always preserved from existing library item
 
     // Get or create Stremio imdbId for current aksv series link
     async function stremioGetImdbId(seriesLink, seriesTitle) {
@@ -374,7 +369,7 @@
     }
 
     // Push progress update to Stremio
-    async function stremioPushProgress(imdbId, videoId, watched, timeOffset) {
+    async function stremioPushProgress(imdbId, videoId, timeOffset) {
         if (!stremio.authKey || !stremio.connected) return;
         const existing = stremio.library.find(i => i._id === imdbId);
 
@@ -401,7 +396,7 @@
         const lwType = typeof st.lastWatched;
         updatedItem.state = Object.assign({}, st, {
             video_id:           videoId,
-            watched:            watched,
+            // watched: preserved from existing st.watched — never reconstructed
             timeOffset:         timeOffset,
             lastWatched:        lwType === 'string' ? nowISO : now,
             timeWatched:        (st.timeWatched        || 0) + 10,
@@ -989,9 +984,8 @@
                         const epTitle = document.getElementById('v-title').innerText;
                         const { episode } = parseEpNumbers(epTitle);
                         const videoId = stremioVideoId(imdbId, episode, state.currentLink);
-                        const watched = stremioWatched(imdbId, episode, state.currentLink);
                         console.log('[Stremio] Pushing progress:', videoId, fmtTime(pos));
-                        await stremioPushProgress(imdbId, videoId, watched, pos);
+                        await stremioPushProgress(imdbId, videoId, pos);
                     } else {
                         console.log('[Stremio] No IMDB match for:', state.currentSeries.title);
                     }
