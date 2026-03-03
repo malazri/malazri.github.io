@@ -483,14 +483,24 @@
                 }
             }
 
-            // Skip if both have nothing meaningful
-            if (strTimeSec < 5 && sbTimeSec < 5) continue;
+            // Skip only if truly nothing on either side — no time and no watched flag
+            const strHasData = strTimeSec >= 5 || strFlagged;
+            const sbHasData  = sbTimeSec  >= 5 || sbWatched;
+            if (!strHasData && !sbHasData) continue;
 
             // ── Winner decision ──
             // Primary:  bigger timeOffset wins (more watched = more accurate)
             // Tiebreak: newer timestamp wins (more recent watch session)
+            // New case: Stremio has data but Supabase has NO record → always add to Supabase
             let winner = null; // 'stremio' | 'supabase' | null
-            if (strTimeSec > sbTimeSec) {
+
+            if (strHasData && !sbHasData) {
+                // Stremio has data, Supabase has nothing → add to Supabase
+                winner = 'stremio';
+            } else if (sbHasData && !strHasData) {
+                // Supabase has data, Stremio has nothing → push to Stremio
+                winner = 'supabase';
+            } else if (strTimeSec > sbTimeSec) {
                 winner = 'stremio';
             } else if (sbTimeSec > strTimeSec) {
                 winner = 'supabase';
@@ -499,7 +509,7 @@
                 winner = strMs >= sbMs ? 'stremio' : 'supabase';
             }
 
-            // Also check watched flag — if one side is fully watched and other isn't, watched wins
+            // Watched flag tiebreak — if one side is flagged watched and other isn't
             if (!winner && strFlagged && !sbWatched) winner = 'stremio';
             if (!winner && sbWatched && !strFlagged) winner = 'supabase';
 
