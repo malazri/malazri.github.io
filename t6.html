@@ -324,6 +324,15 @@
         return { season, episode };
     }
 
+    // Extract episode number from the episode URL
+    // URL format: https://ak.sv/episode/94050/series-name/الحلقة-11
+    // Episode number is the trailing number after the last dash in the URL
+    function epNumFromUrl(url) {
+        const decoded = decodeURIComponent(url);
+        const match = decoded.match(/[^\d](\d+)\s*$/);  // last number in the URL
+        return match ? parseInt(match[1]) : 1;
+    }
+
     // Build video_id matching ArabCity addon format:
     // seriesId:episodeNumber:encodedEpisodeUrl
     function stremioVideoId(seriesId, episodeNumber, episodeUrl) {
@@ -408,7 +417,7 @@
 
         // Step 1: fetch per-episode progress from Stremio using video_id list
         const videoIds = eps.map(ep => {
-            const { episode } = parseEpNumbers(ep.title);
+            const episode = epNumFromUrl(ep.link);
             return stremioVideoId(seriesId, episode, ep.link);
         });
 
@@ -439,7 +448,7 @@
         const strPushes   = []; // episodes to push to Stremio
 
         for (const ep of eps) {
-            const { episode } = parseEpNumbers(ep.title);
+            const episode = epNumFromUrl(ep.link);
             const videoId = stremioVideoId(seriesId, episode, ep.link);
 
             // Supabase time (seconds)
@@ -835,9 +844,8 @@
 
         // ── Immediately check Stremio progress for the current episode ──
         if (state.currentLink && !state.currentLink.includes('/movie/')) {
-            const epTitle = document.getElementById('v-title').innerText;
-            const { season, episode } = parseEpNumbers(epTitle);
-            const videoId = `${imdbId}:${season}:${episode}`;
+            const episode = epNumFromUrl(state.currentLink);
+            const videoId = stremioVideoId(imdbId, episode, state.currentLink);
             const strTime = await stremioResolveProgress(state.currentLink, imdbId, videoId);
             if (strTime && strTime > 15) {
                 state.savedPos = strTime;
@@ -1088,8 +1096,9 @@
         if (stremio.connected && state.currentSeries && !item.link.includes('/movie/')) {
             const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
             if (imdbId) {
-                const { episode } = parseEpNumbers(item.title);
+                const episode = epNumFromUrl(item.link);
                 const videoId = stremioVideoId(imdbId, episode, item.link);
+                console.log('[Stremio] Episode from URL:', episode, '| videoId:', videoId);
                 stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
             }
         }
@@ -1147,7 +1156,7 @@
                     const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
                     if (imdbId) {
                         const epTitle = document.getElementById('v-title').innerText;
-                        const { episode } = parseEpNumbers(epTitle);
+                        const episode = epNumFromUrl(state.currentLink);
                         const videoId = stremioVideoId(imdbId, episode, state.currentLink);
                         console.log('[Stremio] Pushing progress:', videoId, fmtTime(pos));
                         await stremioPushProgress(imdbId, videoId, pos);
