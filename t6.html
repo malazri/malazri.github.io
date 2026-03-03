@@ -513,24 +513,6 @@
             // 4. 0 — unknown until episode is played
             const resolvedDurSec = Math.floor(strDurMs / 1000) || sbRec?.duration || 0;
 
-            // If Stremio has duration for this episode but Supabase doesn't, always update it
-            if (resolvedDurSec > 0 && (!sbRec?.duration || sbRec.duration === 0)) {
-                const existingHi = state.history.find(h => h.episode_link === ep.link);
-                if (existingHi) existingHi.duration = resolvedDurSec;
-                // Queue a duration-only upsert for Supabase if not already being synced
-                if (winner !== 'stremio') {
-                    sbUpserts.push({
-                        user_id:       state.user.id,
-                        episode_link:  ep.link,
-                        last_position: sbTimeSec,
-                        duration:      resolvedDurSec,
-                        watched:       sbWatched,
-                        updated_at:    new Date(sbMs || Date.now()).toISOString()
-                    });
-                    console.log(`[Sync] Duration update→SB ep${episode}: ${fmtTime(resolvedDurSec)}`);
-                }
-            }
-
             // Skip only if truly nothing on either side — no time and no watched flag
             const strHasData = strTimeSec >= 5 || strFlagged;
             const sbHasData  = sbTimeSec  >= 5 || sbWatched;
@@ -567,7 +549,7 @@
                 (resolvedDurSec > 0 && strTimeSec >= resolvedDurSec - 30);
 
             if (winner === 'stremio') {
-                // Stremio → Supabase
+                // Stremio → Supabase (progress + duration)
                 console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)}s dur:${fmtTime(resolvedDurSec)} watched:${strWatched}`);
                 sbUpserts.push({
                     user_id:       state.user.id,
@@ -582,9 +564,25 @@
                 else state.history.push({ episode_link: ep.link, last_position: strTimeSec, duration: resolvedDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
 
             } else {
-                // Supabase → Stremio
+                // Supabase → Stremio (progress)
                 console.log(`[Sync] SB→Stremio ep${episode}: ${fmtTime(sbTimeSec)}s (ts:${new Date(sbMs).toISOString()}) watched:${sbWatched}`);
                 strPushes.push({ videoId, timeOffset: sbTimeSec, watched: sbWatched });
+
+                // Duration update — if Stremio has duration for this episode, always sync to Supabase
+                // regardless of who won the progress comparison
+                if (resolvedDurSec > 0 && resolvedDurSec !== (sbRec?.duration || 0)) {
+                    console.log(`[Sync] Duration→SB ep${episode}: ${fmtTime(resolvedDurSec)}`);
+                    sbUpserts.push({
+                        user_id:       state.user.id,
+                        episode_link:  ep.link,
+                        last_position: sbTimeSec,
+                        duration:      resolvedDurSec,
+                        watched:       sbWatched,
+                        updated_at:    new Date(sbMs || Date.now()).toISOString()
+                    });
+                    const hi = state.history.find(h => h.episode_link === ep.link);
+                    if (hi) hi.duration = resolvedDurSec;
+                }
             }
         }
 
