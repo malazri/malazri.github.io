@@ -900,8 +900,10 @@ const STREMIO_API = 'https://api.strem.io/api';
 let installedAddons = []; // { name, _base, types, resources, _url, _ok }
 
 async function loadAddons() {
-  // 1. Try addonCollectionGet (synced user addons)
   let rawAddons = [];
+  let rawApiResponse = null;
+
+  // ── Try 1: addonCollectionGet ──
   try {
     const res = await fetch(`${STREMIO_API}/addonCollectionGet`, {
       method: 'POST',
@@ -909,15 +911,21 @@ async function loadAddons() {
       body: JSON.stringify({ type: 'AddonCollectionGet', authKey, update: true })
     });
     const data = await res.json();
-    // Result can be { addons: [...] } or directly an array
+    rawApiResponse = data;
     const result = data.result || {};
-    rawAddons = result.addons || (Array.isArray(result) ? result : []);
-    console.log('[Addons] Raw addons from API:', rawAddons.length, rawAddons.map(a => a.transportUrl || a.url || a.manifest?.name));
+    // Stremio returns { addons: [...] } where each item has { transportUrl, manifest: {...} }
+    if (result.addons && Array.isArray(result.addons)) {
+      rawAddons = result.addons;
+    } else if (Array.isArray(result)) {
+      rawAddons = result;
+    }
+    console.log('[Addons] addonCollectionGet raw:', JSON.stringify(rawApiResponse).slice(0, 500));
+    console.log('[Addons] Found', rawAddons.length, 'addons');
   } catch(e) {
     console.warn('[Addons] addonCollectionGet failed:', e.message);
   }
 
-  // 2. Also try datastoreGet for addons collection (older API path some clients use)
+  // ── Try 2: datastoreGet fallback ──
   if (rawAddons.length === 0) {
     try {
       const res2 = await fetch(`${STREMIO_API}/datastoreGet`, {
@@ -926,31 +934,58 @@ async function loadAddons() {
         body: JSON.stringify({ type: 'DatastoreGet', authKey, collection: 'addonCollection', ids: [], all: true })
       });
       const data2 = await res2.json();
-      const result2 = Array.isArray(data2.result) ? data2.result : [];
-      rawAddons = result2;
-      console.log('[Addons] Fallback datastoreGet addons:', rawAddons.length);
+      if (Array.isArray(data2.result)) rawAddons = data2.result;
+      console.log('[Addons] datastoreGet fallback:', rawAddons.length);
     } catch(e) {
-      console.warn('[Addons] datastoreGet fallback failed:', e.message);
+      console.warn('[Addons] datastoreGet failed:', e.message);
     }
   }
 
-  // 3. Fetch manifests for ALL addons (no cap)
-  const urlsToFetch = rawAddons
-    .map(a => a.transportUrl || a.url || (a.manifest && a._id) || '')
-    .filter(u => u && u.startsWith('http'));
+  // ── Build installed addons from raw data ──
+  // Each raw addon can have: transportUrl, manifest (inline), url
+  // Strategy: use inline manifest if present (avoids a network fetch),
+  // then attempt to fetch fresh manifest from transportUrl for richer data.
+  const seen = new Set();
+  const preliminaryAddons = [];
 
-  console.log('[Addons] Fetching manifests for URLs:', urlsToFetch);
+  for (const raw of rawAddons) {
+    const transportUrl = raw.transportUrl || raw.url || '';
+    const inlineManifest = raw.manifest || null;
+    const base = transportUrl.replace(/\/manifest\.json$/, '').replace(/\/$/, '');
 
-  const results = await Promise.allSettled(urlsToFetch.map(u => fetchManifest(u)));
-  installedAddons = results
-    .map((r, i) => r.status === 'fulfilled' && r.value ? r.value : null)
+    if (!base && !inlineManifest) continue;
+    if (seen.has(base || inlineManifest?.id)) continue;
+    seen.add(base || inlineManifest?.id);
+
+    preliminaryAddons.push({ base, transportUrl, inlineManifest });
+  }
+
+  console.log('[Addons] Preliminary addon entries:', preliminaryAddons.length,
+    preliminaryAddons.map(a => a.inlineManifest?.name || a.base));
+
+  // Fetch all manifests in parallel
+  const fetchResults = await Promise.allSettled(
+    preliminaryAddons.map(async ({ base, transportUrl, inlineManifest }) => {
+      // Try fetching a fresh manifest from the transport URL
+      if (base && base.startsWith('http')) {
+        const fresh = await fetchManifest(base);
+        if (fresh) return fresh;
+      }
+      // Fall back to inline manifest data from the API response
+      if (inlineManifest) {
+        return { ...inlineManifest, _base: base, _url: transportUrl, _fromInline: true };
+      }
+      return null;
+    })
+  );
+
+  installedAddons = fetchResults
+    .map(r => r.status === 'fulfilled' ? r.value : null)
     .filter(Boolean);
 
-  // 4. Always ensure Cinemeta is present
   ensureBuiltinAddons();
-
-  console.log('[Addons] Final loaded addons:', installedAddons.length, installedAddons.map(m => m.name));
-  renderAddonList();
+  console.log('[Addons] Final:', installedAddons.length, installedAddons.map(m => m.name));
+  renderAddonList(rawAddons);
 }
 
 function ensureBuiltinAddons() {
@@ -1012,39 +1047,100 @@ function removeAddon(base) {
   loadedSeries.clear();
 }
 
-function renderAddonList() {
+function renderAddonList(rawAddons) {
   const el = document.getElementById('addon-list');
   if (!el) return;
-  if (!installedAddons.length) {
-    el.innerHTML = '<div style="color:var(--text-dim);font-size:0.75rem;padding:0.5rem 0">No addons loaded.</div>';
+
+  const countEl = document.getElementById('addon-count');
+  if (countEl) countEl.textContent = installedAddons.length;
+
+  if (!installedAddons.length && (!rawAddons || !rawAddons.length)) {
+    el.innerHTML = '<div style="color:var(--text-dim);font-size:0.75rem;padding:0.5rem 0">No addons loaded from API.</div>';
     return;
   }
-  el.innerHTML = installedAddons.map(m => {
+
+  // Render loaded addons
+  const loadedHtml = installedAddons.map(m => {
     const types = (m.types || []).join(', ') || '?';
     const hasMeta = (m.resources || []).some(r => typeof r === 'string' ? r === 'meta' : r.name === 'meta');
+    const fromInline = m._fromInline ? ' <span style="color:var(--warning);font-size:0.6rem">(cached)</span>' : '';
     return `<div class="addon-item">
       <div class="addon-dot" style="background:${hasMeta ? 'var(--success)' : 'var(--text-dim)'}"></div>
       <div class="addon-info">
-        <div class="addon-name">${escHtml(m.name || m._base)}</div>
-        <div class="addon-meta">${escHtml(types)} · ${hasMeta ? 'meta ✓' : 'no meta'}</div>
+        <div class="addon-name">${escHtml(m.name || m._base)}${fromInline}</div>
+        <div class="addon-meta">${escHtml(types)} · ${hasMeta ? 'meta ✓' : 'no meta'}${m.idPrefixes && m.idPrefixes.length ? ' · IDs: ' + escHtml(m.idPrefixes.slice(0,3).join(', ')) : ''} · <span style="color:var(--text-dim);font-size:0.6rem">${escHtml((m._base||'').replace('https://',''))}</span></div>
       </div>
       <button class="addon-remove" onclick="removeAddon('${escHtml(m._base||'')}')">✕</button>
     </div>`;
   }).join('');
-  const countEl = document.getElementById('addon-count');
-  if (countEl) countEl.textContent = installedAddons.length;
+
+  // Show raw API entries that did NOT make it into installedAddons (failed to load manifest)
+  let failedHtml = '';
+  if (rawAddons && rawAddons.length) {
+    const loadedBases = new Set(installedAddons.map(m => m._base));
+    const failed = rawAddons.filter(raw => {
+      const base = (raw.transportUrl || raw.url || '').replace(/\/manifest\.json$/, '').replace(/\/$/, '');
+      return base && !loadedBases.has(base);
+    });
+    if (failed.length) {
+      failedHtml = `<div style="margin-top:0.6rem;font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em">Failed to load (${failed.length})</div>` +
+        failed.map(raw => {
+          const name = raw.manifest?.name || raw.transportUrl || 'Unknown';
+          const url = raw.transportUrl || raw.url || '';
+          return `<div class="addon-item" style="opacity:0.5">
+            <div class="addon-dot" style="background:var(--error)"></div>
+            <div class="addon-info">
+              <div class="addon-name">${escHtml(name)}</div>
+              <div class="addon-meta" style="word-break:break-all">${escHtml(url)}</div>
+            </div>
+            <button class="btn-ghost addon-remove" style="font-size:0.65rem;padding:2px 5px" onclick="retryAddon('${escHtml(url)}')">retry</button>
+          </div>`;
+        }).join('');
+    }
+  }
+
+  el.innerHTML = loadedHtml + failedHtml || '<div style="color:var(--text-dim);font-size:0.75rem">No addons.</div>';
 }
 
-function getMetaAddons(type) {
-  return installedAddons.filter(m => {
-    const types = m.types || [];
-    const resources = m.resources || [];
-    const hasType = types.includes(type);
-    const hasMeta = resources.some(r =>
-      typeof r === 'string' ? r === 'meta' : r.name === 'meta' && (!r.types || r.types.includes(type))
-    );
-    return hasType && hasMeta;
+async function retryAddon(url) {
+  await addAddonByUrl(url);
+}
+
+function addonSupportsMeta(m, type) {
+  const types = m.types || [];
+  const resources = m.resources || [];
+  const hasType = types.includes(type);
+  const hasMeta = resources.some(r =>
+    typeof r === 'string' ? r === 'meta' : r.name === 'meta' && (!r.types || r.types.includes(type))
+  );
+  return hasType && hasMeta;
+}
+
+// Get addons that can serve meta for a given type + item ID.
+// Prefers addons whose idPrefixes match the item's ID.
+// Falls back to all meta-capable addons if none match by prefix.
+function getMetaAddons(type, id) {
+  const allMeta = installedAddons.filter(m => addonSupportsMeta(m, type));
+
+  // Addons that explicitly declare idPrefixes matching this ID
+  const prefixMatches = allMeta.filter(m => {
+    const prefixes = m.idPrefixes || [];
+    if (!prefixes.length) return false;
+    return prefixes.some(p => id && id.startsWith(p));
   });
+
+  // Addons with no idPrefixes restriction (accept any ID)
+  const openAddons = allMeta.filter(m => !m.idPrefixes || !m.idPrefixes.length);
+
+  // If we have prefix matches, query those first, then open addons
+  // If no prefix matches, query all meta addons
+  if (prefixMatches.length) {
+    // Deduplicate: prefix matches first, then open addons not already included
+    const seen = new Set(prefixMatches.map(m => m._base));
+    const extra = openAddons.filter(m => !seen.has(m._base));
+    return [...prefixMatches, ...extra];
+  }
+  return allMeta;
 }
 
 async function fetchMetaFromAddon(base, type, id) {
@@ -1064,7 +1160,7 @@ async function fetchMetaFromAddon(base, type, id) {
 }
 
 async function fetchEpisodesFromAllAddons(type, id, statusEl) {
-  const addons = getMetaAddons(type);
+  const addons = getMetaAddons(type, id);
   if (!addons.length) {
     if (statusEl) statusEl.textContent = 'No compatible addons found for type: ' + type;
     return null;
@@ -1075,7 +1171,9 @@ async function fetchEpisodesFromAllAddons(type, id, statusEl) {
 
   for (const addon of addons) {
     if (!addon._base) continue;
-    if (statusEl) statusEl.textContent = `Querying ${addon.name || addon._base}…`;
+    const prefixes = addon.idPrefixes || [];
+    const matchReason = prefixes.some(p => id && id.startsWith(p)) ? ' (ID match)' : '';
+    if (statusEl) statusEl.textContent = `Querying ${addon.name || addon._base}${matchReason}…`;
     const result = await fetchMetaFromAddon(addon._base, type, id);
     if (result) {
       if (!bestMeta) bestMeta = result.meta;
@@ -1281,6 +1379,7 @@ function buildCard(s) {
           <div class="card-title" title="${escHtml(name)}">${escHtml(name)}</div>
           <div class="card-meta">${tags.join('')}</div>
           ${desc ? `<div class="card-desc">${escHtml(desc)}</div>` : ''}
+          <div style="font-size:0.63rem;color:var(--text-dim);margin-top:0.25rem;font-family:'DM Mono',monospace">ID: ${escHtml(id)}</div>
           ${progress > 0 ? `<div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>` : ''}
         </div>
       </div>
