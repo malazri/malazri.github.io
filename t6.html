@@ -777,7 +777,105 @@ let episodesCache = {};
 let loadedSeries = new Set();
 
 const STREMIO_API = 'https://api.strem.io/api';
-const CINEMETA = 'https://v3-cinemeta.strem.io/meta';
+
+// ── ADDONS ──
+let installedAddons = [];
+
+async function loadAddons() {
+  try {
+    const res = await fetch(`${STREMIO_API}/addonCollectionGet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'AddonCollectionGet', authKey, update: true })
+    });
+    const data = await res.json();
+    const addons = (data.result && data.result.addons) ? data.result.addons : [];
+    const manifests = await Promise.allSettled(
+      addons.slice(0, 25).map(a => fetchManifest(a.transportUrl || a.url || ''))
+    );
+    installedAddons = manifests
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value);
+    console.log(`[Addons] Loaded ${installedAddons.length} manifests:`, installedAddons.map(m => m.name));
+  } catch(e) {
+    console.warn('[Addons] Could not load:', e.message);
+    installedAddons = [];
+  }
+}
+
+async function fetchManifest(transportUrl) {
+  if (!transportUrl) return null;
+  const base = transportUrl.replace(/\/manifest\.json$/, '').replace(/\/$/, '');
+  try {
+    const res = await fetch(`${base}/manifest.json`, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const m = await res.json();
+    m._base = base;
+    return m;
+  } catch { return null; }
+}
+
+function getMetaAddons(type) {
+  const matches = installedAddons.filter(m => {
+    const types = m.types || [];
+    const resources = m.resources || [];
+    const hasType = types.includes(type);
+    const hasMeta = resources.some(r =>
+      typeof r === 'string' ? r === 'meta' : r.name === 'meta' && (!r.types || r.types.includes(type))
+    );
+    return hasType && hasMeta;
+  });
+  // Always ensure Cinemeta is present as a fallback for standard content
+  if (!matches.some(m => (m._base||'').includes('cinemeta'))) {
+    matches.push({
+      name: 'Cinemeta',
+      _base: 'https://v3-cinemeta.strem.io',
+      types: ['movie','series'],
+      resources: ['meta']
+    });
+  }
+  return matches;
+}
+
+async function fetchMetaFromAddon(base, type, id) {
+  const url = `${base}/meta/${encodeURIComponent(type)}/${encodeURIComponent(id)}.json`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(9000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meta = data.meta || {};
+    const videos = meta.videos || [];
+    if (!videos.length) return null;
+    return { meta, videos };
+  } catch { return null; }
+}
+
+// Query all compatible addons, merge unique episodes
+async function fetchEpisodesFromAllAddons(type, id, statusEl) {
+  const addons = getMetaAddons(type);
+  let bestMeta = null;
+  const allVideos = [];
+  const seenKeys = new Set();
+
+  for (const addon of addons) {
+    if (!addon._base) continue;
+    if (statusEl) statusEl.textContent = `Querying ${addon.name || addon._base}…`;
+    const result = await fetchMetaFromAddon(addon._base, type, id);
+    if (result) {
+      if (!bestMeta) bestMeta = result.meta;
+      result.videos.forEach(v => {
+        const key = v.id || `${v.season ?? 1}x${v.episode ?? 0}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          allVideos.push({ ...v, _addonName: addon.name || '' });
+        }
+      });
+    }
+  }
+
+  if (!bestMeta && !allVideos.length) return null;
+  return { meta: bestMeta || {}, videos: allVideos };
+}
 
 // ── AUTH ──
 async function loginWithCredentials() {
@@ -801,7 +899,7 @@ async function loginWithCredentials() {
     if (!data.result || !data.result.authKey) throw new Error(data.error || 'Login failed. Check credentials.');
     authKey = data.result.authKey;
     localStorage.setItem('stremio_auth_key', authKey);
-    await loadLibrary();
+    await Promise.all([loadLibrary(), loadAddons()]);
   } catch(e) {
     showErr(errEl, e.message);
     btn.disabled = false;
@@ -816,7 +914,7 @@ async function loadWithKey() {
   if (!key) { showErr(errEl, 'Please paste your authKey.'); return; }
   authKey = key;
   localStorage.setItem('stremio_auth_key', authKey);
-  await loadLibrary();
+  await Promise.all([loadLibrary(), loadAddons()]);
 }
 
 function showErr(el, msg) {
@@ -985,22 +1083,22 @@ async function toggleEpisodes(safeId, id, type) {
   if (loadedSeries.has(safeId)) return;
   loadedSeries.add(safeId);
 
-  panel.innerHTML = `<div class="loading-eps"><div class="spinner"></div><br>Fetching episodes…</div>`;
+  panel.innerHTML = `<div class="loading-eps"><div class="spinner"></div><br><span class="loading-label">Searching addons…</span></div>`;
+  const statusEl = panel.querySelector('.loading-label');
 
   try {
-    const metaType = type === 'movie' ? 'movie' : 'series';
-    const metaUrl = `${CINEMETA}/${metaType}/${encodeURIComponent(id)}.json`;
+    const metaType = (type === 'movie') ? 'movie' : 'series';
+    const result = await fetchEpisodesFromAllAddons(metaType, id, statusEl);
 
-    const res = await fetch(metaUrl);
-    if (!res.ok) throw new Error('Metadata not found');
-    const data = await res.json();
-    const meta = data.meta || {};
-    const videos = meta.videos || [];
+    if (!result || !result.videos.length) {
+      panel.innerHTML = `<div class="loading-eps" style="color:var(--text-dim)">No episode data found across ${getMetaAddons(metaType).length} addon(s).</div>`;
+      return;
+    }
 
-    episodesCache[safeId] = { meta, videos };
-    renderEpisodes(safeId, meta, videos);
+    episodesCache[safeId] = result;
+    renderEpisodes(safeId, result.meta, result.videos);
   } catch(e) {
-    panel.innerHTML = `<div class="loading-eps" style="color:#fca5a5">Could not load episodes: ${escHtml(e.message)}</div>`;
+    panel.innerHTML = `<div class="loading-eps" style="color:#fca5a5">Error: ${escHtml(e.message)}</div>`;
   }
 }
 
@@ -1031,6 +1129,7 @@ function renderEpisodes(safeId, meta, videos) {
     seasons[s].sort((a,b) => (a.episode||0)-(b.episode||0)).forEach(ep => {
       const epNum = `E${String(ep.episode||'?').padStart(2,'0')}`;
       const name = ep.name || ep.title || `Episode ${ep.episode||'?'}`;
+      const addonBadge = ep._addonName ? `<span style="font-size:0.6rem;color:var(--text-dim);margin-left:4px">${escHtml(ep._addonName)}</span>` : '';
       const aired = ep.firstAired ? new Date(ep.firstAired).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '';
       const thumb = ep.thumbnail || ep.image || '';
       const thumbEl = thumb
@@ -1042,7 +1141,7 @@ function renderEpisodes(safeId, meta, videos) {
           <div class="ep-num">S${String(s).padStart(2,'0')} ${epNum}</div>
           ${thumbEl}
           <div class="ep-info">
-            <div class="ep-name">${escHtml(name)}</div>
+            <div class="ep-name">${escHtml(name)}${addonBadge}</div>
             ${aired ? `<div class="ep-aired">${aired}</div>` : ''}
           </div>
         </div>`;
@@ -1099,7 +1198,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('stremio_auth_key');
   if (saved) {
     authKey = saved;
-    loadLibrary();
+    Promise.all([loadLibrary(), loadAddons()]);
   }
 });
 </script>
