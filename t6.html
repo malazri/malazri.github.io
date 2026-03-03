@@ -333,6 +333,22 @@
         return match ? parseInt(match[1]) : 1;
     }
 
+    // Extract episode number from a Stremio video_id
+    // Format: seriesId:episodeNumber:encodedEpisodeUrl
+    // The episode number is the segment immediately before the encoded URL (starts with http)
+    function epNumFromVideoId(videoId) {
+        if (!videoId) return null;
+        const parts = videoId.split(':');
+        for (let i = parts.length - 1; i >= 1; i--) {
+            const decoded = decodeURIComponent(parts[i]);
+            if (decoded.startsWith('http')) {
+                // The segment before this is the episode number
+                return parseInt(parts[i - 1]) || null;
+            }
+        }
+        return null;
+    }
+
     // Build video_id matching ArabCity addon format:
     // seriesId:episodeNumber:encodedEpisodeUrl
     function stremioVideoId(seriesId, episodeNumber, episodeUrl) {
@@ -481,19 +497,39 @@
                         ? new Date(libProgress.lastWatched).getTime()
                         : (libProgress.lastWatched || 0);
                     // libItem.state.duration is the duration of the episode in video_id (ms)
-                    // Only use it when video_id matches this exact episode
-                    const libVidId = libState.video_id || '';
-                    strDurMs   = libVidId === videoId ? (libState.duration || 0) : 0;
+                    // Match by episode number extracted from video_id
+                    const libEpNum = epNumFromVideoId(libState.video_id || '');
+                    strDurMs   = (libEpNum !== null && libEpNum === episode)
+                        ? (libState.duration || 0)
+                        : 0;
                     strFlagged = !!(libState.flaggedWatched);
                 }
             }
 
             // Duration priority:
-            // 1. libItem.state.duration when video_id matches (episode-accurate, from Stremio)
-            // 2. videosState durationMs (episode-level if available)
-            // 3. sbRec.duration — recorded by our HTML5 player on previous watch
+            // 1. libItem.state.duration when episode number matches video_id (ms → sec)
+            // 2. videosState durationMs if available
+            // 3. sbRec.duration — recorded by our HTML5 player
             // 4. 0 — unknown until episode is played
             const resolvedDurSec = Math.floor(strDurMs / 1000) || sbRec?.duration || 0;
+
+            // If Stremio has duration for this episode but Supabase doesn't, always update it
+            if (resolvedDurSec > 0 && (!sbRec?.duration || sbRec.duration === 0)) {
+                const existingHi = state.history.find(h => h.episode_link === ep.link);
+                if (existingHi) existingHi.duration = resolvedDurSec;
+                // Queue a duration-only upsert for Supabase if not already being synced
+                if (winner !== 'stremio') {
+                    sbUpserts.push({
+                        user_id:       state.user.id,
+                        episode_link:  ep.link,
+                        last_position: sbTimeSec,
+                        duration:      resolvedDurSec,
+                        watched:       sbWatched,
+                        updated_at:    new Date(sbMs || Date.now()).toISOString()
+                    });
+                    console.log(`[Sync] Duration update→SB ep${episode}: ${fmtTime(resolvedDurSec)}`);
+                }
+            }
 
             // Skip only if truly nothing on either side — no time and no watched flag
             const strHasData = strTimeSec >= 5 || strFlagged;
