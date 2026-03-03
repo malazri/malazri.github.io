@@ -397,6 +397,121 @@
         return null;
     }
 
+    // ── Full bidirectional sync for all episodes of a series ──────────────────
+    // Called once when a series is opened.
+    // For each episode:
+    //   • If Stremio has newer time → push to Supabase
+    //   • If Supabase has newer time → push to Stremio
+    async function stremioSyncAllEpisodes(seriesId, eps) {
+        if (!stremio.connected || !state.user || !seriesId) return;
+        strToast('⏳ مزامنة الحلقات...');
+
+        // Step 1: fetch per-episode progress from Stremio using video_id list
+        const videoIds = eps.map(ep => {
+            const { episode } = parseEpNumbers(ep.title);
+            return stremioVideoId(seriesId, episode, ep.link);
+        });
+
+        let stremioEpMap = {}; // videoId → { timeOffset (ms), lastWatched (ISO) }
+        try {
+            const json = await strAPI('/api/datastoreGet', {
+                authKey:    stremio.authKey,
+                collection: 'videosState',
+                ids:        videoIds
+            });
+            const results = json.result || [];
+            results.forEach(r => {
+                if (r && r._id && r.state) {
+                    stremioEpMap[r._id] = {
+                        timeOffsetMs:  r.state.timeOffset  || 0,
+                        lastWatched:   r.state.lastWatched || 0
+                    };
+                }
+            });
+            console.log('[Stremio] videosState fetched:', Object.keys(stremioEpMap).length, 'episodes');
+        } catch(e) {
+            console.warn('[Stremio] videosState fetch failed:', e.message);
+            // Fall back to library item only (last watched episode)
+        }
+
+        // Step 2: compare each episode and sync in the winning direction
+        const sbUpserts   = []; // episodes to update in Supabase
+        const strPushes   = []; // episodes to push to Stremio
+
+        for (const ep of eps) {
+            const { episode } = parseEpNumbers(ep.title);
+            const videoId = stremioVideoId(seriesId, episode, ep.link);
+
+            // Supabase time (seconds)
+            const sbRec  = state.history.find(h => h.episode_link === ep.link);
+            const sbTimeSec  = sbRec?.last_position || 0;
+            const sbMs       = sbRec?.updated_at ? new Date(sbRec.updated_at).getTime() : 0;
+
+            // Stremio time — check videosState first, fall back to library item
+            let strTimeSec = 0, strMs = 0;
+            if (stremioEpMap[videoId]) {
+                strTimeSec = Math.floor(stremioEpMap[videoId].timeOffsetMs / 1000);
+                strMs = typeof stremioEpMap[videoId].lastWatched === 'string'
+                    ? new Date(stremioEpMap[videoId].lastWatched).getTime()
+                    : stremioEpMap[videoId].lastWatched;
+            } else {
+                // fallback: use library item if it matches this episode
+                const libProgress = stremioGetProgress(seriesId, videoId);
+                if (libProgress) {
+                    strTimeSec = libProgress.timeOffset; // already in seconds
+                    strMs = typeof libProgress.lastWatched === 'string'
+                        ? new Date(libProgress.lastWatched).getTime()
+                        : libProgress.lastWatched;
+                }
+            }
+
+            if (strTimeSec < 5 && sbTimeSec < 5) continue; // nothing to sync
+
+            const strIsNewer = strTimeSec > 0 && (strMs > sbMs || strTimeSec > sbTimeSec);
+            const sbIsNewer  = sbTimeSec  > 0 && (sbMs  > strMs || sbTimeSec  > strTimeSec) && !strIsNewer;
+
+            if (strIsNewer) {
+                // Stremio wins → update Supabase
+                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)} > ${fmtTime(sbTimeSec)}`);
+                sbUpserts.push({
+                    user_id:       state.user.id,
+                    episode_link:  ep.link,
+                    last_position: strTimeSec,
+                    updated_at:    new Date(strMs || Date.now()).toISOString()
+                });
+                // Update local history cache
+                const hi = state.history.find(h => h.episode_link === ep.link);
+                if (hi) { hi.last_position = strTimeSec; hi.updated_at = new Date(strMs).toISOString(); }
+                else state.history.push({ episode_link: ep.link, last_position: strTimeSec, updated_at: new Date(strMs).toISOString() });
+
+            } else if (sbIsNewer) {
+                // Supabase wins → push to Stremio
+                console.log(`[Sync] SB→Stremio ep${episode}: ${fmtTime(sbTimeSec)} > ${fmtTime(strTimeSec)}`);
+                strPushes.push({ videoId, timeOffset: sbTimeSec });
+            }
+        }
+
+        // Batch upsert to Supabase
+        if (sbUpserts.length > 0) {
+            const { error } = await db.from('watch_history')
+                .upsert(sbUpserts, { onConflict: 'user_id, episode_link' });
+            if (error) console.error('[Sync] Supabase batch upsert failed:', error.message);
+            else console.log('[Sync] Supabase updated:', sbUpserts.length, 'episodes');
+        }
+
+        // Push to Stremio sequentially (avoid rate limits)
+        for (const { videoId, timeOffset } of strPushes) {
+            await stremioPushProgress(seriesId, videoId, timeOffset);
+        }
+
+        const total = sbUpserts.length + strPushes.length;
+        if (total > 0) {
+            strToast(`✓ تمت المزامنة: ${sbUpserts.length} من Stremio، ${strPushes.length} إلى Stremio`);
+        } else {
+            strToast('✓ كل شيء محدّث');
+        }
+    }
+
     // Push progress update to Stremio
     async function stremioPushProgress(imdbId, videoId, timeOffset) {
         if (!stremio.authKey || !stremio.connected) return;
@@ -934,6 +1049,15 @@
             document.getElementById('ep-wrapper').classList.remove('minimized');
             document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
             renderEpisodeList(eps, item.img);
+
+            // ── Bidirectional sync for all episodes ──
+            const seriesId = stremio.seriesCache[item.link];
+            if (stremio.connected && seriesId) {
+                stremioSyncAllEpisodes(seriesId, eps).then(() => {
+                    // Re-render episode list with updated times from sync
+                    renderEpisodeList(eps, item.img);
+                });
+            }
         }
     }
 
