@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World Cup Tracker</title>
-    <!-- Tailwind CSS for lightweight, rapid styling -->
+    <title>World Cup Live Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom gradient for the stadium feel */
         .bg-stadium {
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 40%, #064e3b 100%);
         }
@@ -15,238 +13,292 @@
             background: rgba(30, 41, 59, 0.85);
             backdrop-filter: blur(8px);
         }
-        
-        /* Widget Mode Overrides */
         body.widget-mode {
             background: transparent;
             height: auto;
-            min-height: 0;
             overflow: hidden;
         }
         body.widget-mode #app-container {
             border-radius: 1rem;
-            min-height: 0;
             background: linear-gradient(180deg, #1e293b 0%, #064e3b 100%);
         }
         body.widget-mode #bottom-nav, 
-        body.widget-mode #schedule-section {
+        body.widget-mode #schedule-section,
+        body.widget-mode #main-header,
+        body.widget-mode #countdown-section {
             display: none;
         }
-        body.widget-mode .hide-in-widget {
-            display: none;
-        }
-        body.widget-mode .show-in-widget {
+        body.widget-mode #widget-header,
+        body.widget-mode #widget-preview-matches {
             display: block !important;
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans antialiased selection:bg-green-500 selection:text-white">
+<body class="bg-gray-900 text-white font-sans antialiased">
 
-    <!-- Main App Container -->
     <div id="app-container" class="max-w-md mx-auto bg-stadium min-h-screen shadow-2xl relative flex flex-col">
         
-        <!-- Header -->
-        <header class="flex items-center justify-between p-4 hide-in-widget">
+        <!-- Web App Header -->
+        <header id="main-header" class="flex items-center justify-between p-4">
             <h1 class="text-xl font-bold tracking-wider">WORLD CUP</h1>
-            <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-xs font-bold">logo</div>
+            <span id="sync-indicator" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-1 rounded">Syncing...</span>
         </header>
 
-        <!-- Widget Header (Only visible in widget mode) -->
-        <header class="hidden show-in-widget px-4 pt-3 pb-1 flex items-center justify-between">
-            <h1 class="text-sm font-bold tracking-wider">WORLD CUP</h1>
+        <!-- Android Widget Header (Hidden by default) -->
+        <header id="widget-header" class="hidden px-4 pt-3 pb-1 flex items-center justify-between">
+            <h1 class="text-sm font-bold tracking-wider">WORLD CUP LIVE</h1>
         </header>
 
-        <!-- Main Content Area -->
-        <main class="flex-1 overflow-y-auto px-4 pb-20 widget-mode:pb-4 space-y-4" id="main-scroll">
+        <main class="flex-1 overflow-y-auto px-4 pb-20 space-y-4">
             
-            <!-- Tournament Countdown -->
-            <section class="card-bg rounded-xl border border-gray-700 p-4 text-center hide-in-widget" id="countdown-section">
+            <!-- Dynamic Countdown Component -->
+            <section id="countdown-section" class="card-bg rounded-xl border border-gray-700 p-4 text-center">
                 <h2 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-widest">Tournament Countdown</h2>
                 <div class="flex justify-center gap-4 text-center">
-                    <div>
-                        <div class="text-3xl font-bold" id="cd-days">12</div>
-                        <div class="text-[10px] text-gray-400">DAYS</div>
-                    </div>
+                    <div><div id="cd-days" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">DAYS</div></div>
                     <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div>
-                        <div class="text-3xl font-bold" id="cd-hours">07</div>
-                        <div class="text-[10px] text-gray-400">HOURS</div>
-                    </div>
+                    <div><div id="cd-hours" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">HOURS</div></div>
                     <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div>
-                        <div class="text-3xl font-bold" id="cd-minutes">19</div>
-                        <div class="text-[10px] text-gray-400">MINS</div>
-                    </div>
+                    <div><div id="cd-minutes" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">MINS</div></div>
                     <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div>
-                        <div class="text-3xl font-bold" id="cd-seconds">05</div>
-                        <div class="text-[10px] text-gray-400">SECS</div>
-                    </div>
+                    <div><div id="cd-seconds" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">SECS</div></div>
                 </div>
             </section>
 
-            <!-- Live Match -->
-            <section class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-white uppercase tracking-widest">Live Match</h2>
-                    <span class="flex h-2 w-2">
-                      <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                </div>
-                
-                <div class="flex items-center justify-between">
-                    <!-- Team 1 -->
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="w-10 h-7 bg-yellow-400 flex items-center justify-center text-xs text-black font-bold mb-1 rounded-sm border border-gray-600">BRA</div>
-                        <span class="text-xs font-semibold">BRAZIL</span>
-                    </div>
-                    
-                    <!-- Score -->
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="text-3xl font-bold tracking-wider">2 - 1</div>
-                        <div class="text-[10px] text-red-400 font-bold mt-1">LIVE <span class="text-gray-300 font-normal">67 min</span></div>
-                    </div>
-
-                    <!-- Team 2 -->
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="w-10 h-7 bg-blue-300 flex items-center justify-center text-xs text-white font-bold mb-1 rounded-sm border border-gray-600">ARG</div>
-                        <span class="text-xs font-semibold">ARGENTINA</span>
-                    </div>
-                </div>
+            <!-- Dynamic Live Match Component -->
+            <section id="live-match-container" class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
+                <!-- Injected via JavaScript -->
+                <div class="text-center text-sm text-gray-400 py-4">Checking for live matches...</div>
             </section>
 
-            <!-- Upcoming/Next Match (Widget Mode Focus) -->
-            <section class="hidden show-in-widget card-bg rounded-xl border border-gray-700 p-3">
-                <h2 class="text-[10px] font-semibold text-gray-300 mb-2 uppercase tracking-widest">Next Match</h2>
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <div class="w-6 h-4 bg-blue-700 text-[8px] flex items-center justify-center text-white border border-gray-500">FRA</div>
-                        <span class="text-xs font-bold">FRA v AUS</span>
-                        <div class="w-6 h-4 bg-yellow-600 text-[8px] flex items-center justify-center text-white border border-gray-500">AUS</div>
-                    </div>
-                    <div class="text-[10px] text-gray-300">15:00 Today</div>
-                </div>
-            </section>
+            <!-- Widget Specific Elements -->
+            <div id="widget-preview-matches" class="hidden space-y-2">
+                <!-- Injected via JS only when in widget mode -->
+            </div>
 
-            <!-- Widget Mini Countdown -->
-            <section class="hidden show-in-widget card-bg rounded-xl border border-gray-700 p-2 text-center">
-                 <div class="text-[10px] text-gray-400 uppercase">Tournament Starts In</div>
-                 <div class="text-sm font-bold text-white">12 Days, 7 Hrs</div>
-            </section>
-
-            <!-- Today's Schedule (App Mode Only) -->
+            <!-- Web App Schedule Component -->
             <section id="schedule-section" class="card-bg rounded-xl border border-gray-700 p-4">
-                <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Today's Schedule</h2>
-                <div class="space-y-3">
-                    
-                    <!-- Match Row -->
-                    <div class="flex items-center justify-between border-b border-gray-700 pb-3">
-                        <div class="flex items-center gap-2 w-1/3 justify-end">
-                            <span class="text-sm font-semibold">FRA</span>
-                            <div class="w-6 h-4 bg-blue-700 border border-gray-500"></div>
-                        </div>
-                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">15:00</div>
-                        <div class="flex items-center gap-2 w-1/3 justify-start">
-                            <div class="w-6 h-4 bg-yellow-600 border border-gray-500"></div>
-                            <span class="text-sm font-semibold">AUS</span>
-                        </div>
-                    </div>
-
-                    <!-- Match Row -->
-                    <div class="flex items-center justify-between border-b border-gray-700 pb-3">
-                        <div class="flex items-center gap-2 w-1/3 justify-end">
-                            <span class="text-sm font-semibold">ENG</span>
-                            <div class="w-6 h-4 bg-white border border-gray-500"></div>
-                        </div>
-                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">18:00</div>
-                        <div class="flex items-center gap-2 w-1/3 justify-start">
-                            <div class="w-6 h-4 bg-green-600 border border-gray-500"></div>
-                            <span class="text-sm font-semibold">SEN</span>
-                        </div>
-                    </div>
-
-                    <!-- Match Row -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 w-1/3 justify-end">
-                            <span class="text-sm font-semibold">USA</span>
-                            <div class="w-6 h-4 bg-blue-800 border border-gray-500"></div>
-                        </div>
-                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">22:00</div>
-                        <div class="flex items-center gap-2 w-1/3 justify-start">
-                            <div class="w-6 h-4 bg-red-600 border border-gray-500"></div>
-                            <span class="text-sm font-semibold">WAL</span>
-                        </div>
-                    </div>
-
+                <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Match Schedule</h2>
+                <div id="schedule-list" class="space-y-3">
+                    <div class="text-center text-sm text-gray-400 py-4">Loading fixtures...</div>
                 </div>
             </section>
         </main>
 
-        <!-- Bottom Navigation (App Mode Only) -->
-        <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3 pb-safe">
+        <!-- Web App Navigation -->
+        <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3">
             <button class="flex flex-col items-center text-green-400">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                <span class="text-[10px]">Home</span>
+                <span class="text-xs font-bold">Home</span>
             </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-300 transition">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <span class="text-[10px]">Matches</span>
-            </button>
-            <button class="flex flex-col items-center text-gray-500 hover:text-gray-300 transition">
-                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                <span class="text-[10px]">Groups</span>
+            <button onclick="alert('Schedule filter active')" class="flex flex-col items-center text-gray-500 hover:text-gray-300">
+                <span class="text-xs">Matches</span>
             </button>
         </nav>
     </div>
 
-    <!-- Application Logic -->
     <script>
+        // CONFIGURATION: Insert your football-data.org API token here
+        const API_TOKEN = '5c236d2d03c044f0a17c02d29117df74'; 
+        // Competition code for World Cup is 'WC'
+        const BASE_URL = 'https://api.football-data.org/v4/competitions/WC/matches';
+
+        // Set target tournament start date (Example: Next World Cup opener alignment)
+        const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
+
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Check for Widget Mode via URL query parameter
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('view') === 'widget') {
+            const isWidget = urlParams.get('view') === 'widget';
+            
+            if (isWidget) {
                 document.body.classList.add('widget-mode');
             }
 
-            // 2. Countdown Timer Logic
-            // Setting a mock target date 12 days from now
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + 12);
-            targetDate.setHours(targetDate.getHours() + 7);
-            targetDate.setMinutes(targetDate.getMinutes() + 19);
-            targetDate.setSeconds(targetDate.getSeconds() + 5);
+            initCountdown();
+            fetchData();
 
-            function updateCountdown() {
+            // Auto refresh live scores every 60 seconds if matches are active
+            setInterval(fetchData, 60000);
+        });
+
+        async function fetchData() {
+            const indicator = document.getElementById('sync-indicator');
+            if(indicator) indicator.innerText = "Syncing...";
+
+            // Simple LocalStorage cache configuration to avoid api spamming (limit 10 calls/min on free tiers)
+            const cachedData = localStorage.getItem('wc_matches_data');
+            const cachedTime = localStorage.getItem('wc_data_timestamp');
+            const now = new Date().getTime();
+
+            // Use cache if it's less than 2 minutes old
+            if (cachedData && cachedTime && (now - cachedTime < 120000)) {
+                renderUI(JSON.parse(cachedData));
+                if(indicator) indicator.innerText = "Cached";
+                return;
+            }
+
+            if (!API_TOKEN || API_TOKEN === '5c236d2d03c044f0a17c02d29117df74') {
+                showError("Please provide a valid API_TOKEN in the script tag.");
+                return;
+            }
+
+            try {
+                const response = await fetch(BASE_URL, {
+                    headers: { 'X-Auth-Token': API_TOKEN }
+                });
+                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                
+                const data = await response.json();
+                
+                // Cache the fresh results
+                localStorage.setItem('wc_matches_data', JSON.stringify(data));
+                localStorage.setItem('wc_data_timestamp', now.toString());
+                
+                renderUI(data);
+                if(indicator) indicator.innerText = "Live Connected";
+            } catch (error) {
+                console.error("API Fetch Error:", error);
+                if (cachedData) {
+                    renderUI(JSON.parse(cachedData));
+                    if(indicator) indicator.innerText = "Offline Mode";
+                } else {
+                    showError("Failed to fetch live match data.");
+                }
+            }
+        }
+
+        function renderUI(data) {
+            const matches = data.matches || [];
+            
+            // Filter categories
+            const liveMatches = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
+            const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
+            
+            renderLiveMatch(liveMatches[0] || null); // Show primary live match
+            renderSchedule(matches.slice(0, 15));   // Render next 15 tournament matches
+            
+            if (document.body.classList.contains('widget-mode')) {
+                renderWidgetView(liveMatches[0], upcomingMatches[0]);
+            }
+        }
+
+        function renderLiveMatch(match) {
+            const container = document.getElementById('live-match-container');
+            if (!container) return;
+
+            if (!match) {
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Live Match</h2>
+                        <span class="text-[10px] text-gray-500">None Active</span>
+                    </div>
+                    <div class="text-center text-xs text-gray-400 py-2">No matches are currently live. Check the schedule below!</div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-white uppercase tracking-widest">Live Match</h2>
+                    <span class="flex h-2 w-2 relative">
+                      <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="font-bold text-sm text-center">${match.homeTeam.tla || match.homeTeam.name}</div>
+                    </div>
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="text-3xl font-bold tracking-wider">${match.score.fullTime.home ?? 0} - ${match.score.fullTime.away ?? 0}</div>
+                        <div class="text-[10px] text-red-400 font-bold mt-1 uppercase">${match.status}</div>
+                    </div>
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="font-bold text-sm text-center">${match.awayTeam.tla || match.awayTeam.name}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSchedule(matches) {
+            const container = document.getElementById('schedule-list');
+            if (!container) return;
+
+            if (matches.length === 0) {
+                container.innerHTML = '<div class="text-center text-xs text-gray-500">No scheduled fixtures found.</div>';
+                return;
+            }
+
+            container.innerHTML = matches.map(match => {
+                const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const localDate = new Date(match.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' });
+                
+                let scoreDisplay = `${localTime}`;
+                if (match.status === 'FINISHED') {
+                    scoreDisplay = `${match.score.fullTime.home} - ${match.score.fullTime.away}`;
+                }
+
+                return `
+                    <div class="flex items-center justify-between border-b border-gray-800 pb-2 text-xs">
+                        <div class="flex items-center gap-2 w-1/3 justify-end text-right font-medium">
+                            <span>${match.homeTeam.name}</span>
+                        </div>
+                        <div class="text-center w-1/3 font-mono bg-gray-800 text-gray-300 rounded px-1 py-0.5 mx-2">
+                            <div>${scoreDisplay}</div>
+                            <div class="text-[8px] text-gray-500">${localDate}</div>
+                        </div>
+                        <div class="flex items-center gap-2 w-1/3 justify-start font-medium">
+                            <span>${match.awayTeam.name}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderWidgetView(liveMatch, nextMatch) {
+            const widgetBox = document.getElementById('widget-preview-matches');
+            if (!widgetBox) return;
+
+            let html = '';
+            if (nextMatch) {
+                const nextTime = new Date(nextMatch.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                html += `
+                    <div class="card-bg rounded-xl border border-gray-700 p-3">
+                        <h2 class="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Next Match</h2>
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold">${nextMatch.homeTeam.tla || 'TBD'} v ${nextMatch.awayTeam.tla || 'TBD'}</span>
+                            <span class="text-gray-400 font-mono">${nextTime}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            widgetBox.innerHTML = html;
+        }
+
+        function initCountdown() {
+            function updateClock() {
                 const now = new Date().getTime();
-                const distance = targetDate.getTime() - now;
+                const distance = TOURNAMENT_START.getTime() - now;
 
                 if (distance < 0) {
-                    // Tournament has started
-                    document.getElementById('countdown-section').innerHTML = '<h2 class="text-xl font-bold text-green-400">Tournament Live!</h2>';
+                    const cdSection = document.getElementById('countdown-section');
+                    if (cdSection) cdSection.innerHTML = '<h2 class="text-lg font-bold text-green-400">Tournament Active!</h2>';
                     return;
                 }
 
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                // Update DOM elements if they exist (in main app view)
-                const dEl = document.getElementById('cd-days');
-                if(dEl) {
-                    dEl.innerText = days.toString().padStart(2, '0');
-                    document.getElementById('cd-hours').innerText = hours.toString().padStart(2, '0');
-                    document.getElementById('cd-minutes').innerText = minutes.toString().padStart(2, '0');
-                    document.getElementById('cd-seconds').innerText = seconds.toString().padStart(2, '0');
-                }
+                document.getElementById('cd-days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+                document.getElementById('cd-hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+                document.getElementById('cd-minutes').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                document.getElementById('cd-seconds').innerText = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
             }
+            setInterval(updateClock, 1000);
+            updateClock();
+        }
 
-            // Run countdown every second
-            setInterval(updateCountdown, 1000);
-            updateCountdown(); // Initial call
-        });
+        function showError(msg) {
+            const list = document.getElementById('schedule-list');
+            if(list) list.innerHTML = `<div class="text-center text-xs text-red-400 py-2">${msg}</div>`;
+        }
     </script>
 </body>
 </html>
