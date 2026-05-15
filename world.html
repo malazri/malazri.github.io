@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup Tracker</title>
+    <!-- Tailwind CSS for lightweight, rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom gradient for the stadium feel */
+        .bg-stadium {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 40%, #064e3b 100%);
+        }
+        .card-bg {
+            background: rgba(30, 41, 59, 0.85);
+            backdrop-filter: blur(8px);
+        }
+        
+        /* Widget Mode Overrides */
+        body.widget-mode {
+            background: transparent;
+            height: auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+        body.widget-mode #app-container {
+            border-radius: 1rem;
+            min-height: 0;
+            background: linear-gradient(180deg, #1e293b 0%, #064e3b 100%);
+        }
+        body.widget-mode #bottom-nav, 
+        body.widget-mode #schedule-section {
+            display: none;
+        }
+        body.widget-mode .hide-in-widget {
+            display: none;
+        }
+        body.widget-mode .show-in-widget {
+            display: block !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased selection:bg-green-500 selection:text-white">
+
+    <!-- Main App Container -->
+    <div id="app-container" class="max-w-md mx-auto bg-stadium min-h-screen shadow-2xl relative flex flex-col">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between p-4 hide-in-widget">
+            <h1 class="text-xl font-bold tracking-wider">WORLD CUP</h1>
+            <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center text-black text-xs font-bold">logo</div>
+        </header>
+
+        <!-- Widget Header (Only visible in widget mode) -->
+        <header class="hidden show-in-widget px-4 pt-3 pb-1 flex items-center justify-between">
+            <h1 class="text-sm font-bold tracking-wider">WORLD CUP</h1>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto px-4 pb-20 widget-mode:pb-4 space-y-4" id="main-scroll">
+            
+            <!-- Tournament Countdown -->
+            <section class="card-bg rounded-xl border border-gray-700 p-4 text-center hide-in-widget" id="countdown-section">
+                <h2 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-widest">Tournament Countdown</h2>
+                <div class="flex justify-center gap-4 text-center">
+                    <div>
+                        <div class="text-3xl font-bold" id="cd-days">12</div>
+                        <div class="text-[10px] text-gray-400">DAYS</div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-600">:</div>
+                    <div>
+                        <div class="text-3xl font-bold" id="cd-hours">07</div>
+                        <div class="text-[10px] text-gray-400">HOURS</div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-600">:</div>
+                    <div>
+                        <div class="text-3xl font-bold" id="cd-minutes">19</div>
+                        <div class="text-[10px] text-gray-400">MINS</div>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-600">:</div>
+                    <div>
+                        <div class="text-3xl font-bold" id="cd-seconds">05</div>
+                        <div class="text-[10px] text-gray-400">SECS</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Match -->
+            <section class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-white uppercase tracking-widest">Live Match</h2>
+                    <span class="flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <!-- Team 1 -->
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="w-10 h-7 bg-yellow-400 flex items-center justify-center text-xs text-black font-bold mb-1 rounded-sm border border-gray-600">BRA</div>
+                        <span class="text-xs font-semibold">BRAZIL</span>
+                    </div>
+                    
+                    <!-- Score -->
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="text-3xl font-bold tracking-wider">2 - 1</div>
+                        <div class="text-[10px] text-red-400 font-bold mt-1">LIVE <span class="text-gray-300 font-normal">67 min</span></div>
+                    </div>
+
+                    <!-- Team 2 -->
+                    <div class="flex flex-col items-center w-1/3">
+                        <div class="w-10 h-7 bg-blue-300 flex items-center justify-center text-xs text-white font-bold mb-1 rounded-sm border border-gray-600">ARG</div>
+                        <span class="text-xs font-semibold">ARGENTINA</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Upcoming/Next Match (Widget Mode Focus) -->
+            <section class="hidden show-in-widget card-bg rounded-xl border border-gray-700 p-3">
+                <h2 class="text-[10px] font-semibold text-gray-300 mb-2 uppercase tracking-widest">Next Match</h2>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-4 bg-blue-700 text-[8px] flex items-center justify-center text-white border border-gray-500">FRA</div>
+                        <span class="text-xs font-bold">FRA v AUS</span>
+                        <div class="w-6 h-4 bg-yellow-600 text-[8px] flex items-center justify-center text-white border border-gray-500">AUS</div>
+                    </div>
+                    <div class="text-[10px] text-gray-300">15:00 Today</div>
+                </div>
+            </section>
+
+            <!-- Widget Mini Countdown -->
+            <section class="hidden show-in-widget card-bg rounded-xl border border-gray-700 p-2 text-center">
+                 <div class="text-[10px] text-gray-400 uppercase">Tournament Starts In</div>
+                 <div class="text-sm font-bold text-white">12 Days, 7 Hrs</div>
+            </section>
+
+            <!-- Today's Schedule (App Mode Only) -->
+            <section id="schedule-section" class="card-bg rounded-xl border border-gray-700 p-4">
+                <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Today's Schedule</h2>
+                <div class="space-y-3">
+                    
+                    <!-- Match Row -->
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-3">
+                        <div class="flex items-center gap-2 w-1/3 justify-end">
+                            <span class="text-sm font-semibold">FRA</span>
+                            <div class="w-6 h-4 bg-blue-700 border border-gray-500"></div>
+                        </div>
+                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">15:00</div>
+                        <div class="flex items-center gap-2 w-1/3 justify-start">
+                            <div class="w-6 h-4 bg-yellow-600 border border-gray-500"></div>
+                            <span class="text-sm font-semibold">AUS</span>
+                        </div>
+                    </div>
+
+                    <!-- Match Row -->
+                    <div class="flex items-center justify-between border-b border-gray-700 pb-3">
+                        <div class="flex items-center gap-2 w-1/3 justify-end">
+                            <span class="text-sm font-semibold">ENG</span>
+                            <div class="w-6 h-4 bg-white border border-gray-500"></div>
+                        </div>
+                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">18:00</div>
+                        <div class="flex items-center gap-2 w-1/3 justify-start">
+                            <div class="w-6 h-4 bg-green-600 border border-gray-500"></div>
+                            <span class="text-sm font-semibold">SEN</span>
+                        </div>
+                    </div>
+
+                    <!-- Match Row -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 w-1/3 justify-end">
+                            <span class="text-sm font-semibold">USA</span>
+                            <div class="w-6 h-4 bg-blue-800 border border-gray-500"></div>
+                        </div>
+                        <div class="text-xs text-center w-1/3 font-mono bg-gray-800 rounded py-1">22:00</div>
+                        <div class="flex items-center gap-2 w-1/3 justify-start">
+                            <div class="w-6 h-4 bg-red-600 border border-gray-500"></div>
+                            <span class="text-sm font-semibold">WAL</span>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation (App Mode Only) -->
+        <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3 pb-safe">
+            <button class="flex flex-col items-center text-green-400">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <span class="text-[10px]">Home</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500 hover:text-gray-300 transition">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span class="text-[10px]">Matches</span>
+            </button>
+            <button class="flex flex-col items-center text-gray-500 hover:text-gray-300 transition">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <span class="text-[10px]">Groups</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Check for Widget Mode via URL query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('view') === 'widget') {
+                document.body.classList.add('widget-mode');
+            }
+
+            // 2. Countdown Timer Logic
+            // Setting a mock target date 12 days from now
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + 12);
+            targetDate.setHours(targetDate.getHours() + 7);
+            targetDate.setMinutes(targetDate.getMinutes() + 19);
+            targetDate.setSeconds(targetDate.getSeconds() + 5);
+
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const distance = targetDate.getTime() - now;
+
+                if (distance < 0) {
+                    // Tournament has started
+                    document.getElementById('countdown-section').innerHTML = '<h2 class="text-xl font-bold text-green-400">Tournament Live!</h2>';
+                    return;
+                }
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                // Update DOM elements if they exist (in main app view)
+                const dEl = document.getElementById('cd-days');
+                if(dEl) {
+                    dEl.innerText = days.toString().padStart(2, '0');
+                    document.getElementById('cd-hours').innerText = hours.toString().padStart(2, '0');
+                    document.getElementById('cd-minutes').innerText = minutes.toString().padStart(2, '0');
+                    document.getElementById('cd-seconds').innerText = seconds.toString().padStart(2, '0');
+                }
+            }
+
+            // Run countdown every second
+            setInterval(updateCountdown, 1000);
+            updateCountdown(); // Initial call
+        });
+    </script>
+</body>
+</html>
