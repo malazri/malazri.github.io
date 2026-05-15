@@ -1224,7 +1224,7 @@
         try {
             const response = await fetch(PROXY(item.link));
             const html = await response.text();
-            const idMatch = html.match(/go\. akwam\.com\.co/\/link\/([a-zA-Z0-9]+)/);
+            const idMatch = html.match(/go\.akwam\.com\.co/\/link\/([a-zA-Z0-9]+)/);
 
             if(idMatch) {
                 const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
