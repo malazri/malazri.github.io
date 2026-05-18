@@ -364,6 +364,48 @@
             }
         }
 
+function moveWizard(dir) {
+    if (currentStep === 2 && dir === 1) runShuffleEngine();
+    currentStep += dir;
+
+    // Show current step view, hide others
+    document.querySelectorAll(".wizard-step").forEach((view, idx) => {
+        if (idx + 1 === currentStep) {
+            view.classList.remove("hidden");
+        } else {
+            view.classList.add("hidden");
+        }
+    });
+
+    // Handle Back Button Visibility
+    const prevBtn = document.getElementById("prevBtn");
+    if (currentStep === 1) {
+        prevBtn.classList.add("invisible");
+    } else {
+        prevBtn.className = "bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition";
+    }
+    
+    // Handle Next Button Visibility across steps
+    const nextBtn = document.getElementById("nextBtn");
+    if (currentStep === 4) {
+        nextBtn.classList.add("hidden");
+    } else {
+        nextBtn.classList.remove("hidden"); // <-- This restores the button visibility when going backward!
+        if (currentStep === 1) validateStepOne();
+        if (currentStep === 2) validateStepTwo();
+        if (currentStep === 3) toggleNextButton(true);
+    }
+
+    // Update Wizard Header Step Badges
+    for (let i = 1; i <= 4; i++) {
+        document.getElementById(`badge-${i}`).className = i === currentStep 
+            ? "px-2 py-0.5 rounded bg-emerald-500 text-slate-950 transition-all duration-300" 
+            : i < currentStep ? "px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/10" : "px-2 py-0.5 rounded bg-slate-800 text-slate-500";
+    }
+}
+
+
+
         function buildMatchCard(home, away, label, isTreeMode = false) {
             let hTitle = home?.isPlaceholder ? home.teamName : (home?.team?.name || home?.teamName || "TBD");
             let hPl = home?.isPlaceholder ? "TBD" : (home?.players?.map(p=>p).join(" & ") || "");
