@@ -61,7 +61,8 @@
                 </div>
                 <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden min-h-0">
                     <div class="flex flex-col h-full min-h-0">
-                        <textarea id="playerNames" class="w-full h-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-700 resize-none font-mono" placeholder="Marwan&#10;Amira&#10;Yousef&#10;Ali" oninput="validateStepOne()"></textarea>
+                        <!-- Added default values to text area to trigger automatic validation -->
+                        <textarea id="playerNames" class="w-full h-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-700 resize-none font-mono" oninput="validateStepOne()">Marwan&#10;Amira&#10;Yousef&#10;Ali</textarea>
                     </div>
                     <div class="flex flex-col justify-center space-y-3 shrink-0">
                         <div class="grid grid-cols-1 gap-2.5">
@@ -145,10 +146,10 @@
 
         <!-- FOOTER CONFIGURATION BUTTON SYSTEM STRIP -->
         <footer class="h-12 flex justify-between items-center shrink-0">
-            <button id="prevBtn" onclick="moveWizard(-1)" class="invisible bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl border border-slate-800 transition">
+            <button id="prevBtn" onclick="moveWizard(-1)" class="invisible bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition">
                 <i class="fa-solid fa-arrow-left mr-1"></i> Back
             </button>
-            <button id="nextBtn" onclick="moveWizard(1)" disabled class="bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition cursor-not-allowed">
+            <button id="nextBtn" onclick="moveWizard(1)" class="bg-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition">
                 Next <i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
         </footer>
@@ -181,7 +182,7 @@
         document.addEventListener("DOMContentLoaded", () => {
             fc26TeamsRaw.forEach(t => selectedTeamsMap[t.name] = true);
             renderTeamsList();
-            validateStepOne();
+            validateStepOne(); // Automatically sets initial state based on default text inputs
         });
 
         function validateStepOne() {
@@ -197,9 +198,11 @@
         function toggleNextButton(active) {
             const btn = document.getElementById("nextBtn");
             btn.disabled = !active;
-            btn.className = active 
-                ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider py-2 px-4 rounded-xl shadow-lg transition" 
-                : "bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition cursor-not-allowed";
+            if (active) {
+                btn.className = "bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider py-2 px-4 rounded-xl shadow-lg transition opacity-100 cursor-pointer";
+            } else {
+                btn.className = "bg-slate-800 text-slate-500 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition opacity-40 cursor-not-allowed";
+            }
         }
 
         function moveWizard(dir) {
@@ -220,6 +223,7 @@
             if (currentStep === 1) {
                 prevBtn.classList.add("invisible");
             } else {
+                prevBtn.classList.remove("invisible");
                 prevBtn.className = "bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition";
             }
             
@@ -228,7 +232,7 @@
             if (currentStep === 4) {
                 nextBtn.classList.add("hidden");
             } else {
-                nextBtn.classList.remove("hidden"); // Restores visibility when jumping backward
+                nextBtn.classList.remove("hidden"); 
                 if (currentStep === 1) validateStepOne();
                 if (currentStep === 2) validateStepTwo();
                 if (currentStep === 3) toggleNextButton(true);
