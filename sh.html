@@ -250,7 +250,7 @@
             document.getElementById("matchesContainer").innerHTML = '<p class="text-slate-500 text-sm col-span-full">Squads generated. Select a format and click Generate Matches.</p>';
         }
 
-        // --- SCHEDULE GENERATOR ---
+                // --- UPGRADED SCHEDULE GENERATOR ---
         function generateSchedule() {
             if (generatedSquads.length < 2) return alert("Need at least 2 squads to generate a schedule.");
             const format = document.getElementById("scheduleFormat").value;
@@ -258,15 +258,79 @@
             container.innerHTML = ""; // Clear old schedule
 
             if (format === 'knockout') {
-                for (let i = 0; i < generatedSquads.length; i += 2) {
-                    const home = generatedSquads[i];
-                    const away = generatedSquads[i+1] || null;
-                    container.innerHTML += buildMatchCard(home, away, "Round 1 Knockout");
+                let currentRoundSquads = [...generatedSquads];
+                let roundNumber = 1;
+                let matchIdCounter = 1;
+                
+                // Track matches created to reference them in subsequent rounds
+                let previousRoundMatchIds = [];
+
+                // --- ROUND 1 GENERATION ---
+                let round1MatchesHTML = '';
+                let currentRoundMatchIds = [];
+                
+                for (let i = 0; i < currentRoundSquads.length; i += 2) {
+                    const home = currentRoundSquads[i];
+                    const away = currentRoundSquads[i + 1] || null;
+                    const matchId = matchIdCounter++;
+                    currentRoundMatchIds.push(matchId);
+
+                    round1MatchesHTML += buildMatchCard(home, away, `Round 1 - Match M${matchId}`);
+                }
+                
+                container.innerHTML += round1MatchesHTML;
+                previousRoundMatchIds = currentRoundMatchIds;
+
+                // --- ADVANCED ROUNDS GENERATION (Until Final) ---
+                // Calculate how many matches are left to get to 1 final match
+                let matchesInCurrentRound = previousRoundMatchIds.length;
+                
+                while (matchesInCurrentRound > 1) {
+                    roundNumber++;
+                    let roundLabel = `Round ${roundNumber}`;
+                    
+                    // Assign recognizable names to the ultimate final rounds
+                    if (matchesInCurrentRound === 4) roundLabel = "Quarter-Final";
+                    if (matchesInCurrentRound === 2) roundLabel = "Semi-Final";
+                    
+                    let nextRoundMatchIds = [];
+                    let roundMatchesHTML = '';
+
+                    for (let i = 0; i < previousRoundMatchIds.length; i += 2) {
+                        const prevMatch1 = previousRoundMatchIds[i];
+                        const prevMatch2 = previousRoundMatchIds[i + 1] || null;
+                        const matchId = matchIdCounter++;
+                        nextRoundMatchIds.push(matchId);
+
+                        // If it's the absolute last pairing, it's the Final
+                        let displayLabel = (matchesInCurrentRound === 2) ? "🏆 THE GRAND FINAL" : `${roundLabel} - Match M${matchId}`;
+
+                        const homePlaceholder = {
+                            id: `W(M${prevMatch1})`,
+                            team: { name: `Winner of M${prevMatch1}` },
+                            players: []
+                        };
+
+                        let awayPlaceholder = null;
+                        if (prevMatch2) {
+                            awayPlaceholder = {
+                                id: `W(M${prevMatch2})`,
+                                team: { name: `Winner of M${prevMatch2}` },
+                                players: []
+                            };
+                        }
+
+                        roundMatchesHTML += buildMatchCard(homePlaceholder, awayPlaceholder, displayLabel);
+                    }
+
+                    container.innerHTML += roundMatchesHTML;
+                    previousRoundMatchIds = nextRoundMatchIds;
+                    matchesInCurrentRound = previousRoundMatchIds.length;
                 }
             } 
             else if (format === 'league') {
                 let teams = [...generatedSquads];
-                if (teams.length % 2 !== 0) teams.push(null); // Add Bye
+                if (teams.length % 2 !== 0) teams.push(null); 
                 const totalRounds = teams.length - 1;
                 const half = teams.length / 2;
 
@@ -278,11 +342,10 @@
                         if (home && away) matchesHTML += buildMatchCard(home, away, `Matchday ${round + 1}`);
                     }
                     if(matchesHTML) container.innerHTML += matchesHTML;
-                    teams.splice(1, 0, teams.pop()); // Rotate logic
+                    teams.splice(1, 0, teams.pop()); 
                 }
             }
             else if (format === 'groups') {
-                // Split into A and B
                 const mid = Math.ceil(generatedSquads.length / 2);
                 const groups = [ {name: 'A', data: generatedSquads.slice(0, mid)}, {name: 'B', data: generatedSquads.slice(mid)} ];
                 
