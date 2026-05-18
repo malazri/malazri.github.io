@@ -9,157 +9,153 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Force application to sit inside the window frame nicely without scrolling */
-        .app-height { height: calc(100vh - 5rem); }
+        /* Clamp everything to the exact viewport frame */
+        .app-container { height: 100vh; max-height: 100vh; }
+        .content-frame { height: calc(100vh - 8.5rem); }
+        
+        /* Custom scrollbar to keep layout premium and minimal */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+        /* Knockout tree connection node indicators for Desktop view */
+        @media (min-width: 1024px) {
+            .tree-column { width: 240px; min-width: 240px; }
+            .tree-connector::after {
+                content: ''; position: absolute; right: -16px; top: 50%;
+                width: 16px; height: 2px; background: #334155;
+            }
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden font-sans antialiased flex flex-col">
+<body class="bg-slate-950 text-slate-100 font-sans antialiased overflow-hidden selection:bg-emerald-500 selection:text-slate-950">
 
-    <!-- Global Header Top Bar -->
-    <header class="bg-slate-900 border-b border-slate-800 h-16 flex items-center justify-between px-6 shadow-md shrink-0">
-        <h1 class="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-            🎮 FC 26 WIZARD
-        </h1>
+    <div class="app-container flex flex-col justify-between p-3 md:p-4 box-border">
         
-        <!-- Step Indicator Nodes -->
-        <div class="flex items-center space-x-2 md:space-x-4 text-xs font-semibold">
-            <div id="badge-1" class="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 transition-all duration-300">1. Setup</div>
-            <div class="text-slate-600"><i class="fa-solid fa-chevron-right"></i></div>
-            <div id="badge-2" class="px-2.5 py-1 rounded bg-slate-800 text-slate-500 transition-all duration-300">2. Teams Pool</div>
-            <div class="text-slate-600"><i class="fa-solid fa-chevron-right"></i></div>
-            <div id="badge-3" class="px-2.5 py-1 rounded bg-slate-800 text-slate-500 transition-all duration-300">3. Squads</div>
-            <div class="text-slate-600"><i class="fa-solid fa-chevron-right"></i></div>
-            <div id="badge-4" class="px-2.5 py-1 rounded bg-slate-800 text-slate-500 transition-all duration-300">4. Fixtures</div>
-        </div>
-    </header>
-
-    <!-- Main Dynamic Window Viewport Container -->
-    <main class="app-height flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col justify-between overflow-hidden">
-        
-        <div class="flex-1 overflow-hidden flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl p-4 md:p-6 shadow-2xl relative">
+        <!-- HEADER COMPONENT -->
+        <header class="bg-slate-900 border border-slate-800 h-14 rounded-xl flex items-center justify-between px-4 shadow-md shrink-0">
+            <h1 class="text-base font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                🎮 FC 26 WIZARD
+            </h1>
             
-            <!-- STEP 1 VIEW: PLAYERS & LAYOUT PREFERENCE -->
-            <div id="step-view-1" class="wizard-step flex flex-col h-full space-y-4">
-                <div>
-                    <h2 class="text-xl font-bold text-emerald-400"><i class="fa-solid fa-users mr-2"></i>Enter Players & Select Format</h2>
-                    <p class="text-xs text-slate-400">Provide the names of competitors and choose the setup matrix type.</p>
+            <!-- Wizard Badge Steps -->
+            <div class="flex items-center space-x-1.5 md:space-x-3 text-[11px] font-bold">
+                <div id="badge-1" class="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 transition-all duration-300">1. Setup</div>
+                <div class="text-slate-700 text-[9px]"><i class="fa-solid fa-chevron-right"></i></div>
+                <div id="badge-2" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 transition-all duration-300">2. Pool</div>
+                <div class="text-slate-700 text-[9px]"><i class="fa-solid fa-chevron-right"></i></div>
+                <div id="badge-3" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 transition-all duration-300">3. Squads</div>
+                <div class="text-slate-700 text-[9px]"><i class="fa-solid fa-chevron-right"></i></div>
+                <div id="badge-4" class="px-2 py-0.5 rounded bg-slate-800 text-slate-500 transition-all duration-300">4. Fixtures</div>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWPORT STAGE CONTAINER -->
+        <div class="content-frame my-3 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-3 md:p-5 shadow-2xl flex flex-col overflow-hidden relative">
+            
+            <!-- STEP 1: PLAYERS INPUT & SQUAD FORMAT -->
+            <div id="step-view-1" class="wizard-step flex flex-col h-full space-y-3">
+                <div class="shrink-0">
+                    <h2 class="text-base font-bold text-emerald-400"><i class="fa-solid fa-users mr-2"></i>Competitors Layout Setup</h2>
                 </div>
-                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden">
-                    <div class="flex flex-col h-full">
-                        <label class="text-xs text-slate-400 font-bold mb-1 uppercase tracking-wider">Player Registry (One line per name)</label>
-                        <textarea id="playerNames" class="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-700 resize-none font-mono" placeholder="Marwan&#10;Amira&#10;Yousef&#10;Ali" oninput="validateStepOne()"></textarea>
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-hidden min-h-0">
+                    <div class="flex flex-col h-full min-h-0">
+                        <textarea id="playerNames" class="w-full h-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 placeholder-slate-700 resize-none font-mono" placeholder="Marwan&#10;Amira&#10;Yousef&#10;Ali" oninput="validateStepOne()"></textarea>
                     </div>
-                    <div class="flex flex-col justify-center space-y-3">
-                        <label class="text-xs text-slate-400 font-bold uppercase tracking-wider">Gameplay Size Setup</label>
-                        <div class="grid grid-cols-1 gap-3">
-                            <label class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                    <div class="flex flex-col justify-center space-y-3 shrink-0">
+                        <div class="grid grid-cols-1 gap-2.5">
+                            <label class="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
                                 <div class="flex items-center space-x-3">
-                                    <i class="fa-solid fa-user text-emerald-400 text-lg"></i>
-                                    <div>
-                                        <div class="font-bold text-sm">Singles Matchup (1v1)</div>
-                                        <div class="text-xs text-slate-500">Every group gets exactly 1 player assigned.</div>
-                                    </div>
+                                    <i class="fa-solid fa-user text-emerald-400 text-sm"></i>
+                                    <div class="text-xs font-bold">Singles Matchup (1v1)</div>
                                 </div>
-                                <input type="radio" name="groupSize" value="1" checked class="accent-emerald-500 w-5 h-5">
+                                <input type="radio" name="groupSize" value="1" checked class="accent-emerald-500 w-4 h-4">
                             </label>
-                            <label class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                            <label class="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
                                 <div class="flex items-center space-x-3">
-                                    <i class="fa-solid fa-user-group text-cyan-400 text-lg"></i>
-                                    <div>
-                                        <div class="font-bold text-sm">Co-Op Tag Team (2v2)</div>
-                                        <div class="text-xs text-slate-500">Players are paired into partnerships of 2.</div>
-                                    </div>
+                                    <i class="fa-solid fa-user-group text-cyan-400 text-sm"></i>
+                                    <div class="text-xs font-bold">Co-Op Partnership (2v2)</div>
                                 </div>
-                                <input type="radio" name="groupSize" value="2" class="accent-emerald-500 w-5 h-5">
+                                <input type="radio" name="groupSize" value="2" class="accent-emerald-500 w-4 h-4">
                             </label>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- STEP 2 VIEW: SELECT FC 26 TEAMS POOL -->
-            <div id="step-view-2" class="wizard-step hidden flex flex-col h-full space-y-3">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h2 class="text-xl font-bold text-emerald-400"><i class="fa-solid fa-shield-halved mr-2"></i>FC 26 Teams Pool Filter</h2>
-                        <p class="text-xs text-slate-400">Unselect names to limit options. Duplicates are allowed automatically if players outnumber selection.</p>
-                    </div>
-                    
-                    <!-- Quick Filter View Tabs Toggle -->
-                    <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-semibold">
-                        <button onclick="filterTeamType('all')" id="tab-all" class="px-3 py-1 rounded bg-emerald-500 text-slate-950 transition">All</button>
-                        <button onclick="filterTeamType('club')" id="tab-club" class="px-3 py-1 rounded text-slate-400 hover:text-slate-200 transition">Clubs</button>
-                        <button onclick="filterTeamType('national')" id="tab-national" class="px-3 py-1 rounded text-slate-400 hover:text-slate-200 transition">Nationals</button>
+            <!-- STEP 2: TEAM POOL CONTROL STRIPS -->
+            <div id="step-view-2" class="wizard-step hidden flex flex-col h-full space-y-3 min-h-0">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center shrink-0 gap-2">
+                    <h2 class="text-base font-bold text-emerald-400"><i class="fa-solid fa-shield-halved mr-2"></i>FC 26 Filter Pool</h2>
+                    <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-[10px] font-bold self-end sm:self-auto">
+                        <button onclick="filterTeamType('all')" id="tab-all" class="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 transition">All</button>
+                        <button onclick="filterTeamType('club')" id="tab-club" class="px-2.5 py-1 rounded text-slate-400 hover:text-slate-200 transition">Clubs</button>
+                        <button onclick="filterTeamType('national')" id="tab-national" class="px-2.5 py-1 rounded text-slate-400 hover:text-slate-200 transition">Nationals</button>
                     </div>
                 </div>
 
-                <!-- Bulk Toggles Grid -->
-                <div class="grid grid-cols-3 gap-2 bg-slate-950 p-2 rounded-xl border border-slate-800 text-xs">
-                    <div class="flex justify-between items-center px-1 border-r border-slate-800"><span class="text-slate-400 font-bold">All Pool:</span><div class="space-x-1"><button onclick="bulkSelect('all', true)" class="bg-slate-800 hover:bg-emerald-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('all', false)" class="bg-slate-800 hover:bg-rose-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-times"></i></button></div></div>
-                    <div class="flex justify-between items-center px-2 border-r border-slate-800"><span class="text-slate-400 font-bold">Clubs:</span><div class="space-x-1"><button onclick="bulkSelect('club', true)" class="bg-slate-800 hover:bg-emerald-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('club', false)" class="bg-slate-800 hover:bg-rose-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-times"></i></button></div></div>
-                    <div class="flex justify-between items-center px-1"><span class="text-slate-400 font-bold">Nationals:</span><div class="space-x-1"><button onclick="bulkSelect('national', true)" class="bg-slate-800 hover:bg-emerald-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('national', false)" class="bg-slate-800 hover:bg-rose-500 px-2 py-0.5 rounded transition"><i class="fa-solid fa-times"></i></button></div></div>
+                <!-- Small micro toggle board -->
+                <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-[10px] shrink-0 text-center">
+                    <div>All: <button onclick="bulkSelect('all', true)" class="bg-slate-800 hover:bg-emerald-500 px-1.5 py-0.5 rounded ml-1"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('all', false)" class="bg-slate-800 hover:bg-rose-500 px-1.5 py-0.5 rounded ml-0.5"><i class="fa-solid fa-times"></i></button></div>
+                    <div class="border-x border-slate-800">Clubs: <button onclick="bulkSelect('club', true)" class="bg-slate-800 hover:bg-emerald-500 px-1.5 py-0.5 rounded ml-1"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('club', false)" class="bg-slate-800 hover:bg-rose-500 px-1.5 py-0.5 rounded ml-0.5"><i class="fa-solid fa-times"></i></button></div>
+                    <div>Nat: <button onclick="bulkSelect('national', true)" class="bg-slate-800 hover:bg-emerald-500 px-1.5 py-0.5 rounded ml-1"><i class="fa-solid fa-check"></i></button><button onclick="bulkSelect('national', false)" class="bg-slate-800 hover:bg-rose-500 px-1.5 py-0.5 rounded ml-0.5"><i class="fa-solid fa-times"></i></button></div>
                 </div>
 
-                <!-- Scrollable Checklist Frame -->
-                <div class="flex-1 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5" id="teamsListContainer"></div>
-                
-                <div class="text-right text-xs text-slate-500">
-                    Selected Teams Counter: <strong id="selectedCount" class="text-emerald-400">0</strong>
-                </div>
+                <!-- Checklist scroll area container -->
+                <div class="flex-1 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 min-h-0" id="teamsListContainer"></div>
+                <div class="text-right text-[10px] text-slate-500 shrink-0">Selected count: <strong id="selectedCount" class="text-emerald-400">0</strong></div>
             </div>
 
-            <!-- STEP 3 VIEW: GENERATED SQUADS PREVIEW -->
-            <div id="step-view-3" class="wizard-step hidden flex flex-col h-full space-y-4">
-                <div>
-                    <h2 class="text-xl font-bold text-cyan-400"><i class="fa-solid fa-dice mr-2"></i>Generated Squad Assignments</h2>
-                    <p class="text-xs text-slate-400">Review assignments. You can click back to re-roll or proceed forward to schedule fixtures.</p>
-                </div>
-                <!-- Flex Scroll Display Boxes -->
-                <div id="resultsContainer" class="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pr-1"></div>
+            <!-- STEP 3: ASSIGNED SQUADS SPREADSHEET CARD VIEWS -->
+            <div id="step-view-3" class="wizard-step hidden flex flex-col h-full space-y-2 min-h-0">
+                <h2 class="text-base font-bold text-cyan-400 shrink-0"><i class="fa-solid fa-dice mr-2"></i>Rerolled Squad Outputs</h2>
+                <div id="resultsContainer" class="flex-1 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pr-1 min-h-0"></div>
             </div>
 
-            <!-- STEP 4 VIEW: TOURNAMENT SCHEDULE SYSTEM -->
-            <div id="step-view-4" class="wizard-step hidden flex flex-col h-full space-y-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-800 pb-3 gap-2">
-                    <div>
-                        <h2 class="text-xl font-bold text-amber-400"><i class="fa-solid fa-calendar-days mr-2"></i>Fixture Schedule Matrix</h2>
-                        <p class="text-xs text-slate-400">Select dynamic bracket tournament type layout framework rules.</p>
-                    </div>
-                    <div class="flex space-x-2 w-full sm:w-auto shrink-0">
-                        <select id="scheduleFormat" class="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-2.5 focus:outline-none focus:border-amber-400">
-                            <option value="knockout">Full Knockout Tree (Until Finals)</option>
-                            <option value="league">League (Round Robin Ruleset)</option>
-                            <option value="groups">Group Stage (Split A & B Pools)</option>
+            <!-- STEP 4: HARD Knockout visual tree bracket & structures -->
+            <div id="step-view-4" class="wizard-step hidden flex flex-col h-full space-y-3 min-h-0">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center shrink-0 gap-2 border-b border-slate-800/60 pb-2">
+                    <div class="flex items-center space-x-2">
+                        <select id="scheduleFormat" onchange="toggleFormatTabVisibilities()" class="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-2 focus:outline-none focus:border-amber-400">
+                            <option value="knockout">Knockout (Visual Tree)</option>
+                            <option value="league">League (Round Robin)</option>
+                            <option value="groups">Group Stage (A / B)</option>
                         </select>
-                        <button onclick="generateSchedule()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-4 py-2 rounded-lg shadow-md transition uppercase tracking-wider">
-                            Build Matchdays
+                        <button onclick="generateSchedule()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-2 rounded-lg transition uppercase tracking-wider">
+                            Build
                         </button>
                     </div>
+                    
+                    <!-- Mobile view tabs navigation framework container (Hidden on Desktop) -->
+                    <div id="mobileRoundTabs" class="flex lg:hidden bg-slate-950 border border-slate-800 p-0.5 rounded-lg overflow-x-auto text-[10px] font-bold space-x-1 max-w-full"></div>
                 </div>
-                <!-- Main Schedule Matches Output Block Frame -->
-                <div id="matchesContainer" class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 pr-1">
-                    <div class="col-span-full flex flex-col justify-center items-center h-full text-slate-600">
-                        <i class="fa-regular fa-calendar text-4xl mb-2"></i>
-                        <p class="text-sm">Click Build Matchdays above to process tree fixtures.</p>
-                    </div>
+
+                <!-- Layout Wrapper Frame -->
+                <div class="flex-1 overflow-hidden min-h-0 relative">
+                    <!-- Standard grid layout scroll engines for League and Groups -->
+                    <div id="linearMatchesContainer" class="hidden h-full overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pr-1"></div>
+
+                    <!-- Specialized Horizontal Flex Layout specifically engine optimized for Knockout Trees -->
+                    <div id="treeMatchesContainer" class="hidden h-full overflow-x-auto overflow-y-hidden lg:flex lg:space-x-8 pb-2 items-stretch"></div>
                 </div>
             </div>
 
         </div>
 
-        <!-- LOWER FOOTER CONTROL COMPONENT BAR -->
-        <div class="flex justify-between items-center pt-4 shrink-0">
-            <button id="prevBtn" onclick="moveWizard(-1)" class="invisible bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl border border-slate-700 transition">
+        <!-- FOOTER CONFIGURATION BUTTON SYSTEM STRIP -->
+        <footer class="h-12 flex justify-between items-center shrink-0">
+            <button id="prevBtn" onclick="moveWizard(-1)" class="invisible bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl border border-slate-800 transition">
                 <i class="fa-solid fa-arrow-left mr-1"></i> Back
             </button>
-            <button id="nextBtn" onclick="moveWizard(1)" disabled class="bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-not-allowed">
+            <button id="nextBtn" onclick="moveWizard(1)" disabled class="bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition cursor-not-allowed">
                 Next <i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
-        </div>
+        </footer>
 
-    </main>
+    </div>
 
-    <!-- App Logic Engine Implementation -->
+    <!-- Engine Script Runtime Configuration -->
     <script>
         const fc26TeamsRaw = [
             { name: "Real Madrid", type: "club" }, { name: "Manchester City", type: "club" },
@@ -180,95 +176,58 @@
             { name: "Japan", type: "national" }, { name: "United States", type: "national" }
         ];
 
-        let currentStep = 1;
-        let selectedTeamsMap = {}; 
-        let currentFilterType = 'all';
-        let generatedSquads = []; 
+        let currentStep = 1, selectedTeamsMap = {}, currentFilterType = 'all', generatedSquads = [];
 
         document.addEventListener("DOMContentLoaded", () => {
-            // Checkmark every baseline element to start
             fc26TeamsRaw.forEach(t => selectedTeamsMap[t.name] = true);
             renderTeamsList();
             validateStepOne();
         });
 
-        // --- STEP VALIDATION SYSTEM ENGINES ---
         function validateStepOne() {
             const names = document.getElementById("playerNames").value.split('\n').map(n => n.trim()).filter(n => n !== '');
-            const nextBtn = document.getElementById("nextBtn");
-            if (names.length > 0) {
-                nextBtn.disabled = false;
-                nextBtn.className = "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-slate-950 font-black text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition shadow-lg";
-            } else {
-                nextBtn.disabled = true;
-                nextBtn.className = "bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-not-allowed";
-            }
+            toggleNextButton(names.length > 0);
         }
 
         function validateStepTwo() {
             const activeCount = Object.values(selectedTeamsMap).filter(v => v).length;
-            const nextBtn = document.getElementById("nextBtn");
-            if (activeCount > 0) {
-                nextBtn.disabled = false;
-                nextBtn.className = "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-slate-950 font-black text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition shadow-lg";
-            } else {
-                nextBtn.disabled = true;
-                nextBtn.className = "bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-not-allowed";
-            }
+            toggleNextButton(activeCount > 0);
         }
 
-        // --- STEP CONTROLLER ROUTER ---
-        function moveWizard(direction) {
-            // Process calculations if advancing past pool stages
-            if (currentStep === 1 && direction === 1) {
-                // Moving to selection view
-            } else if (currentStep === 2 && direction === 1) {
-                runShuffleEngine();
-            }
+        function toggleNextButton(active) {
+            const btn = document.getElementById("nextBtn");
+            btn.disabled = !active;
+            btn.className = active 
+                ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider py-2 px-4 rounded-xl shadow-lg transition" 
+                : "bg-slate-800 text-slate-600 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition cursor-not-allowed";
+        }
 
-            // Update indices variables safe borders
-            currentStep += direction;
-            if (currentStep < 1) currentStep = 1;
-            if (currentStep > 4) currentStep = 4;
+        function moveWizard(dir) {
+            if (currentStep === 2 && dir === 1) runShuffleEngine();
+            currentStep += dir;
 
-            // Render view states flags updates
             document.querySelectorAll(".wizard-step").forEach((view, idx) => {
-                if (idx + 1 === currentStep) view.classList.remove("hidden");
-                else view.classList.add("hidden");
+                idx + 1 === currentStep ? view.classList.remove("hidden") : view.add ? "" : view.classList.add("hidden");
             });
 
-            // Footer navigation buttons layout fixes
-            const prevBtn = document.getElementById("prevBtn");
-            const nextBtn = document.getElementById("nextBtn");
-
-            prevBtn.className = currentStep === 1 ? "invisible" : "bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl border border-slate-700 transition";
+            document.getElementById("prevBtn").className = currentStep === 1 ? "invisible" : "bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-2 px-4 rounded-xl transition";
             
-            if (currentStep === 4) {
-                nextBtn.className = "hidden";
-            } else {
+            const nextBtn = document.getElementById("nextBtn");
+            if (currentStep === 4) nextBtn.classList.add("hidden");
+            else {
                 nextBtn.classList.remove("hidden");
                 if (currentStep === 1) validateStepOne();
                 if (currentStep === 2) validateStepTwo();
-                if (currentStep === 3) {
-                    nextBtn.disabled = false;
-                    nextBtn.className = "bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600 text-slate-950 font-black text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition shadow-lg";
-                }
+                if (currentStep === 3) toggleNextButton(true);
             }
 
-            // Sync Header indicators styling labels array mapping loops
             for (let i = 1; i <= 4; i++) {
-                const badge = document.getElementById(`badge-${i}`);
-                if (i === currentStep) {
-                    badge.className = "px-2.5 py-1 rounded bg-emerald-500 text-slate-950 transition-all duration-300";
-                } else if (i < currentStep) {
-                    badge.className = "px-2.5 py-1 rounded bg-slate-800 text-emerald-400 border border-emerald-500/20 transition-all duration-300";
-                } else {
-                    badge.className = "px-2.5 py-1 rounded bg-slate-800 text-slate-500 transition-all duration-300";
-                }
+                document.getElementById(`badge-${i}`).className = i === currentStep 
+                    ? "px-2 py-0.5 rounded bg-emerald-500 text-slate-950 transition-all duration-300" 
+                    : i < currentStep ? "px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/10" : "px-2 py-0.5 rounded bg-slate-800 text-slate-500";
             }
         }
 
-        // --- TEAM MATRIX INJECTION CONTROLS ---
         function renderTeamsList() {
             const container = document.getElementById("teamsListContainer");
             container.innerHTML = "";
@@ -276,240 +235,181 @@
                 if (currentFilterType !== 'all' && team.type !== currentFilterType) return;
                 const isChecked = selectedTeamsMap[team.name] ? 'checked' : '';
                 container.innerHTML += `
-                    <label class="flex items-center justify-between p-2 bg-slate-900 border border-slate-800 rounded-lg cursor-pointer hover:border-slate-700 transition select-none text-xs">
-                        <div class="flex items-center space-x-2 overflow-hidden">
-                            <input type="checkbox" data-name="${team.name}" ${isChecked} onchange="toggleTeamSelection(this)" class="accent-emerald-500 rounded bg-slate-950 w-3.5 h-3.5 shrink-0">
-                            <span class="truncate ${team.type === 'national' ? 'text-cyan-400' : 'text-slate-200'}">${team.name}</span>
+                    <label class="flex items-center justify-between p-1.5 bg-slate-900 border border-slate-800/60 rounded-lg cursor-pointer hover:border-slate-700 transition select-none text-[11px]">
+                        <div class="flex items-center space-x-1.5 overflow-hidden">
+                            <input type="checkbox" data-name="${team.name}" ${isChecked} onchange="toggleTeamSelection(this)" class="accent-emerald-500 rounded bg-slate-950 w-3 h-3 shrink-0">
+                            <span class="truncate text-slate-300">${team.name}</span>
                         </div>
-                        <span class="text-[9px] scale-90 uppercase tracking-wider px-1 rounded shrink-0 ${team.type === 'national' ? 'bg-cyan-950 text-cyan-500' : 'bg-slate-800 text-slate-400'}">${team.type[0]}</span>
                     </label>`;
             });
-            updateMetricsCount();
-        }
-
-        function toggleTeamSelection(cb) {
-            selectedTeamsMap[cb.getAttribute("data-name")] = cb.checked;
-            updateMetricsCount();
-            validateStepTwo();
-        }
-
-        function filterTeamType(type) {
-            currentFilterType = type;
-            ['all', 'club', 'national'].forEach(t => {
-                document.getElementById(`tab-${t}`).className = t === type ? "px-3 py-1 rounded bg-emerald-500 text-slate-950 transition" : "px-3 py-1 rounded text-slate-400 hover:text-slate-200 transition";
-            });
-            renderTeamsList();
-        }
-
-        function bulkSelect(targetType, state) {
-            fc26TeamsRaw.forEach(team => {
-                if (targetType === 'all' || team.type === targetType) selectedTeamsMap[team.name] = state;
-            });
-            renderTeamsList();
-            validateStepTwo();
-        }
-
-        function updateMetricsCount() {
             document.getElementById("selectedCount").innerText = Object.values(selectedTeamsMap).filter(v => v).length;
         }
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
+        function toggleTeamSelection(cb) { selectedTeamsMap[cb.getAttribute("data-name")] = cb.checked; renderTeamsList(); validateStepTwo(); }
+        function filterTeamType(t) { currentFilterType = t; ['all','club','national'].forEach(x => document.getElementById(`tab-${x}`).className = x===t ? "px-2.5 py-1 rounded bg-emerald-500 text-slate-950 transition" : "px-2.5 py-1 rounded text-slate-400"); renderTeamsList(); }
+        function bulkSelect(type, state) { fc26TeamsRaw.forEach(t => { if(type==='all' || t.type===type) selectedTeamsMap[t.name]=state; }); renderTeamsList(); validateStepTwo(); }
+        function shuffleArray(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
-        // --- SHUFFLE LOGIC LAYER GENERATOR ---
         function runShuffleEngine() {
             const names = document.getElementById("playerNames").value.split('\n').map(n => n.trim()).filter(n => n !== '');
-            const groupSize = parseInt(document.querySelector('input[name="groupSize"]:checked').value);
-            const totalGroupsNeeded = Math.ceil(names.length / groupSize);
-            const activePool = fc26TeamsRaw.filter(team => selectedTeamsMap[team.name] === true);
+            const size = parseInt(document.querySelector('input[name="groupSize"]:checked').value);
+            const needed = Math.ceil(names.length / size);
+            const activePool = fc26TeamsRaw.filter(t => selectedTeamsMap[t.name]);
 
-            const shuffledNames = shuffleArray([...names]);
-            const shuffledTeams = shuffleArray([...activePool]);
+            const randNames = shuffleArray([...names]), randTeams = shuffleArray([...activePool]);
             generatedSquads = [];
+            const container = document.getElementById("resultsContainer");
+            container.innerHTML = "";
 
-            const resultsContainer = document.getElementById("resultsContainer");
-            resultsContainer.innerHTML = "";
-
-            for (let i = 0; i < totalGroupsNeeded; i++) {
-                const squad = {
-                    id: i + 1,
-                    team: shuffledTeams[i % shuffledTeams.length],
-                    players: shuffledNames.slice(i * groupSize, (i + 1) * groupSize)
-                };
-                generatedSquads.push(squad);
-
-                const playersMarkup = squad.players.map(p => `<span class="bg-slate-950 border border-slate-800 text-xs font-semibold px-2 py-0.5 rounded text-slate-300">${p}</span>`).join(" ");
-                
-                resultsContainer.innerHTML += `
-                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-inner">
-                        <div>
-                            <div class="text-[10px] text-slate-500 font-bold tracking-widest mb-1">SQUAD ${squad.id}</div>
-                            <div class="flex flex-wrap gap-1">${playersMarkup}</div>
-                        </div>
-                        <div class="text-right ml-2 shrink-0">
-                            <div class="font-bold text-sm text-emerald-400">${squad.team.name}</div>
-                        </div>
+            for (let i = 0; i < needed; i++) {
+                const sq = { id: i + 1, team: randTeams[i % randTeams.length], players: randNames.slice(i * size, (i + 1) * size) };
+                generatedSquads.push(sq);
+                const plMarkup = sq.players.map(p => `<span class="bg-slate-950 px-1.5 py-0.5 rounded text-slate-400 border border-slate-800">${p}</span>`).join("");
+                container.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center">
+                        <div class="overflow-hidden"><div class="text-[9px] text-slate-600 font-bold tracking-widest">SQUAD ${sq.id}</div><div class="flex gap-1 overflow-hidden truncate mt-0.5">${plMarkup}</div></div>
+                        <div class="text-sm font-bold text-emerald-400 shrink-0 ml-2">${sq.team.name}</div>
                     </div>`;
             }
         }
 
-        // --- TOURNAMENT SCHEDULE FIXTURE MATRIX GENERATOR ---
+        function toggleFormatTabVisibilities() {
+            const f = document.getElementById("scheduleFormat").value;
+            const tabContainer = document.getElementById("mobileRoundTabs");
+            f === 'knockout' ? tabContainer.classList.remove("hidden") : tabContainer.classList.add("hidden");
+        }
+
+        // --- TREE BUILDER & FIXTURE SYSTEMS ---
         function generateSchedule() {
-            if (generatedSquads.length < 2) return alert("Need at least 2 squads to generate a schedule.");
+            if (generatedSquads.length < 2) return alert("Need 2+ squads.");
             const format = document.getElementById("scheduleFormat").value;
-            const container = document.getElementById("matchesContainer");
-            container.innerHTML = ""; 
+            const linearContainer = document.getElementById("linearMatchesContainer");
+            const treeContainer = document.getElementById("treeMatchesContainer");
+            const mobileTabs = document.getElementById("mobileRoundTabs");
 
-            if (format === 'knockout') {
-                let matchIdCounter = 1;
-                let previousRoundMatchIds = [];
+            // Reset workspace states
+            linearContainer.innerHTML = ""; treeContainer.innerHTML = ""; mobileTabs.innerHTML = "";
+            linearContainer.classList.add("hidden"); treeContainer.classList.add("hidden");
 
-                // --- ROUND 1 TREE CREATION ---
-                let round1HTML = '';
-                let currentRoundMatchIds = [];
-                for (let i = 0; i < generatedSquads.length; i += 2) {
-                    const home = generatedSquads[i];
-                    const away = generatedSquads[i + 1] || null;
-                    const mId = matchIdCounter++;
-                    currentRoundMatchIds.push(mId);
-
-                    round1HTML += buildMatchCard(home, away, `Round 1 - Match M${mId}`);
-                }
-                container.innerHTML += round1HTML;
-                previousRoundMatchIds = currentRoundMatchIds;
-
-                // --- ADVANCED PLACEMENTS CLOSURES ---
-                let matchesInCurrentRound = previousRoundMatchIds.length;
-                let roundNumber = 1;
-                
-                while (matchesInCurrentRound > 1) {
-                    roundNumber++;
-                    let roundLabel = `Round ${roundNumber}`;
-                    if (matchesInCurrentRound === 4) roundLabel = "Quarter-Final";
-                    if (matchesInCurrentRound === 2) roundLabel = "Semi-Final";
-                    
-                    let nextRoundMatchIds = [];
-                    let roundHTML = '';
-
-                    for (let i = 0; i < previousRoundMatchIds.length; i += 2) {
-                        const m1 = previousRoundMatchIds[i];
-                        const m2 = previousRoundMatchIds[i + 1] || null;
-                        const mId = matchIdCounter++;
-                        nextRoundMatchIds.push(mId);
-
-                        let displayLabel = (matchesInCurrentRound === 2) ? "🏆 THE GRAND FINAL" : `${roundLabel} - Match M${mId}`;
-
-                        const homePlaceholder = {
-                            isPlaceholder: true,
-                            teamName: `Winner of M${m1}`,
-                            playersString: `Winner calculation bracket node`
-                        };
-
-                        let awayPlaceholder = null;
-                        if (m2) {
-                            awayPlaceholder = {
-                                isPlaceholder: true,
-                                teamName: `Winner of M${m2}`,
-                                playersString: `Winner calculation bracket node`
-                            };
-                        }
-
-                        roundHTML += buildMatchCard(homePlaceholder, awayPlaceholder, displayLabel);
-                    }
-                    container.innerHTML += roundHTML;
-                    previousRoundMatchIds = nextRoundMatchIds;
-                    matchesInCurrentRound = previousRoundMatchIds.length;
-                }
-            } 
-            else if (format === 'league') {
-                let teams = [...generatedSquads];
-                if (teams.length % 2 !== 0) teams.push(null); 
-                const totalRounds = teams.length - 1;
-                const half = teams.length / 2;
-
-                for (let round = 0; round < totalRounds; round++) {
-                    let matchesHTML = '';
-                    for (let i = 0; i < half; i++) {
-                        const home = teams[i];
-                        const away = teams[teams.length - 1 - i];
-                        if (home && away) matchesHTML += buildMatchCard(home, away, `Matchday ${round + 1}`);
-                    }
-                    if(matchesHTML) container.innerHTML += matchesHTML;
-                    teams.splice(1, 0, teams.pop()); 
-                }
-            }
-            else if (format === 'groups') {
-                const mid = Math.ceil(generatedSquads.length / 2);
-                const groups = [ {name: 'A', data: generatedSquads.slice(0, mid)}, {name: 'B', data: generatedSquads.slice(mid)} ];
-                
-                groups.forEach(grp => {
-                    let teams = [...grp.data];
-                    if (teams.length % 2 !== 0) teams.push(null);
-                    const totalRounds = teams.length - 1;
-                    
-                    for (let round = 0; round < totalRounds; round++) {
+            if (format !== 'knockout') {
+                linearContainer.classList.remove("hidden");
+                // --- LEAGUE & GROUPS GENERATION LOGIC ---
+                if (format === 'league') {
+                    let teams = [...generatedSquads]; if (teams.length % 2 !== 0) teams.push(null);
+                    for (let r = 0; r < teams.length - 1; r++) {
                         for (let i = 0; i < teams.length / 2; i++) {
-                            const home = teams[i];
-                            const away = teams[teams.length - 1 - i];
-                            if (home && away) container.innerHTML += buildMatchCard(home, away, `Group ${grp.name} - MD ${round + 1}`);
+                            const h = teams[i], a = teams[teams.length - 1 - i];
+                            if (h && a) linearContainer.innerHTML += buildMatchCard(h, a, `Day ${r + 1}`);
                         }
                         teams.splice(1, 0, teams.pop());
                     }
+                } else {
+                    const mid = Math.ceil(generatedSquads.length / 2);
+                    const grps = [{n:'A', d:generatedSquads.slice(0,mid)}, {n:'B', d:generatedSquads.slice(mid)}];
+                    grps.forEach(g => {
+                        let teams = [...g.d]; if (teams.length % 2 !== 0) teams.push(null);
+                        for (let r = 0; r < teams.length - 1; r++) {
+                            for (let i = 0; i < teams.length / 2; i++) {
+                                const h = teams[i], a = teams[teams.length - 1 - i];
+                                if (h && a) linearContainer.innerHTML += buildMatchCard(h, a, `Group ${g.n} - MD ${r + 1}`);
+                            }
+                            teams.splice(1, 0, teams.pop());
+                        }
+                    });
+                }
+                return;
+            }
+
+            // --- ADVANCED TREE KNOCKOUT GRAPH ENGINE ---
+            treeContainer.classList.remove("hidden");
+            let roundsData = [];
+            let currentRoundSquads = [...generatedSquads];
+            let matchIdCounter = 1;
+
+            // Round 1 Calculations
+            let r1Matches = [];
+            for (let i = 0; i < currentRoundSquads.length; i += 2) {
+                r1Matches.push({ id: matchIdCounter++, home: currentRoundSquads[i], away: currentRoundSquads[i+1] || null });
+            }
+            roundsData.push({ label: "Round 1", matches: r1Matches });
+
+            // Propagate subsequent winner node placeholders until reaching single Final match
+            let prevMatches = r1Matches;
+            while (prevMatches.length > 1) {
+                let currentRoundMatches = [];
+                let label = `Round ${roundsData.length + 1}`;
+                if (prevMatches.length === 4) label = "Quarterfinals";
+                if (prevMatches.length === 2) label = "Semifinals";
+
+                for (let i = 0; i < prevMatches.length; i += 2) {
+                    const m1 = prevMatches[i], m2 = prevMatches[i+1] || null;
+                    currentRoundMatches.push({
+                        id: matchIdCounter++,
+                        home: { isPlaceholder: true, teamName: `Winner M${m1.id}` },
+                        away: m2 ? { isPlaceholder: true, teamName: `Winner M${m2.id}` } : null
+                    });
+                }
+                roundsData.push({ label: prevMatches.length === 2 ? "🏆 Final" : label, matches: currentRoundMatches });
+                prevMatches = currentRoundMatches;
+            }
+
+            // Inject layout loops for desktop columns and mobile switcher tabs
+            roundsData.forEach((round, rIdx) => {
+                const roundId = `tree-round-${rIdx}`;
+                
+                // Build Mobile Top Switcher Tab Control Button
+                mobileTabs.innerHTML += `
+                    <button onclick="switchMobileRound(${rIdx}, ${roundsData.length})" id="tab-btn-${rIdx}" class="px-2.5 py-1 rounded ${rIdx===0 ? 'bg-amber-500 text-slate-950' : 'text-slate-400'} whitespace-nowrap transition">
+                        ${round.label}
+                    </button>`;
+
+                // Build Column Structure
+                const col = document.createElement("div");
+                col.id = roundId;
+                col.className = `tree-column flex flex-col justify-around h-full space-y-3 lg:space-y-0 shrink-0 ${rIdx === 0 ? 'flex' : 'hidden lg:flex'}`;
+                
+                round.matches.forEach(m => {
+                    col.innerHTML += buildMatchCard(m.home, m.away, `Match M${m.id}`, format === 'knockout');
                 });
+                treeContainer.appendChild(col);
+            });
+        }
+
+        function switchMobileRound(activeIdx, total) {
+            for(let i=0; i<total; i++) {
+                const col = document.getElementById(`tree-round-${i}`);
+                const btn = document.getElementById(`tab-btn-${i}`);
+                if(i === activeIdx) {
+                    col.classList.remove("hidden"); col.classList.add("flex");
+                    btn.className = "px-2.5 py-1 rounded bg-amber-500 text-slate-950 whitespace-nowrap transition";
+                } else {
+                    col.classList.add("hidden"); col.classList.remove("flex");
+                    btn.className = "px-2.5 py-1 rounded text-slate-400 whitespace-nowrap transition";
+                }
             }
         }
 
-        // --- FIXTURE CONTAINER UI CARD BUILDER ---
-        function buildMatchCard(home, away, label) {
-            let homeTitle = "", homePlayers = "";
-            let awayTitle = "", awayPlayers = "";
+        function buildMatchCard(home, away, label, isTreeMode = false) {
+            let hTitle = home?.isPlaceholder ? home.teamName : (home?.team?.name || home?.teamName || "TBD");
+            let hPl = home?.isPlaceholder ? "TBD" : (home?.players?.map(p=>p).join(" & ") || "");
+            let aTitle = !away ? "BYE" : (away.isPlaceholder ? away.teamName : (away.team?.name || away.teamName || "TBD"));
+            let aPl = !away ? "Progression" : (away.isPlaceholder ? "TBD" : (away.players?.map(p=>p).join(" & ") || ""));
 
-            // Evaluate if Home is a placeholder branch or real squad object
-            if (home.isPlaceholder) {
-                homeTitle = home.teamName;
-                homePlayers = `<span class="text-slate-600 italic">TBD</span>`;
-            } else {
-                homeTitle = home.teamName || home.team.name;
-                homePlayers = home.players.map(p => `<span class="text-slate-400">${p}</span>`).join(" & ");
-            }
-
-            // Evaluate if Away is a placeholder, real squad, or a Bye assignment
-            if (!away) {
-                awayTitle = "BYE";
-                awayPlayers = `<span class="text-slate-600 italic">Automatic Progression</span>`;
-            } else if (away.isPlaceholder) {
-                awayTitle = away.teamName;
-                awayPlayers = `<span class="text-slate-600 italic">TBD</span>`;
-            } else {
-                awayTitle = away.teamName || away.team.name;
-                awayPlayers = away.players.map(p => `<span class="text-slate-400">${p}</span>`).join(" & ");
-            }
+            const treeUtilityClass = isTreeMode ? "tree-connector" : "";
 
             return `
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 shadow-sm relative flex flex-col justify-between min-h-[75px]">
-                <span class="absolute -top-2 left-3 bg-slate-800 border border-slate-700 text-amber-400 text-[9px] font-bold tracking-wide px-2 py-0.5 rounded shadow">${label}</span>
-                <div class="flex justify-between items-center mt-2 w-full text-xs">
-                    
-                    <!-- Left Competitor Squad Column -->
-                    <div class="text-left w-[42%] overflow-hidden">
-                        <div class="font-bold text-slate-100 truncate">${homeTitle}</div>
-                        <div class="text-[10px] truncate flex gap-1 mt-0.5">${homePlayers}</div>
+            <div class="bg-slate-950/90 border border-slate-800/80 rounded-xl p-2 relative flex flex-col justify-center min-h-[58px] shadow-sm ${treeUtilityClass}">
+                <span class="absolute -top-1.5 left-2 bg-slate-900 border border-slate-800 text-amber-400 text-[8px] font-bold px-1.5 py-0.5 rounded">${label}</span>
+                <div class="flex justify-between items-center text-[11px] w-full mt-1.5">
+                    <div class="w-[43%] text-left overflow-hidden">
+                        <div class="font-bold text-slate-200 truncate">${hTitle}</div>
+                        <div class="text-[9px] text-slate-500 truncate mt-0.5">${hPl}</div>
                     </div>
-                    
-                    <!-- Center Divider Node -->
-                    <div class="w-[16%] text-center font-black text-slate-700 text-[10px] tracking-tighter">VS</div>
-                    
-                    <!-- Right Competitor Squad Column -->
-                    <div class="text-right w-[42%] overflow-hidden">
-                        <div class="font-bold text-slate-100 truncate">${awayTitle}</div>
-                        <div class="text-[10px] truncate flex justify-end gap-1 mt-0.5">${awayPlayers}</div>
+                    <div class="w-[14%] text-center text-[9px] font-black text-slate-700">VS</div>
+                    <div class="w-[43%] text-right overflow-hidden">
+                        <div class="font-bold text-slate-200 truncate">${aTitle}</div>
+                        <div class="text-[9px] text-slate-500 truncate mt-0.5">${aPl}</div>
                     </div>
-                    
                 </div>
             </div>`;
         }
