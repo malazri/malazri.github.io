@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handover Tracker - Archiving Update</title>
+    <title>Handover Tracker - Dropdown & Archive Updates</title>
     <style>
         :root {
             --primary: #2c3e50; --secondary: #34495e; --accent: #3498db;
@@ -45,6 +45,13 @@
         .section-container.archived-sec { opacity: 0.6; filter: grayscale(80%); }
         .section-header { padding: 0.7rem 1rem; color: white; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
         .section-content { padding: 1rem; background: #fafafa; }
+
+        /* Dropdown Menu */
+        .dropdown { position: relative; display: inline-block; }
+        .dots-btn { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 0 5px; line-height: 1; margin-left: 5px; }
+        .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #fff; min-width: 130px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); z-index: 10; border-radius: 4px; overflow: hidden; }
+        .dropdown-content button { color: #333; padding: 10px 15px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.9rem; }
+        .dropdown-content button:hover { background-color: #f1f1f1; }
 
         /* Comments & Attachments */
         .comment { display: flex; gap: 0.8rem; margin-bottom: 1rem; position: relative; padding-right: 30px; }
@@ -196,17 +203,25 @@
 
 <script>
     // --- DATABASE ---
-    let db = JSON.parse(localStorage.getItem('handover_v6')) || {
+    let db = JSON.parse(localStorage.getItem('handover_v7')) || {
         users: [{id:'u1', name:'Manager', mobile:'0000'}],
         categories: ['General', 'HSE', 'Project'],
         topics: [], sections: [], comments: []
     };
     let activeT = null, activeS = null, droppedFile = null;
+    let showArchivedSecs = false; // Tracks if completed sections are visible
 
     // Run on startup
     window.onload = () => { populateGlobalUser(); renderTopics(); renderAdmin(); };
 
-    const sync = () => { localStorage.setItem('handover_v6', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+    // Close all dropdowns when clicking anywhere outside
+    window.onclick = function(event) {
+        if (!event.target.matches('.dots-btn')) {
+            document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
+        }
+    }
+
+    const sync = () => { localStorage.setItem('handover_v7', JSON.stringify(db)); renderTopics(); renderAdmin(); };
 
     // --- NAVIGATION & GLOBAL INIT ---
     function toggleView(v) {
@@ -216,7 +231,7 @@
 
     function populateGlobalUser() {
         const sel = document.getElementById('globalUserSelect');
-        const currentVal = sel.value; // preserve selection if re-rendering
+        const currentVal = sel.value; 
         sel.innerHTML = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
         if(currentVal && db.users.find(u => u.id === currentVal)) sel.value = currentVal;
     }
@@ -235,6 +250,15 @@
         document.getElementById(id).style.display = 'flex';
     }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function toggleDropdown(id, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-content').forEach(el => {
+            if(el.id !== 'dd-'+id) el.style.display = 'none';
+        });
+        const dd = document.getElementById('dd-'+id);
+        dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+    }
 
     // --- ARCHIVING & TOPICS ---
     function saveTopic() {
@@ -296,6 +320,11 @@
         sync(); renderSections();
     }
 
+    function toggleArchivedSecsVisibility() {
+        showArchivedSecs = !showArchivedSecs;
+        renderSections();
+    }
+
     // --- COMMENT & FILE LOGIC ---
     const dz = document.getElementById('dropZone');
     const fi = document.getElementById('fileIn');
@@ -314,7 +343,7 @@
 
     function saveComment() {
         const text = document.getElementById('coIn').value;
-        const userId = document.getElementById('globalUserSelect').value; // Fetching from the global navbar
+        const userId = document.getElementById('globalUserSelect').value;
         if(!userId) return alert("Please select an Acting User in the top bar.");
         if(!text) return alert("Please enter text.");
 
@@ -341,7 +370,6 @@
     function renderTopics() {
         const filterVal = document.getElementById('topicFilter').value;
         const isArchivedView = (filterVal === 'archived');
-        
         const filteredTopics = db.topics.filter(t => !!t.archived === isArchivedView);
 
         document.getElementById('topicList').innerHTML = filteredTopics.map(t => `
@@ -353,6 +381,7 @@
 
     function viewTopic(id) {
         activeT = id;
+        showArchivedSecs = false; // Reset the view to hidden for completed sections
         document.getElementById('welcome').style.display = 'none';
         document.getElementById('topicDetail').style.display = 'flex';
         
@@ -371,33 +400,54 @@
         document.getElementById('newSectionFooter').style.display = t.archived ? 'none' : 'flex';
 
         renderSections(); 
-        renderTopics(); // Refresh to highlight active topic
+        renderTopics(); // Refresh highlight
+    }
+
+    function buildSectionHtml(s, isArchived) {
+        const archBtnTxt = isArchived ? "Unarchive" : "Archive";
+        const updateBtn = isArchived ? '' : `<button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}')" style="background:white; color:${s.color}; font-weight:bold; margin-right:5px;">+ Update</button>`;
+        const editOpt = isArchived ? '' : `<button onclick="editSection('${s.id}')">Edit</button>`;
+
+        return `
+        <div class="section-container ${isArchived ? 'archived-sec' : ''}">
+            <div class="section-header" style="background:${isArchived ? '#7f8c8d' : s.color}">
+                <span>${s.title} ${isArchived ? '(Completed)' : ''}</span>
+                <div style="display:flex; align-items:center;">
+                    ${updateBtn}
+                    <div class="dropdown">
+                        <button class="dots-btn" onclick="toggleDropdown('${s.id}', event)">⋮</button>
+                        <div id="dd-${s.id}" class="dropdown-content">
+                            ${editOpt}
+                            <button onclick="toggleSectionArchive('${s.id}')">${archBtnTxt}</button>
+                            <button style="color:var(--danger)" onclick="deleteSection('${s.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="section-content">${renderComments(s.id)}</div>
+        </div>`;
     }
 
     function renderSections() {
-        const secs = db.sections.filter(s => s.topicId === activeT);
-        document.getElementById('sectionsArea').innerHTML = secs.map(s => {
-            const isArchived = !!s.archived;
-            const archBtnTxt = isArchived ? "Unarchive" : "Archive";
-            
-            // Hide the update and edit buttons if section is archived
-            const actionButtons = isArchived 
-                ? `<button class="btn btn-outline" onclick="toggleSectionArchive('${s.id}')">${archBtnTxt}</button>
-                   <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>`
-                : `<button class="btn btn-outline" onclick="editSection('${s.id}')">Edit</button>
-                   <button class="btn btn-outline" onclick="toggleSectionArchive('${s.id}')">${archBtnTxt}</button>
-                   <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>
-                   <button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}')" style="background:white; color:${s.color}; font-weight:bold;">+ Update</button>`;
+        const allSecs = db.sections.filter(s => s.topicId === activeT);
+        const activeSecs = allSecs.filter(s => !s.archived);
+        const archivedSecs = allSecs.filter(s => s.archived);
 
-            return `
-            <div class="section-container ${isArchived ? 'archived-sec' : ''}">
-                <div class="section-header" style="background:${isArchived ? '#7f8c8d' : s.color}">
-                    <span>${s.title} ${isArchived ? '(Completed)' : ''}</span>
-                    <div>${actionButtons}</div>
-                </div>
-                <div class="section-content">${renderComments(s.id)}</div>
+        let html = activeSecs.map(s => buildSectionHtml(s, false)).join('');
+
+        if(archivedSecs.length > 0) {
+            const toggleBtnText = showArchivedSecs ? "Hide Completed Sections" : `Show ${archivedSecs.length} Completed Section(s)`;
+            html += `
+            <div style="text-align: center; margin: 1.5rem 0 1rem 0;">
+                <button class="btn btn-info" onclick="toggleArchivedSecsVisibility()">${toggleBtnText}</button>
             </div>`;
-        }).join('');
+            
+            if(showArchivedSecs) {
+                html += archivedSecs.map(s => buildSectionHtml(s, true)).join('');
+            }
+        }
+        
+        document.getElementById('sectionsArea').innerHTML = html;
     }
 
     function renderComments(sid) {
@@ -413,13 +463,13 @@
                     ? `<img src="${c.fData}" class="attachment-preview" onclick="window.open(this.src)">`
                     : `<div style="margin-top:10px;">📎 <a href="${c.fData}" download="${c.fName}">${c.fName}</a></div>`;
             }
-            // Hide delete comment button if section is archived
+            
             const delBtn = sectionIsArchived ? '' : `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
             
             return `<div class="comment">
                 <div class="user-badge">${u.name.charAt(0)}</div>
                 <div class="comment-body">
-                    <small><b>${u.name}</b> • ${new Date(c.date).toLocaleString()}</small>
+                    <small><b>${u.name}</b></small>
                     <p style="margin-top:5px;">${c.text}</p>
                     ${fileHtml}
                 </div>
