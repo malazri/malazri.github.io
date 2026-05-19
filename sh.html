@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         /* Force explicit viewport constraints to prevent mobile browser chrome scrolling bugs */
         html, body { height: 100%; max-height: 100%; overflow: hidden; position: fixed; width: 100%; }
@@ -33,8 +36,8 @@
     <!-- FIXED APPARATUS CORE SHELL FRAME Container -->
     <div class="fixed inset-0 w-full h-full p-3 flex flex-col justify-between box-border">
         
-        <!-- HEADER COMPONENT -->
-        <header class="bg-slate-900 border border-slate-800 h-12 md:h-14 rounded-xl flex items-center justify-between px-3 md:px-4 shadow-md shrink-0">
+        <!-- HEADER COMPONENT (Hidden on Welcome Screen) -->
+        <header id="mainHeader" class="hidden bg-slate-900 border border-slate-800 h-12 md:h-14 rounded-xl items-center justify-between px-3 md:px-4 shadow-md shrink-0">
             <h1 class="text-xs md:text-base font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
                 🎮 FC 26 WIZARD
             </h1>
@@ -51,13 +54,35 @@
             </div>
         </header>
 
-        <!-- MAIN VIEWPORT STAGE CONTAINER (Expanded dynamically between fixed header and footer elements) -->
-        <div class="flex-1 my-2.5 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-3 md:p-5 shadow-2xl flex flex-col overflow-hidden relative">
+        <!-- MAIN VIEWPORT STAGE CONTAINER -->
+        <div id="mainStage" class="flex-1 my-0 bg-slate-900/40 border-0 rounded-2xl p-0 shadow-2xl flex flex-col overflow-hidden relative transition-all">
             
+            <!-- STEP 0: WELCOME SCREEN -->
+            <div id="step-view-0" class="wizard-step flex flex-col items-center justify-center h-full w-full space-y-6 text-center">
+                <div class="space-y-2">
+                    <h1 class="text-4xl md:text-5xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+                        FC 26 WIZARD
+                    </h1>
+                    <p class="text-slate-400 text-xs md:text-sm font-mono uppercase tracking-widest">Tournament Manager</p>
+                </div>
+                
+                <div class="flex flex-col space-y-3 w-64 mt-8">
+                    <button onclick="startNewWizard()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-plus mr-2"></i> New Tournament
+                    </button>
+                    
+                    <button id="loadBtn" onclick="openLoadModal()" disabled class="bg-slate-800 text-slate-500 font-bold py-3 rounded-xl transition cursor-not-allowed border border-slate-700/50">
+                        <i class="fa-solid fa-cloud-arrow-down mr-2"></i> Load Saved
+                    </button>
+                    <div id="dbStatus" class="text-[9px] text-slate-500 mt-1"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i> Checking database...</div>
+                </div>
+            </div>
+
             <!-- STEP 1: PLAYERS INPUT & SQUAD FORMAT -->
-            <div id="step-view-1" class="wizard-step flex flex-col h-full space-y-3 min-h-0">
-                <div class="shrink-0">
+            <div id="step-view-1" class="wizard-step hidden flex flex-col h-full space-y-3 min-h-0">
+                <div class="shrink-0 flex justify-between items-center">
                     <h2 class="text-xs md:text-base font-bold text-emerald-400"><i class="fa-solid fa-users mr-2"></i>Competitors Layout Setup</h2>
+                    <input type="text" id="tournamentTitle" placeholder="Tournament Name" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 placeholder-slate-700 w-32 md:w-48 text-right">
                 </div>
                 <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 overflow-hidden min-h-0">
                     <div class="flex flex-col h-full min-h-0">
@@ -138,19 +163,29 @@
             <!-- STEP 4: HARD Knockout visual tree bracket & structures -->
             <div id="step-view-4" class="wizard-step hidden flex flex-col h-full space-y-2 min-h-0">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center shrink-0 gap-2 border-b border-slate-800/60 pb-1.5">
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-2 w-full justify-between sm:w-auto sm:justify-start">
                         <select id="scheduleFormat" onchange="toggleFormatTabVisibilities()" class="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-1.5 focus:outline-none focus:border-amber-400">
                             <option value="knockout">Knockout (Visual Tree)</option>
                             <option value="league">League (Round Robin)</option>
                             <option value="groups">Group Stage (A / B)</option>
                         </select>
-                        <button onclick="generateSchedule()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-1.5 rounded-lg transition uppercase tracking-wider">
-                            Build
-                        </button>
+                        <div class="flex space-x-2">
+                            <button onclick="generateSchedule()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-1.5 rounded-lg transition uppercase tracking-wider">
+                                Build
+                            </button>
+                            <button id="cloudSaveBtn" onclick="saveToCloud()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-black px-3 py-1.5 rounded-lg transition uppercase tracking-wider flex items-center shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                                <i id="cloudIcon" class="fa-solid fa-cloud-arrow-up mr-1.5"></i> <span id="cloudSaveText">Save</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- Mobile view tabs navigation framework container (Hidden on Desktop) -->
                     <div id="mobileRoundTabs" class="flex lg:hidden bg-slate-950 border border-slate-800 p-0.5 rounded-lg overflow-x-auto text-[9px] font-bold space-x-1 max-w-full"></div>
+                </div>
+
+                <!-- Alert for Read-Only modes -->
+                <div id="readOnlyAlert" class="hidden shrink-0 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-bold px-3 py-1.5 rounded-lg flex items-center justify-between">
+                    <span><i class="fa-solid fa-lock mr-2"></i>This saved tournament does not allow modifications.</span>
                 </div>
 
                 <!-- Layout Wrapper Frame -->
@@ -165,8 +200,8 @@
 
         </div>
 
-        <!-- FOOTER CONFIGURATION BUTTON SYSTEM STRIP (Pinned safely into viewport view) -->
-        <footer class="h-10 flex justify-between items-center shrink-0 px-1">
+        <!-- FOOTER CONFIGURATION BUTTON SYSTEM STRIP (Hidden on Welcome Screen) -->
+        <footer id="mainFooter" class="hidden h-10 flex justify-between items-center shrink-0 px-1 mt-2.5">
             <button id="prevBtn" onclick="moveWizard(-1)" class="invisible bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-1.5 px-4 rounded-xl transition">
                 <i class="fa-solid fa-arrow-left mr-1"></i> Back
             </button>
@@ -177,8 +212,33 @@
 
     </div>
 
+    <!-- LOAD MODAL OVERLAY -->
+    <div id="loadModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md flex flex-col max-h-[80vh] shadow-2xl">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                <h3 class="text-cyan-400 font-bold"><i class="fa-solid fa-cloud-arrow-down mr-2"></i>Load Tournament</h3>
+                <button onclick="closeLoadModal()" class="text-slate-500 hover:text-slate-300 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="savedListContainer" class="flex-1 overflow-y-auto p-2 space-y-2">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+
     <!-- Engine Script Runtime Configuration -->
     <script>
+        // ==========================================
+        // SUPABASE CONFIGURATION - PASTE YOURS HERE
+        // ==========================================
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g. 'https://xyz.supabase.co'
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        let supabaseClient = null;
+        let savedTournaments = [];
+        let currentTournamentDbId = null;
+        let currentTournamentAllowChanges = true;
+
         const fc26TeamsRaw = [
             { name: "Real Madrid", type: "club" }, { name: "Manchester City", type: "club" },
             { name: "Arsenal", type: "club" }, { name: "FC Barcelona", type: "club" },
@@ -198,20 +258,255 @@
             { name: "Japan", type: "national" }, { name: "United States", type: "national" }
         ];
 
-        let currentStep = 1, selectedTeamsMap = {}, currentFilterType = 'all', generatedSquads = [];
+        let currentStep = 0, selectedTeamsMap = {}, currentFilterType = 'all', generatedSquads = [];
 
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             fc26TeamsRaw.forEach(t => selectedTeamsMap[t.name] = true);
             renderTeamsList();
-            validateStepOne();
+            
+            // Initialize Supabase if keys provided
+            if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+                try {
+                    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    await checkDatabaseRecords();
+                } catch (e) {
+                    document.getElementById('dbStatus').innerHTML = "<span class='text-rose-500'>DB Connection Error</span>";
+                }
+            } else {
+                document.getElementById('dbStatus').innerHTML = "Supabase keys not configured.";
+            }
         });
+
+        // --- DATABASE OPERATIONS ---
+
+        async function checkDatabaseRecords() {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient
+                .from('tournaments')
+                .select('id, title, created_at, allow_changes')
+                .order('created_at', { ascending: false });
+
+            if (!error && data && data.length > 0) {
+                savedTournaments = data;
+                const loadBtn = document.getElementById('loadBtn');
+                loadBtn.disabled = false;
+                loadBtn.className = "bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold py-3 rounded-xl transition border border-slate-700 shadow-lg cursor-pointer";
+                document.getElementById('dbStatus').innerHTML = `<span class="text-emerald-500">${data.length} saved tournament(s) found.</span>`;
+            } else {
+                document.getElementById('dbStatus').innerHTML = "No saved tournaments found.";
+            }
+        }
+
+        async function saveToCloud() {
+            if (!supabaseClient) return alert("Supabase not configured!");
+            
+            const titleInput = document.getElementById("tournamentTitle").value.trim() || "Untitled Tournament";
+            const players = document.getElementById("playerNames").value;
+            const groupSize = parseInt(document.querySelector('input[name="groupSize"]:checked').value);
+            const poolSource = document.querySelector('input[name="poolSource"]:checked').value;
+            const customPool = document.getElementById("customTeamNames").value;
+            const format = document.getElementById("scheduleFormat").value;
+
+            const icon = document.getElementById('cloudIcon');
+            const text = document.getElementById('cloudSaveText');
+            icon.className = "fa-solid fa-circle-notch fa-spin mr-1.5";
+            text.innerText = "Saving...";
+
+            const payload = {
+                title: titleInput,
+                players: players,
+                group_size: groupSize,
+                pool_source: poolSource,
+                custom_pool: customPool,
+                pool_map: selectedTeamsMap,
+                squads: generatedSquads,
+                format: format
+            };
+
+            let errorResult;
+            if (currentTournamentDbId) {
+                // Update
+                const { error } = await supabaseClient.from('tournaments').update(payload).eq('id', currentTournamentDbId);
+                errorResult = error;
+            } else {
+                // Insert
+                payload.allow_changes = true; // Default
+                const { data, error } = await supabaseClient.from('tournaments').insert([payload]).select();
+                errorResult = error;
+                if (!error && data) currentTournamentDbId = data[0].id;
+            }
+
+            if (errorResult) {
+                alert("Failed to save: " + errorResult.message);
+                icon.className = "fa-solid fa-cloud-arrow-up mr-1.5";
+                text.innerText = "Save Failed";
+            } else {
+                icon.className = "fa-solid fa-check mr-1.5";
+                text.innerText = "Saved!";
+                setTimeout(() => {
+                    icon.className = "fa-solid fa-cloud-arrow-up mr-1.5";
+                    text.innerText = currentTournamentDbId ? "Update" : "Save";
+                }, 2000);
+            }
+        }
+
+        async function loadTournamentData(id) {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient.from('tournaments').select('*').eq('id', id).single();
+            if (error || !data) return alert("Failed to load data.");
+
+            // Populate variables
+            currentTournamentDbId = data.id;
+            currentTournamentAllowChanges = data.allow_changes;
+            generatedSquads = data.squads || [];
+            
+            // Populate Inputs
+            document.getElementById("tournamentTitle").value = data.title;
+            document.getElementById("playerNames").value = data.players;
+            document.querySelector(`input[name="groupSize"][value="${data.group_size}"]`).checked = true;
+            document.querySelector(`input[name="poolSource"][value="${data.pool_source}"]`).checked = true;
+            document.getElementById("customTeamNames").value = data.custom_pool || '';
+            document.getElementById("scheduleFormat").value = data.format || 'knockout';
+            
+            if (data.pool_map) selectedTeamsMap = data.pool_map;
+
+            closeLoadModal();
+            togglePoolSource(); // refresh UI
+            
+            // Enforce Read-Only Rule
+            const readOnlyAlert = document.getElementById("readOnlyAlert");
+            const cloudSaveBtn = document.getElementById("cloudSaveBtn");
+            if (!currentTournamentAllowChanges) {
+                readOnlyAlert.classList.remove("hidden");
+                cloudSaveBtn.classList.add("hidden");
+            } else {
+                readOnlyAlert.classList.add("hidden");
+                cloudSaveBtn.classList.remove("hidden");
+                document.getElementById('cloudSaveText').innerText = "Update";
+            }
+
+            // Fast forward to step 4 (Fixtures) to view the loaded tournament
+            startNewWizard(true);
+            
+            // Re-render squads UI
+            const container = document.getElementById("resultsContainer");
+            container.innerHTML = "";
+            generatedSquads.forEach(sq => {
+                const plMarkup = sq.players.map(p => `<span class="bg-slate-950 px-1.5 py-0.5 rounded text-slate-400 border border-slate-800 text-[10px]">${p}</span>`).join("");
+                container.innerHTML += `
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-2 flex justify-between items-center shadow-inner">
+                        <div class="overflow-hidden"><div class="text-[8px] text-slate-600 font-bold tracking-widest">SQUAD ${sq.id}</div><div class="flex gap-1 overflow-hidden truncate mt-0.5">${plMarkup}</div></div>
+                        <div class="text-xs font-bold text-emerald-400 shrink-0 ml-2">${sq.team.name}</div>
+                    </div>`;
+            });
+
+            // Generate tree/fixtures
+            toggleFormatTabVisibilities();
+            generateSchedule();
+        }
+
+        // --- UI & WIZARD FLOW ---
+
+        function openLoadModal() {
+            const container = document.getElementById('savedListContainer');
+            container.innerHTML = '';
+            savedTournaments.forEach(t => {
+                const date = new Date(t.created_at).toLocaleDateString();
+                const lockIcon = t.allow_changes ? '' : '<i class="fa-solid fa-lock text-rose-500 text-[10px] ml-2" title="Read Only"></i>';
+                container.innerHTML += `
+                    <button onclick="loadTournamentData('${t.id}')" class="w-full text-left p-3 bg-slate-950 border border-slate-800 rounded-xl hover:border-cyan-500 transition flex justify-between items-center group">
+                        <div>
+                            <div class="text-slate-200 font-bold text-sm">${t.title || 'Untitled'} ${lockIcon}</div>
+                            <div class="text-[10px] text-slate-500">${date}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-slate-700 group-hover:text-cyan-400"></i>
+                    </button>
+                `;
+            });
+            document.getElementById('loadModal').classList.remove('hidden');
+            document.getElementById('loadModal').classList.add('flex');
+        }
+
+        function closeLoadModal() {
+            document.getElementById('loadModal').classList.add('hidden');
+            document.getElementById('loadModal').classList.remove('flex');
+        }
+
+        function startNewWizard(isLoad = false) {
+            document.getElementById("mainHeader").classList.remove("hidden");
+            document.getElementById("mainHeader").classList.add("flex");
+            document.getElementById("mainStage").classList.remove("my-0", "border-0", "p-0", "bg-transparent");
+            document.getElementById("mainStage").classList.add("my-2.5", "border", "border-slate-800/80", "p-3", "md:p-5", "bg-slate-900/40");
+            document.getElementById("mainFooter").classList.remove("hidden");
+            document.getElementById("mainFooter").classList.add("flex");
+
+            if (!isLoad) {
+                currentTournamentDbId = null;
+                currentTournamentAllowChanges = true;
+                document.getElementById('cloudSaveText').innerText = "Save";
+                document.getElementById("readOnlyAlert").classList.add("hidden");
+                document.getElementById("cloudSaveBtn").classList.remove("hidden");
+            }
+
+            currentStep = isLoad ? 4 : 1;
+            refreshWizardView();
+        }
+
+        function moveWizard(dir) {
+            if (!currentTournamentAllowChanges && currentStep === 4 && dir === -1) {
+                if(!confirm("This tournament is read-only. Modifications will not be saved. Continue?")) return;
+            }
+
+            if (currentStep === 2 && dir === 1) runShuffleEngine();
+            currentStep += dir;
+            refreshWizardView();
+        }
+
+        function refreshWizardView() {
+            document.querySelectorAll(".wizard-step").forEach((view, idx) => {
+                // Note: idx 0 is step-view-0, idx 1 is step-view-1, etc.
+                if (idx === currentStep) {
+                    view.classList.remove("hidden");
+                } else {
+                    view.classList.add("hidden");
+                }
+            });
+
+            const prevBtn = document.getElementById("prevBtn");
+            if (currentStep <= 1) {
+                prevBtn.classList.add("invisible");
+            } else {
+                prevBtn.classList.remove("invisible");
+                prevBtn.className = "bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-1.5 px-4 rounded-xl transition";
+            }
+            
+            const nextBtn = document.getElementById("nextBtn");
+            if (currentStep === 4 || currentStep === 0) {
+                nextBtn.classList.add("hidden");
+            } else {
+                nextBtn.classList.remove("hidden"); 
+                if (currentStep === 1) validateStepOne();
+                if (currentStep === 2) validateStepTwo();
+                if (currentStep === 3) toggleNextButton(true);
+            }
+
+            for (let i = 1; i <= 4; i++) {
+                const badge = document.getElementById(`badge-${i}`);
+                if (!badge) continue;
+                badge.className = i === currentStep 
+                    ? "px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 transition-all duration-300" 
+                    : i < currentStep ? "px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/10" : "px-1.5 py-0.5 rounded bg-slate-800 text-slate-500";
+            }
+        }
+
+
+        // --- ENGINE & LOGIC (Original retained functionality) ---
 
         function validateStepOne() {
             const names = document.getElementById("playerNames").value.split('\n').map(n => n.trim()).filter(n => n !== '');
             toggleNextButton(names.length > 0);
         }
 
-        // Toggles between the predefined checkboxes and custom text area
         function togglePoolSource() {
             const isPredefined = document.querySelector('input[name="poolSource"]:checked').value === 'predefined';
             const preDefWrapper = document.getElementById("predefinedPoolWrapper");
@@ -239,7 +534,6 @@
                 activeCount = customNames.length;
                 document.getElementById("customSelectedCount").innerText = activeCount;
             }
-
             toggleNextButton(activeCount > 0);
         }
 
@@ -250,43 +544,6 @@
                 btn.className = "bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black text-xs uppercase tracking-wider py-1.5 px-4 rounded-xl shadow-lg transition opacity-100 cursor-pointer";
             } else {
                 btn.className = "bg-slate-800 text-slate-500 font-bold text-xs uppercase tracking-wider py-1.5 px-4 rounded-xl transition opacity-40 cursor-not-allowed";
-            }
-        }
-
-        function moveWizard(dir) {
-            if (currentStep === 2 && dir === 1) runShuffleEngine();
-            currentStep += dir;
-
-            document.querySelectorAll(".wizard-step").forEach((view, idx) => {
-                if (idx + 1 === currentStep) {
-                    view.classList.remove("hidden");
-                } else {
-                    view.classList.add("hidden");
-                }
-            });
-
-            const prevBtn = document.getElementById("prevBtn");
-            if (currentStep === 1) {
-                prevBtn.classList.add("invisible");
-            } else {
-                prevBtn.classList.remove("invisible");
-                prevBtn.className = "bg-slate-900 border border-slate-800 text-slate-200 font-bold text-xs uppercase tracking-wider py-1.5 px-4 rounded-xl transition";
-            }
-            
-            const nextBtn = document.getElementById("nextBtn");
-            if (currentStep === 4) {
-                nextBtn.classList.add("hidden");
-            } else {
-                nextBtn.classList.remove("hidden"); 
-                if (currentStep === 1) validateStepOne();
-                if (currentStep === 2) validateStepTwo();
-                if (currentStep === 3) toggleNextButton(true);
-            }
-
-            for (let i = 1; i <= 4; i++) {
-                document.getElementById(`badge-${i}`).className = i === currentStep 
-                    ? "px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 transition-all duration-300" 
-                    : i < currentStep ? "px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/10" : "px-1.5 py-0.5 rounded bg-slate-800 text-slate-500";
             }
         }
 
@@ -317,7 +574,6 @@
             const size = parseInt(document.querySelector('input[name="groupSize"]:checked').value);
             const needed = Math.ceil(names.length / size);
             
-            // Collect the active pool dynamically based on user toggle choice
             let activePool = [];
             const isPredefined = document.querySelector('input[name="poolSource"]:checked').value === 'predefined';
             if (isPredefined) {
@@ -333,9 +589,7 @@
             container.innerHTML = "";
 
             for (let i = 0; i < needed; i++) {
-                // True random indexing: Allows different people/squads to draw the exact same team randomly
                 const randomTeamInstance = activePool[Math.floor(Math.random() * activePool.length)];
-                
                 const sq = { 
                     id: i + 1, 
                     team: randomTeamInstance, 
@@ -428,7 +682,6 @@
 
             roundsData.forEach((round, rIdx) => {
                 const roundId = `tree-round-${rIdx}`;
-                
                 mobileTabs.innerHTML += `
                     <button onclick="switchMobileRound(${rIdx}, ${roundsData.length})" id="tab-btn-${rIdx}" class="px-2 py-0.5 rounded ${rIdx===0 ? 'bg-amber-500 text-slate-950' : 'text-slate-400'} whitespace-nowrap transition">
                         ${round.label}
@@ -464,7 +717,6 @@
             let hPl = home?.isPlaceholder ? "TBD" : (home?.players?.map(p=>p).join(" & ") || "");
             let aTitle = !away ? "BYE" : (away.isPlaceholder ? away.teamName : (away.team?.name || away.teamName || "TBD"));
             let aPl = !away ? "Progression" : (away.isPlaceholder ? "TBD" : (away.players?.map(p=>p).join(" & ") || ""));
-
             const treeUtilityClass = isTreeMode ? "tree-connector" : "";
 
             return `
