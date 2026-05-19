@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handover Tracker - Full Version</title>
+    <title>Handover Tracker - Archiving Update</title>
     <style>
         :root {
             --primary: #2c3e50; --secondary: #34495e; --accent: #3498db;
@@ -16,6 +16,9 @@
 
         /* Navigation */
         nav { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
+        .nav-controls { display: flex; align-items: center; gap: 15px; }
+        .user-select-nav { padding: 0.4rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); color: white; font-weight: bold; outline: none; }
+        .user-select-nav option { color: black; }
         .nav-links button { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; margin-left: 5px; }
         .nav-links button:hover { background: rgba(255,255,255,0.1); }
 
@@ -25,6 +28,8 @@
             .app-container { flex-direction: column; overflow-y: auto; }
             .sidebar { width: 100% !important; max-height: 35vh; }
             .main-content { height: 65vh; }
+            nav { flex-direction: column; gap: 10px; align-items: flex-start; }
+            .nav-controls { width: 100%; justify-content: space-between; }
         }
 
         /* Sidebar */
@@ -32,10 +37,12 @@
         .topic-list { flex: 1; overflow-y: auto; padding: 1rem; }
         .topic-card { padding: 1rem; border-radius: 8px; background: #f9f9f9; margin-bottom: 0.8rem; cursor: pointer; border-left: 5px solid var(--accent); transition: 0.2s; }
         .topic-card.active { background: #eef7ff; border-color: var(--accent); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .topic-card.is-archived { border-left-color: #95a5a6; opacity: 0.8; }
 
         /* Content Area */
         .main-content { flex: 1; display: flex; flex-direction: column; background: var(--white); overflow: hidden; position: relative; }
-        .section-container { margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #eee; overflow: hidden; }
+        .section-container { margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #eee; overflow: hidden; transition: 0.3s; }
+        .section-container.archived-sec { opacity: 0.6; filter: grayscale(80%); }
         .section-header { padding: 0.7rem 1rem; color: white; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
         .section-content { padding: 1rem; background: #fafafa; }
 
@@ -64,6 +71,7 @@
         .btn-success { background: var(--success); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-warning { background: var(--warning); color: white; }
+        .btn-info { background: #95a5a6; color: white; }
         .btn-outline { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 0.7rem; }
         
         input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
@@ -73,18 +81,32 @@
 
 <nav>
     <h2 id="pageTitle">Shift Handover Tracker</h2>
-    <div class="nav-links">
-        <button onclick="toggleView('dashboard')">Dashboard</button>
-        <button onclick="toggleView('admin')">Admin Mgmt</button>
+    <div class="nav-controls">
+        <div style="display:flex; align-items:center; gap: 5px;">
+            <label style="font-size: 0.8rem; color: #ccc;">Acting User:</label>
+            <select id="globalUserSelect" class="user-select-nav"></select>
+        </div>
+        <div class="nav-links">
+            <button onclick="toggleView('dashboard')">Dashboard</button>
+            <button onclick="toggleView('admin')">Admin</button>
+        </div>
     </div>
 </nav>
 
 <div class="app-container">
+    <!-- Sidebar -->
     <aside class="sidebar">
-        <div style="padding: 1rem;"><button class="btn btn-success" style="width:100%" onclick="openModal('topicModal')">+ New Topic</button></div>
+        <div style="padding: 1rem; border-bottom: 1px solid #eee;">
+            <button class="btn btn-success" style="width:100%; margin-bottom: 10px;" onclick="openModal('topicModal')">+ New Topic</button>
+            <select id="topicFilter" onchange="renderTopics()" style="margin:0; padding: 0.5rem; width: 100%; background: #f9f9f9;">
+                <option value="active">📂 Active Topics</option>
+                <option value="archived">📦 Archived Topics</option>
+            </select>
+        </div>
         <div class="topic-list" id="topicList"></div>
     </aside>
 
+    <!-- Content -->
     <main class="main-content">
         <div id="welcome" style="padding: 5rem 2rem; text-align: center; color: #bbb;">
             <h3>No Topic Selected</h3>
@@ -95,13 +117,12 @@
             <div id="topicHeader" style="padding: 1.2rem; border-bottom: 1px solid #eee; background: #fff; display: flex; justify-content: space-between; align-items: center;"></div>
             <div id="sectionsArea" style="flex:1; overflow-y:auto; padding: 1.5rem;"></div>
             
-            <div style="padding: 1rem; background: #f0f0f0; border-top: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
-                <label style="font-size: 0.8rem; font-weight: bold;">Acting User:</label>
-                <select id="curUserSelect" style="width: 180px; margin:0;"></select>
-                <button class="btn btn-success" onclick="openModal('sectionModal')">+ New Section</button>
+            <div id="newSectionFooter" style="padding: 1rem; background: #f0f0f0; border-top: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-success" onclick="openModal('sectionModal')">+ Add New Section</button>
             </div>
         </div>
 
+        <!-- Admin Management Panel -->
         <div id="adminView" class="admin-view">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h1>Admin Management</h1>
@@ -127,13 +148,13 @@
                     <hr style="margin: 30px 0;">
                     <h3>System Health</h3>
                     <button class="btn btn-danger" style="width:100%" onclick="hardReset()">Reset All Database Storage</button>
-                    <p style="font-size: 0.7rem; color: #999; margin-top: 5px;">Warning: This wipes all topics, users, and files permanently.</p>
                 </div>
             </div>
         </div>
     </main>
 </div>
 
+<!-- Modal: New Topic -->
 <div id="topicModal" class="modal"><div class="modal-content">
     <h3>New Handover Topic</h3>
     <input type="text" id="tIn" placeholder="Title (e.g. Pump Room A Repair)">
@@ -144,6 +165,7 @@
     </div>
 </div></div>
 
+<!-- Modal: New Section -->
 <div id="sectionModal" class="modal"><div class="modal-content">
     <h3>Add Report Section</h3>
     <input type="text" id="sIn" placeholder="Section Name (e.g. Spare Parts)">
@@ -152,12 +174,12 @@
         <option value="#27ae60">Safety Green</option>
         <option value="#e67e22">Action Orange</option>
         <option value="#c0392b">Urgent Red</option>
-        <option value="#8e44ad">Project Purple</option>
     </select>
     <button class="btn btn-success" style="width:100%" onclick="saveSection()">Add Section</button>
     <button class="btn" style="width:100%; margin-top:5px;" onclick="closeModal('sectionModal')">Cancel</button>
 </div></div>
 
+<!-- Modal: Comment + Drag/Drop -->
 <div id="commentModal" class="modal"><div class="modal-content">
     <h3>Add Update / Comment</h3>
     <textarea id="coIn" rows="4" placeholder="Type notes here..."></textarea>
@@ -174,47 +196,65 @@
 
 <script>
     // --- DATABASE ---
-    let db = JSON.parse(localStorage.getItem('handover_v5')) || {
+    let db = JSON.parse(localStorage.getItem('handover_v6')) || {
         users: [{id:'u1', name:'Manager', mobile:'0000'}],
         categories: ['General', 'HSE', 'Project'],
         topics: [], sections: [], comments: []
     };
     let activeT = null, activeS = null, droppedFile = null;
 
-    const sync = () => { localStorage.setItem('handover_v5', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+    // Run on startup
+    window.onload = () => { populateGlobalUser(); renderTopics(); renderAdmin(); };
 
-    // --- NAVIGATION ---
+    const sync = () => { localStorage.setItem('handover_v6', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+
+    // --- NAVIGATION & GLOBAL INIT ---
     function toggleView(v) {
-        const admin = document.getElementById('adminView');
-        admin.style.display = (v === 'admin' ? 'block' : 'none');
+        document.getElementById('adminView').style.display = (v === 'admin' ? 'block' : 'none');
         if(v === 'admin') renderAdmin();
+    }
+
+    function populateGlobalUser() {
+        const sel = document.getElementById('globalUserSelect');
+        const currentVal = sel.value; // preserve selection if re-rendering
+        sel.innerHTML = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        if(currentVal && db.users.find(u => u.id === currentVal)) sel.value = currentVal;
     }
 
     function openModal(id, sid = null) {
         activeS = sid;
         droppedFile = null;
+        if(id === 'topicModal') {
+            document.getElementById('tcIn').innerHTML = db.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
         if(id === 'commentModal') {
             document.getElementById('coIn').value = "";
             document.getElementById('dzStatus').innerText = "";
             document.getElementById('dzText').innerText = "Drag & Drop file or click here";
         }
-        populateDropdowns();
         document.getElementById(id).style.display = 'flex';
     }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    function populateDropdowns() {
-        const uOpts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-        document.getElementById('curUserSelect').innerHTML = uOpts;
-        document.getElementById('tcIn').innerHTML = db.categories.map(c => `<option value="${c}">${c}</option>`).join('');
-    }
-
-    // --- TOPIC LOGIC ---
+    // --- ARCHIVING & TOPICS ---
     function saveTopic() {
         const title = document.getElementById('tIn').value;
         if(!title) return;
-        db.topics.unshift({ id:'t'+Date.now(), title, cat: document.getElementById('tcIn').value, date: new Date() });
+        db.topics.unshift({ id:'t'+Date.now(), title, cat: document.getElementById('tcIn').value, archived: false, date: new Date() });
+        document.getElementById('tIn').value = '';
         sync(); closeModal('topicModal');
+    }
+
+    function toggleTopicArchive(id) {
+        const t = db.topics.find(x => x.id === id);
+        t.archived = !t.archived;
+        sync();
+        if(t.archived && document.getElementById('topicFilter').value === 'active') {
+            document.getElementById('welcome').style.display = 'block';
+            document.getElementById('topicDetail').style.display = 'none';
+        } else {
+            viewTopic(id);
+        }
     }
 
     function deleteTopic(id) {
@@ -228,11 +268,12 @@
         sync();
     }
 
-    // --- SECTION LOGIC ---
+    // --- SECTIONS ---
     function saveSection() {
         const title = document.getElementById('sIn').value;
         if(!title) return;
-        db.sections.push({ id:'s'+Date.now(), topicId: activeT, title, color: document.getElementById('scIn').value });
+        db.sections.push({ id:'s'+Date.now(), topicId: activeT, title, color: document.getElementById('scIn').value, archived: false });
+        document.getElementById('sIn').value = '';
         sync(); closeModal('sectionModal'); renderSections();
     }
 
@@ -240,6 +281,12 @@
         const s = db.sections.find(x => x.id === sid);
         const n = prompt("Rename section:", s.title);
         if(n) { s.title = n; sync(); renderSections(); }
+    }
+
+    function toggleSectionArchive(sid) {
+        const s = db.sections.find(x => x.id === sid);
+        s.archived = !s.archived;
+        sync(); renderSections();
     }
 
     function deleteSection(sid) {
@@ -267,7 +314,8 @@
 
     function saveComment() {
         const text = document.getElementById('coIn').value;
-        const userId = document.getElementById('curUserSelect').value;
+        const userId = document.getElementById('globalUserSelect').value; // Fetching from the global navbar
+        if(!userId) return alert("Please select an Acting User in the top bar.");
         if(!text) return alert("Please enter text.");
 
         if(droppedFile) {
@@ -291,9 +339,14 @@
 
     // --- RENDERING ---
     function renderTopics() {
-        document.getElementById('topicList').innerHTML = db.topics.map(t => `
-            <div class="topic-card ${t.id === activeT ? 'active' : ''}" onclick="viewTopic('${t.id}')">
-                <small>${t.cat}</small>
+        const filterVal = document.getElementById('topicFilter').value;
+        const isArchivedView = (filterVal === 'archived');
+        
+        const filteredTopics = db.topics.filter(t => !!t.archived === isArchivedView);
+
+        document.getElementById('topicList').innerHTML = filteredTopics.map(t => `
+            <div class="topic-card ${t.id === activeT ? 'active' : ''} ${t.archived ? 'is-archived' : ''}" onclick="viewTopic('${t.id}')">
+                <small>${t.cat} ${t.archived ? '<b>(Archived)</b>' : ''}</small>
                 <h4>${t.title}</h4>
             </div>`).join('');
     }
@@ -302,56 +355,81 @@
         activeT = id;
         document.getElementById('welcome').style.display = 'none';
         document.getElementById('topicDetail').style.display = 'flex';
+        
         const t = db.topics.find(x => x.id === id);
+        const archiveBtnTxt = t.archived ? "Unarchive Topic" : "Archive Topic";
+        const archiveBtnColor = t.archived ? "btn-warning" : "btn-info";
+
         document.getElementById('topicHeader').innerHTML = `
-            <div><small>${t.cat}</small><h2>${t.title}</h2></div>
-            <button class="btn btn-danger" onclick="deleteTopic('${t.id}')">Delete Topic</button>
+            <div><small>${t.cat} ${t.archived ? '<span style="color:#e74c3c">(Archived)</span>' : ''}</small><h2>${t.title}</h2></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn ${archiveBtnColor}" onclick="toggleTopicArchive('${t.id}')">${archiveBtnTxt}</button>
+                <button class="btn btn-danger" onclick="deleteTopic('${t.id}')">Del</button>
+            </div>
         `;
-        renderSections(); renderTopics();
+        
+        document.getElementById('newSectionFooter').style.display = t.archived ? 'none' : 'flex';
+
+        renderSections(); 
+        renderTopics(); // Refresh to highlight active topic
     }
 
     function renderSections() {
         const secs = db.sections.filter(s => s.topicId === activeT);
-        document.getElementById('sectionsArea').innerHTML = secs.map(s => `
-            <div class="section-container">
-                <div class="section-header" style="background:${s.color}">
-                    <span>${s.title}</span>
-                    <div>
-                        <button class="btn btn-outline" onclick="editSection('${s.id}')">Edit</button>
-                        <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>
-                        <button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}')" style="background:white; color:${s.color}; font-weight:bold;">+ Update</button>
-                    </div>
+        document.getElementById('sectionsArea').innerHTML = secs.map(s => {
+            const isArchived = !!s.archived;
+            const archBtnTxt = isArchived ? "Unarchive" : "Archive";
+            
+            // Hide the update and edit buttons if section is archived
+            const actionButtons = isArchived 
+                ? `<button class="btn btn-outline" onclick="toggleSectionArchive('${s.id}')">${archBtnTxt}</button>
+                   <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>`
+                : `<button class="btn btn-outline" onclick="editSection('${s.id}')">Edit</button>
+                   <button class="btn btn-outline" onclick="toggleSectionArchive('${s.id}')">${archBtnTxt}</button>
+                   <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>
+                   <button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}')" style="background:white; color:${s.color}; font-weight:bold;">+ Update</button>`;
+
+            return `
+            <div class="section-container ${isArchived ? 'archived-sec' : ''}">
+                <div class="section-header" style="background:${isArchived ? '#7f8c8d' : s.color}">
+                    <span>${s.title} ${isArchived ? '(Completed)' : ''}</span>
+                    <div>${actionButtons}</div>
                 </div>
                 <div class="section-content">${renderComments(s.id)}</div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }
 
     function renderComments(sid) {
         const filtered = db.comments.filter(c => c.sectionId === sid);
-        if(!filtered.length) return `<p style="color:#ccc; font-size:0.8rem;">No updates in this section.</p>`;
+        const sectionIsArchived = db.sections.find(s => s.id === sid)?.archived;
+        
+        if(!filtered.length) return `<p style="color:#ccc; font-size:0.8rem;">No updates.</p>`;
         return filtered.map(c => {
-            const u = db.users.find(x => x.id === c.userId) || {name:'??'};
+            const u = db.users.find(x => x.id === c.userId) || {name:'Unknown'};
             let fileHtml = '';
             if(c.fData) {
                 fileHtml = c.fType.startsWith('image/') 
                     ? `<img src="${c.fData}" class="attachment-preview" onclick="window.open(this.src)">`
                     : `<div style="margin-top:10px;">📎 <a href="${c.fData}" download="${c.fName}">${c.fName}</a></div>`;
             }
+            // Hide delete comment button if section is archived
+            const delBtn = sectionIsArchived ? '' : `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
+            
             return `<div class="comment">
                 <div class="user-badge">${u.name.charAt(0)}</div>
                 <div class="comment-body">
-                    <small><b>${u.name}</b> • ${new Date(c.date).toLocaleDateString()}</small>
+                    <small><b>${u.name}</b> • ${new Date(c.date).toLocaleString()}</small>
                     <p style="margin-top:5px;">${c.text}</p>
                     ${fileHtml}
                 </div>
-                <button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>
+                ${delBtn}
             </div>`;
         }).join('');
     }
 
     // --- ADMIN ACTIONS ---
     function renderAdmin() {
-        // Users
         let uH = `<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>`;
         db.users.forEach(u => {
             uH += `<tr><td>${u.name}</td><td>${u.mobile}</td><td>
@@ -361,7 +439,6 @@
         });
         document.getElementById('userAdminList').innerHTML = uH + `</table>`;
 
-        // Categories
         let cH = `<table><tr><th>Category Name</th><th>Actions</th></tr>`;
         db.categories.forEach((c, i) => {
             cH += `<tr><td>${c}</td><td>
@@ -375,16 +452,22 @@
     function addUser() {
         const name = document.getElementById('newUserName').value;
         const mobile = document.getElementById('newUserMobile').value;
-        if(name) { db.users.push({id:'u'+Date.now(), name, mobile}); sync(); }
+        if(name) { 
+            db.users.push({id:'u'+Date.now(), name, mobile}); 
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserMobile').value = '';
+            sync(); populateGlobalUser();
+        }
     }
     function editUser(id) {
         const u = db.users.find(x => x.id === id);
         const n = prompt("Name:", u.name);
         const m = prompt("Mobile:", u.mobile);
-        if(n) { u.name = n; u.mobile = m; sync(); }
+        if(n) { u.name = n; u.mobile = m; sync(); populateGlobalUser(); }
     }
     function deleteUser(id) {
-        if(db.users.length > 1) { db.users = db.users.filter(x => x.id !== id); sync(); }
+        if(db.users.length > 1) { db.users = db.users.filter(x => x.id !== id); sync(); populateGlobalUser(); }
+        else { alert("Cannot delete the last user."); }
     }
     function addCategory() {
         const n = prompt("New Category Name:");
@@ -398,8 +481,6 @@
         db.categories.splice(i, 1); sync();
     }
     function hardReset() { if(confirm("ABSOLUTELY EVERYTHING will be deleted. Proceed?")) { localStorage.clear(); location.reload(); } }
-
-    renderTopics();
 </script>
 </body>
 </html>
