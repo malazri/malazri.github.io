@@ -265,7 +265,7 @@
             renderTeamsList();
             
             // Initialize Supabase if keys provided
-            if (SUPABASE_URL !== 'https://hksxehxhdlzqmzrqspjc.supabase.co') {
+            if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
                 try {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     await checkDatabaseRecords();
