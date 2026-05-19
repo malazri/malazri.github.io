@@ -125,10 +125,17 @@
             <div id="step-view-4" class="wizard-step hidden flex flex-col h-full space-y-2 min-h-0">
                 <div class="flex flex-col sm:flex-row justify-between sm:items-center shrink-0 gap-2 border-b border-slate-800/60 pb-1.5">
                     <div class="flex items-center space-x-2 w-full justify-between sm:w-auto sm:justify-start">
-                        <select id="scheduleFormat" class="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-1.5">
+                        <select id="scheduleFormat" class="bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-1.5" onchange="document.getElementById('maxPerGroup').classList.toggle('hidden', this.value !== 'groups')">
                             <option value="knockout">Knockout</option>
                             <option value="league">League</option>
                             <option value="groups">Group Stage</option>
+                        </select>
+                        <select id="maxPerGroup" class="hidden bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 rounded-lg p-1.5">
+                            <option value="3">3 / Group</option>
+                            <option value="4" selected>4 / Group</option>
+                            <option value="5">5 / Group</option>
+                            <option value="6">6 / Group</option>
+                            <option value="8">8 / Group</option>
                         </select>
                         <div class="flex space-x-2">
                             <button onclick="generateScheduleData()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-lg uppercase">Build</button>
@@ -428,21 +435,48 @@
                     teams.splice(1, 0, teams.pop());
                 }
             } else if (format === 'groups') {
-                // Simplified groups state building
-                const mid = Math.ceil(generatedSquads.length / 2);
-                const grps = [{n:'A', d:generatedSquads.slice(0,mid)}, {n:'B', d:generatedSquads.slice(mid)}];
+                const maxTeams = parseInt(document.getElementById("maxPerGroup")?.value || 4);
+                newState.groupSize = maxTeams; // Save group size inside the state JSON
+                
+                const numGroups = Math.ceil(generatedSquads.length / maxTeams);
+                const grps = [];
+                
+                // Chunk the teams into N groups sequentially
+                for (let i = 0; i < numGroups; i++) {
+                    grps.push({
+                        n: String.fromCharCode(65 + i), 
+                        d: generatedSquads.slice(i * maxTeams, (i + 1) * maxTeams)
+                    });
+                }
+
+                let maxRounds = 0;
+                const allGroupRounds = []; 
+                
+                // Generate matchdays for each group independently
                 grps.forEach(g => {
-                    let teams = [...g.d]; if (teams.length % 2 !== 0) teams.push(null);
+                    let teams = [...g.d]; 
+                    if (teams.length % 2 !== 0) teams.push(null);
+                    let groupRounds = [];
+                    
                     for (let r = 0; r < teams.length - 1; r++) {
                         let rMatches = [];
                         for (let i = 0; i < teams.length / 2; i++) {
                             const h = teams[i], a = teams[teams.length - 1 - i];
-                            if (h && a) rMatches.push({ id: matchIdCounter++, home: h, away: a, scoreH: null, scoreA: null, completed: false, isBye: false });
+                            if (h && a) rMatches.push({ id: matchIdCounter++, home: h, away: a, scoreH: null, scoreA: null, completed: false, isBye: false, group: g.n });
                         }
-                        if(rMatches.length > 0) newState.rounds.push({ label: `Group ${g.n} MD ${r + 1}`, matches: rMatches });
+                        if(rMatches.length > 0) groupRounds.push({ label: `Group ${g.n} MD ${r + 1}`, matches: rMatches });
                         teams.splice(1, 0, teams.pop());
                     }
+                    allGroupRounds.push(groupRounds);
+                    if (groupRounds.length > maxRounds) maxRounds = groupRounds.length;
                 });
+
+                // Interleave the matchdays across groups so the tournament runs evenly
+                for(let r=0; r < maxRounds; r++) {
+                    allGroupRounds.forEach(groupRounds => {
+                        if (groupRounds[r]) newState.rounds.push(groupRounds[r]);
+                    });
+                }
             } else {
                 // KNOCKOUT
                 let currentRoundSquads = [...generatedSquads];
@@ -703,13 +737,22 @@
                 `;
             };
 
-            // Detect format to draw 1 block or 2 separate groups
+            // Detect format to draw 1 block or multiple dynamic groups
             if (currentMatchesState.type === 'league') {
                 container.innerHTML = generateTableHTML("League Standings", generatedSquads);
             } else if (currentMatchesState.type === 'groups') {
-                const mid = Math.ceil(generatedSquads.length / 2);
-                container.innerHTML = generateTableHTML("Group A", generatedSquads.slice(0, mid)) + 
-                                      generateTableHTML("Group B", generatedSquads.slice(mid));
+                const maxTeams = currentMatchesState.groupSize || 4;
+                const numGroups = Math.ceil(generatedSquads.length / maxTeams);
+                let html = "";
+                
+                // Loop to create Group A, Group B, Group C...
+                for (let i = 0; i < numGroups; i++) {
+                    const letter = String.fromCharCode(65 + i);
+                    const groupSquads = generatedSquads.slice(i * maxTeams, (i + 1) * maxTeams);
+                    html += generateTableHTML(`Group ${letter}`, groupSquads);
+                }
+                
+                container.innerHTML = html;
             }
         }
 
