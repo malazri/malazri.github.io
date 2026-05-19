@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handover Tracker - Dropdown & Archive Updates</title>
+    <title>Handover Tracker - Date Update</title>
     <style>
         :root {
             --primary: #2c3e50; --secondary: #34495e; --accent: #3498db;
@@ -203,11 +203,19 @@
 
 <script>
     // --- DATABASE ---
-    let db = JSON.parse(localStorage.getItem('handover_v7')) || {
+    // Switched key to v8 to ensure smooth updating without cache conflicts
+    let db = JSON.parse(localStorage.getItem('handover_v8')) || {
         users: [{id:'u1', name:'Manager', mobile:'0000'}],
         categories: ['General', 'HSE', 'Project'],
         topics: [], sections: [], comments: []
     };
+
+    // Migration helper: If user had data in v7, copy it to v8
+    if(!localStorage.getItem('handover_v8') && localStorage.getItem('handover_v7')) {
+        db = JSON.parse(localStorage.getItem('handover_v7'));
+        localStorage.setItem('handover_v8', JSON.stringify(db));
+    }
+
     let activeT = null, activeS = null, droppedFile = null;
     let showArchivedSecs = false; // Tracks if completed sections are visible
 
@@ -221,7 +229,7 @@
         }
     }
 
-    const sync = () => { localStorage.setItem('handover_v7', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+    const sync = () => { localStorage.setItem('handover_v8', JSON.stringify(db)); renderTopics(); renderAdmin(); };
 
     // --- NAVIGATION & GLOBAL INIT ---
     function toggleView(v) {
@@ -466,10 +474,13 @@
             
             const delBtn = sectionIsArchived ? '' : `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
             
+            // Format to show Date only, no time
+            const dateStr = new Date(c.date).toLocaleDateString();
+
             return `<div class="comment">
                 <div class="user-badge">${u.name.charAt(0)}</div>
                 <div class="comment-body">
-                    <small><b>${u.name}</b></small>
+                    <small><b>${u.name}</b> <span style="color:#888;">• ${dateStr}</span></small>
                     <p style="margin-top:5px;">${c.text}</p>
                     ${fileHtml}
                 </div>
