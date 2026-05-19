@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handover Tracker - Full Version</title>
+    <style>
+        :root {
+            --primary: #2c3e50; --secondary: #34495e; --accent: #3498db;
+            --success: #27ae60; --danger: #e74c3c; --warning: #f39c12; --white: #ffffff;
+            --sidebar-width: 320px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f4f7f6; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Navigation */
+        nav { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
+        .nav-links button { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; margin-left: 5px; }
+        .nav-links button:hover { background: rgba(255,255,255,0.1); }
+
+        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; overflow-y: auto; }
+            .sidebar { width: 100% !important; max-height: 35vh; }
+            .main-content { height: 65vh; }
+        }
+
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-width); background: var(--white); border-right: 1px solid #ddd; display: flex; flex-direction: column; }
+        .topic-list { flex: 1; overflow-y: auto; padding: 1rem; }
+        .topic-card { padding: 1rem; border-radius: 8px; background: #f9f9f9; margin-bottom: 0.8rem; cursor: pointer; border-left: 5px solid var(--accent); transition: 0.2s; }
+        .topic-card.active { background: #eef7ff; border-color: var(--accent); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+        /* Content Area */
+        .main-content { flex: 1; display: flex; flex-direction: column; background: var(--white); overflow: hidden; position: relative; }
+        .section-container { margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #eee; overflow: hidden; }
+        .section-header { padding: 0.7rem 1rem; color: white; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+        .section-content { padding: 1rem; background: #fafafa; }
+
+        /* Comments & Attachments */
+        .comment { display: flex; gap: 0.8rem; margin-bottom: 1rem; position: relative; padding-right: 30px; }
+        .user-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; font-weight: bold; }
+        .comment-body { background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #eee; flex: 1; font-size: 0.9rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .attachment-preview { max-width: 100%; max-height: 250px; border-radius: 4px; margin-top: 10px; border: 1px solid #ddd; cursor: zoom-in; }
+        .del-comment-btn { position: absolute; right: 5px; top: 5px; color: #ccc; cursor: pointer; font-size: 1.2rem; border: none; background: none; }
+        .del-comment-btn:hover { color: var(--danger); }
+
+        /* Drag & Drop */
+        .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 1.5rem; text-align: center; color: #999; margin-bottom: 1rem; cursor: pointer; }
+        .drop-zone.drag-over { border-color: var(--accent); background: #eef7ff; color: var(--accent); }
+
+        /* Admin Overlay */
+        .admin-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--white); z-index: 1000; display: none; padding: 2rem; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        
+        .btn { padding: 0.5rem 0.8rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-outline { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 0.7rem; }
+        
+        input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <h2 id="pageTitle">Shift Handover Tracker</h2>
+    <div class="nav-links">
+        <button onclick="toggleView('dashboard')">Dashboard</button>
+        <button onclick="toggleView('admin')">Admin Mgmt</button>
+    </div>
+</nav>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div style="padding: 1rem;"><button class="btn btn-success" style="width:100%" onclick="openModal('topicModal')">+ New Topic</button></div>
+        <div class="topic-list" id="topicList"></div>
+    </aside>
+
+    <main class="main-content">
+        <div id="welcome" style="padding: 5rem 2rem; text-align: center; color: #bbb;">
+            <h3>No Topic Selected</h3>
+            <p>Select a handover topic from the sidebar to view details and updates.</p>
+        </div>
+
+        <div id="topicDetail" style="display:none; flex:1; flex-direction:column; overflow:hidden;">
+            <div id="topicHeader" style="padding: 1.2rem; border-bottom: 1px solid #eee; background: #fff; display: flex; justify-content: space-between; align-items: center;"></div>
+            <div id="sectionsArea" style="flex:1; overflow-y:auto; padding: 1.5rem;"></div>
+            
+            <div style="padding: 1rem; background: #f0f0f0; border-top: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 0.8rem; font-weight: bold;">Acting User:</label>
+                <select id="curUserSelect" style="width: 180px; margin:0;"></select>
+                <button class="btn btn-success" onclick="openModal('sectionModal')">+ New Section</button>
+            </div>
+        </div>
+
+        <div id="adminView" class="admin-view">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Admin Management</h1>
+                <button class="btn btn-danger" onclick="toggleView('dashboard')">Close Admin</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 3rem; margin-top: 2rem;">
+                <div>
+                    <h3>Staff / Users</h3>
+                    <div id="userAdminList"></div>
+                    <div style="background:#f9f9f9; padding: 1rem; border-radius: 8px; margin-top: 10px;">
+                        <input id="newUserName" placeholder="Full Name">
+                        <input id="newUserMobile" placeholder="Mobile Number">
+                        <button class="btn btn-success" style="width:100%" onclick="addUser()">Add Staff Member</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Categories</h3>
+                    <div id="catAdminList"></div>
+                    <button class="btn btn-success" style="margin-top:10px; width:100%" onclick="addCategory()">+ Create New Category</button>
+                    
+                    <hr style="margin: 30px 0;">
+                    <h3>System Health</h3>
+                    <button class="btn btn-danger" style="width:100%" onclick="hardReset()">Reset All Database Storage</button>
+                    <p style="font-size: 0.7rem; color: #999; margin-top: 5px;">Warning: This wipes all topics, users, and files permanently.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="topicModal" class="modal"><div class="modal-content">
+    <h3>New Handover Topic</h3>
+    <input type="text" id="tIn" placeholder="Title (e.g. Pump Room A Repair)">
+    <select id="tcIn"></select>
+    <div style="display:flex; gap:10px;">
+        <button class="btn btn-success" style="flex:1" onclick="saveTopic()">Create</button>
+        <button class="btn" style="flex:1" onclick="closeModal('topicModal')">Cancel</button>
+    </div>
+</div></div>
+
+<div id="sectionModal" class="modal"><div class="modal-content">
+    <h3>Add Report Section</h3>
+    <input type="text" id="sIn" placeholder="Section Name (e.g. Spare Parts)">
+    <select id="scIn">
+        <option value="#34495e">Dark Slate</option>
+        <option value="#27ae60">Safety Green</option>
+        <option value="#e67e22">Action Orange</option>
+        <option value="#c0392b">Urgent Red</option>
+        <option value="#8e44ad">Project Purple</option>
+    </select>
+    <button class="btn btn-success" style="width:100%" onclick="saveSection()">Add Section</button>
+    <button class="btn" style="width:100%; margin-top:5px;" onclick="closeModal('sectionModal')">Cancel</button>
+</div></div>
+
+<div id="commentModal" class="modal"><div class="modal-content">
+    <h3>Add Update / Comment</h3>
+    <textarea id="coIn" rows="4" placeholder="Type notes here..."></textarea>
+    
+    <div id="dropZone" class="drop-zone">
+        <span id="dzText">Drag & Drop file or click here</span>
+        <input type="file" id="fileIn" style="display:none;">
+        <div id="dzStatus" style="font-size:0.8rem; color:var(--success); margin-top:5px; font-weight:bold;"></div>
+    </div>
+
+    <button class="btn btn-success" style="width:100%" onclick="saveComment()">Post to Section</button>
+    <button class="btn" style="width:100%; margin-top:5px;" onclick="closeModal('commentModal')">Cancel</button>
+</div></div>
+
+<script>
+    // --- DATABASE ---
+    let db = JSON.parse(localStorage.getItem('handover_v5')) || {
+        users: [{id:'u1', name:'Manager', mobile:'0000'}],
+        categories: ['General', 'HSE', 'Project'],
+        topics: [], sections: [], comments: []
+    };
+    let activeT = null, activeS = null, droppedFile = null;
+
+    const sync = () => { localStorage.setItem('handover_v5', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+
+    // --- NAVIGATION ---
+    function toggleView(v) {
+        const admin = document.getElementById('adminView');
+        admin.style.display = (v === 'admin' ? 'block' : 'none');
+        if(v === 'admin') renderAdmin();
+    }
+
+    function openModal(id, sid = null) {
+        activeS = sid;
+        droppedFile = null;
+        if(id === 'commentModal') {
+            document.getElementById('coIn').value = "";
+            document.getElementById('dzStatus').innerText = "";
+            document.getElementById('dzText').innerText = "Drag & Drop file or click here";
+        }
+        populateDropdowns();
+        document.getElementById(id).style.display = 'flex';
+    }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function populateDropdowns() {
+        const uOpts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        document.getElementById('curUserSelect').innerHTML = uOpts;
+        document.getElementById('tcIn').innerHTML = db.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    // --- TOPIC LOGIC ---
+    function saveTopic() {
+        const title = document.getElementById('tIn').value;
+        if(!title) return;
+        db.topics.unshift({ id:'t'+Date.now(), title, cat: document.getElementById('tcIn').value, date: new Date() });
+        sync(); closeModal('topicModal');
+    }
+
+    function deleteTopic(id) {
+        if(!confirm("Delete this entire topic and all its contents?")) return;
+        db.topics = db.topics.filter(t => t.id !== id);
+        db.sections = db.sections.filter(s => s.topicId !== id);
+        db.comments = db.comments.filter(c => db.sections.find(s => s.id === c.sectionId));
+        activeT = null;
+        document.getElementById('topicDetail').style.display = 'none';
+        document.getElementById('welcome').style.display = 'block';
+        sync();
+    }
+
+    // --- SECTION LOGIC ---
+    function saveSection() {
+        const title = document.getElementById('sIn').value;
+        if(!title) return;
+        db.sections.push({ id:'s'+Date.now(), topicId: activeT, title, color: document.getElementById('scIn').value });
+        sync(); closeModal('sectionModal'); renderSections();
+    }
+
+    function editSection(sid) {
+        const s = db.sections.find(x => x.id === sid);
+        const n = prompt("Rename section:", s.title);
+        if(n) { s.title = n; sync(); renderSections(); }
+    }
+
+    function deleteSection(sid) {
+        if(!confirm("Delete section and all comments inside?")) return;
+        db.sections = db.sections.filter(s => s.id !== sid);
+        db.comments = db.comments.filter(c => c.sectionId !== sid);
+        sync(); renderSections();
+    }
+
+    // --- COMMENT & FILE LOGIC ---
+    const dz = document.getElementById('dropZone');
+    const fi = document.getElementById('fileIn');
+    dz.onclick = () => fi.click();
+    dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
+    dz.ondragleave = () => dz.classList.remove('drag-over');
+    dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
+    fi.onchange = (e) => handleFiles(e.target.files);
+
+    function handleFiles(files) {
+        if(files.length > 0) {
+            droppedFile = files[0];
+            document.getElementById('dzStatus').innerText = "Ready: " + droppedFile.name;
+        }
+    }
+
+    function saveComment() {
+        const text = document.getElementById('coIn').value;
+        const userId = document.getElementById('curUserSelect').value;
+        if(!text) return alert("Please enter text.");
+
+        if(droppedFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => commitComment(text, userId, e.target.result, droppedFile.name, droppedFile.type);
+            reader.readAsDataURL(droppedFile);
+        } else {
+            commitComment(text, userId, null, null, null);
+        }
+    }
+
+    function commitComment(text, userId, fData, fName, fType) {
+        db.comments.push({ id:'c'+Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
+        sync(); closeModal('commentModal'); renderSections();
+    }
+
+    function deleteComment(cid) {
+        db.comments = db.comments.filter(c => c.id !== cid);
+        sync(); renderSections();
+    }
+
+    // --- RENDERING ---
+    function renderTopics() {
+        document.getElementById('topicList').innerHTML = db.topics.map(t => `
+            <div class="topic-card ${t.id === activeT ? 'active' : ''}" onclick="viewTopic('${t.id}')">
+                <small>${t.cat}</small>
+                <h4>${t.title}</h4>
+            </div>`).join('');
+    }
+
+    function viewTopic(id) {
+        activeT = id;
+        document.getElementById('welcome').style.display = 'none';
+        document.getElementById('topicDetail').style.display = 'flex';
+        const t = db.topics.find(x => x.id === id);
+        document.getElementById('topicHeader').innerHTML = `
+            <div><small>${t.cat}</small><h2>${t.title}</h2></div>
+            <button class="btn btn-danger" onclick="deleteTopic('${t.id}')">Delete Topic</button>
+        `;
+        renderSections(); renderTopics();
+    }
+
+    function renderSections() {
+        const secs = db.sections.filter(s => s.topicId === activeT);
+        document.getElementById('sectionsArea').innerHTML = secs.map(s => `
+            <div class="section-container">
+                <div class="section-header" style="background:${s.color}">
+                    <span>${s.title}</span>
+                    <div>
+                        <button class="btn btn-outline" onclick="editSection('${s.id}')">Edit</button>
+                        <button class="btn btn-outline" onclick="deleteSection('${s.id}')">Del</button>
+                        <button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}')" style="background:white; color:${s.color}; font-weight:bold;">+ Update</button>
+                    </div>
+                </div>
+                <div class="section-content">${renderComments(s.id)}</div>
+            </div>`).join('');
+    }
+
+    function renderComments(sid) {
+        const filtered = db.comments.filter(c => c.sectionId === sid);
+        if(!filtered.length) return `<p style="color:#ccc; font-size:0.8rem;">No updates in this section.</p>`;
+        return filtered.map(c => {
+            const u = db.users.find(x => x.id === c.userId) || {name:'??'};
+            let fileHtml = '';
+            if(c.fData) {
+                fileHtml = c.fType.startsWith('image/') 
+                    ? `<img src="${c.fData}" class="attachment-preview" onclick="window.open(this.src)">`
+                    : `<div style="margin-top:10px;">📎 <a href="${c.fData}" download="${c.fName}">${c.fName}</a></div>`;
+            }
+            return `<div class="comment">
+                <div class="user-badge">${u.name.charAt(0)}</div>
+                <div class="comment-body">
+                    <small><b>${u.name}</b> • ${new Date(c.date).toLocaleDateString()}</small>
+                    <p style="margin-top:5px;">${c.text}</p>
+                    ${fileHtml}
+                </div>
+                <button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>
+            </div>`;
+        }).join('');
+    }
+
+    // --- ADMIN ACTIONS ---
+    function renderAdmin() {
+        // Users
+        let uH = `<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>`;
+        db.users.forEach(u => {
+            uH += `<tr><td>${u.name}</td><td>${u.mobile}</td><td>
+                <button class="btn btn-warning" onclick="editUser('${u.id}')">Edit</button>
+                <button class="btn btn-danger" onclick="deleteUser('${u.id}')">Del</button>
+            </td></tr>`;
+        });
+        document.getElementById('userAdminList').innerHTML = uH + `</table>`;
+
+        // Categories
+        let cH = `<table><tr><th>Category Name</th><th>Actions</th></tr>`;
+        db.categories.forEach((c, i) => {
+            cH += `<tr><td>${c}</td><td>
+                <button class="btn btn-warning" onclick="editCat(${i})">Rename</button>
+                <button class="btn btn-danger" onclick="deleteCat(${i})">Del</button>
+            </td></tr>`;
+        });
+        document.getElementById('catAdminList').innerHTML = cH + `</table>`;
+    }
+
+    function addUser() {
+        const name = document.getElementById('newUserName').value;
+        const mobile = document.getElementById('newUserMobile').value;
+        if(name) { db.users.push({id:'u'+Date.now(), name, mobile}); sync(); }
+    }
+    function editUser(id) {
+        const u = db.users.find(x => x.id === id);
+        const n = prompt("Name:", u.name);
+        const m = prompt("Mobile:", u.mobile);
+        if(n) { u.name = n; u.mobile = m; sync(); }
+    }
+    function deleteUser(id) {
+        if(db.users.length > 1) { db.users = db.users.filter(x => x.id !== id); sync(); }
+    }
+    function addCategory() {
+        const n = prompt("New Category Name:");
+        if(n) { db.categories.push(n); sync(); }
+    }
+    function editCat(i) {
+        const n = prompt("Rename:", db.categories[i]);
+        if(n) { db.categories[i] = n; sync(); }
+    }
+    function deleteCat(i) {
+        db.categories.splice(i, 1); sync();
+    }
+    function hardReset() { if(confirm("ABSOLUTELY EVERYTHING will be deleted. Proceed?")) { localStorage.clear(); location.reload(); } }
+
+    renderTopics();
+</script>
+</body>
+</html>
