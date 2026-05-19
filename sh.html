@@ -231,7 +231,7 @@
         // ==========================================
         // SUPABASE CONFIGURATION - PASTE YOURS HERE
         // ==========================================
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g. 'https://hksxehxhdlzqmzrqspjc.supabase.co'
+        const SUPABASE_URL = 'https://hksxehxhdlzqmzrqspjc.supabase.co'; // e.g. 'https://hksxehxhdlzqmzrqspjc.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY';
         
         let supabaseClient = null;
@@ -265,7 +265,7 @@
             renderTeamsList();
             
             // Initialize Supabase if keys provided
-            if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+            if (SUPABASE_URL !== 'https://hksxehxhdlzqmzrqspjc.supabase.co') {
                 try {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     await checkDatabaseRecords();
