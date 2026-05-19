@@ -542,16 +542,32 @@
         // --- TOURNAMENT RUNNER LOGIC (STEP 5) ---
         let currentRunnerTabIdx = 0;
 
-        function renderRunnerUi() {
+                function renderRunnerUi() {
             const tabs = document.getElementById("mobileRoundTabs5");
             tabs.innerHTML = "";
+            
+            // Inject Standings tab for League and Group stages
+            if (currentMatchesState.type !== 'knockout') {
+                tabs.innerHTML += `<button onclick="switchRunnerTab('standings')" id="run-tab-btn-standings" class="px-3 py-1 rounded-lg ${currentRunnerTabIdx === 'standings' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition flex items-center"><i class="fa-solid fa-list-ol mr-1.5"></i> Standings</button>`;
+            }
+
             currentMatchesState.rounds.forEach((round, rIdx) => {
-                tabs.innerHTML += `<button onclick="switchRunnerTab(${rIdx})" id="run-tab-btn-${rIdx}" class="px-3 py-1 rounded-lg ${rIdx===currentRunnerTabIdx ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition">${round.label}</button>`;
+                tabs.innerHTML += `<button onclick="switchRunnerTab(${rIdx})" id="run-tab-btn-${rIdx}" class="px-3 py-1 rounded-lg ${rIdx === currentRunnerTabIdx ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition">${round.label}</button>`;
             });
-            drawRunnerMatches();
+
+            // Route to the correct renderer
+            if (currentRunnerTabIdx === 'standings') {
+                drawStandings();
+            } else {
+                drawRunnerMatches();
+            }
         }
 
-        function switchRunnerTab(idx) { currentRunnerTabIdx = idx; renderRunnerUi(); }
+        function switchRunnerTab(idx) { 
+            currentRunnerTabIdx = idx; 
+            renderRunnerUi(); 
+        }
+
 
         function drawRunnerMatches() {
             const container = document.getElementById("runnerMatchesContainer");
@@ -606,6 +622,98 @@
             });
         }
 
+        function drawStandings() {
+            const container = document.getElementById("runnerMatchesContainer");
+            container.innerHTML = "";
+
+            const generateTableHTML = (title, squads) => {
+                // 1. Initialize empty stats for the assigned squads
+                let stats = squads.map(sq => ({
+                    sq: sq, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0
+                }));
+
+                // 2. Loop through matches and tally scores
+                currentMatchesState.rounds.forEach(r => {
+                    r.matches.forEach(m => {
+                        if (m.completed && !m.isBye && m.scoreH !== null && m.scoreA !== null) {
+                            let hStat = stats.find(s => s.sq.id === m.home?.id);
+                            let aStat = stats.find(s => s.sq.id === m.away?.id);
+
+                            if (hStat && aStat) {
+                                hStat.p++; aStat.p++;
+                                hStat.gf += m.scoreH; hStat.ga += m.scoreA;
+                                aStat.gf += m.scoreA; aStat.ga += m.scoreH;
+                                
+                                if (m.scoreH > m.scoreA) { hStat.w++; hStat.pts += 3; aStat.l++; }
+                                else if (m.scoreA > m.scoreH) { aStat.w++; aStat.pts += 3; hStat.l++; }
+                                else { hStat.d++; aStat.d++; hStat.pts += 1; aStat.pts += 1; }
+                                
+                                hStat.gd = hStat.gf - hStat.ga;
+                                aStat.gd = aStat.gf - aStat.ga;
+                            }
+                        }
+                    });
+                });
+
+                // 3. Sort by Points -> Goal Difference -> Goals For
+                stats.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+
+                // 4. Render Table Rows
+                let rows = stats.map((s, i) => {
+                    const playerName = Array.isArray(s.sq.players) ? s.sq.players.join(', ') : (s.sq.players || "Unknown");
+                    const teamName = s.sq.team?.name || "TBD";
+                    return `
+                        <tr class="border-b border-slate-800/50 text-center text-[10px] sm:text-xs hover:bg-slate-800/30 transition">
+                            <td class="py-2 text-slate-500">${i + 1}</td>
+                            <td class="py-2 text-left overflow-hidden">
+                                <div class="font-bold text-slate-200 truncate">${playerName}</div>
+                                <div class="text-[8px] text-slate-500 truncate">${teamName}</div>
+                            </td>
+                            <td class="py-2 text-slate-300 font-mono">${s.p}</td>
+                            <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.w}</td>
+                            <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.d}</td>
+                            <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.l}</td>
+                            <td class="py-2 text-slate-400 font-mono">${s.gd > 0 ? '+'+s.gd : s.gd}</td>
+                            <td class="py-2 text-emerald-400 font-black font-mono">${s.pts}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="mb-5">
+                        <h3 class="text-[10px] font-bold text-cyan-400 mb-2 uppercase tracking-widest px-1"><i class="fa-solid fa-ranking-star mr-1"></i> ${title}</h3>
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+                            <table class="w-full text-left table-fixed">
+                                <thead class="bg-slate-950 border-b border-slate-800 text-[8px] text-slate-500 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="py-2 text-center w-8">#</th>
+                                        <th class="py-2 pl-0 text-left w-auto">Player</th>
+                                        <th class="py-2 text-center w-6 sm:w-8 text-slate-300">P</th>
+                                        <th class="py-2 text-center w-8 hidden sm:table-cell">W</th>
+                                        <th class="py-2 text-center w-8 hidden sm:table-cell">D</th>
+                                        <th class="py-2 text-center w-8 hidden sm:table-cell">L</th>
+                                        <th class="py-2 text-center w-8 sm:w-10">GD</th>
+                                        <th class="py-2 text-center w-8 sm:w-10 text-emerald-400">PTS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // Detect format to draw 1 block or 2 separate groups
+            if (currentMatchesState.type === 'league') {
+                container.innerHTML = generateTableHTML("League Standings", generatedSquads);
+            } else if (currentMatchesState.type === 'groups') {
+                const mid = Math.ceil(generatedSquads.length / 2);
+                container.innerHTML = generateTableHTML("Group A", generatedSquads.slice(0, mid)) + 
+                                      generateTableHTML("Group B", generatedSquads.slice(mid));
+            }
+        }
+
+
         function submitScore(rIdx, mIdx) {
             const hVal = document.getElementById(`scH-${rIdx}-${mIdx}`).value;
             const aVal = document.getElementById(`scA-${rIdx}-${mIdx}`).value;
@@ -632,7 +740,9 @@
                 }
             }
 
-            drawRunnerMatches();
+            // --- REPLACE THIS LINE ---
+            renderRunnerUi(); // Ensures the full UI re-renders, not just the matches
+            
             silentAutoSave(); // Locks tournament & pushes JSON
         }
 
