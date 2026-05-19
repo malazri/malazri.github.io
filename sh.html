@@ -3,121 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Match Tracker & Team Selection</title>
+    <title>Shuffle Match Tracker</title>
     <style>
         :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #0b0f19;
+            --border: #334155;
             --primary: #10b981;
             --primary-hover: #059669;
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
+            --accent: #6366f1;
+            --accent-hover: #4f46e5;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: #334155;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
+            background-color: var(--bg-main);
             color: var(--text-main);
             margin: 0;
-            padding: 20px;
+            padding: 40px 20px;
             display: flex;
             justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
-        .container {
+        .app-container {
             width: 100%;
-            max-width: 500px;
+            max-width: 520px;
             background: var(--bg-card);
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
         }
 
-        h2 {
-            margin-top: 0;
-            margin-bottom: 20px;
-            font-size: 1.5rem;
+        header {
             text-align: center;
-            color: var(--text-main);
+            margin-bottom: 28px;
         }
 
-        .team-selection-block {
-            background: rgba(15, 23, 42, 0.4);
+        header h1 {
+            font-size: 1.6rem;
+            margin: 0 0 6px 0;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        header p {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Shuffle Strategy Panel */
+        .global-actions {
+            background: rgba(99, 102, 241, 0.06);
+            border: 1px dashed var(--accent);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn-shuffle {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+
+        .btn-shuffle:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-shuffle:active {
+            transform: scale(0.98);
+        }
+
+        /* Team Setup Slots */
+        .team-config-card {
+            background: rgba(15, 23, 42, 0.3);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 16px;
+            padding: 18px;
             margin-bottom: 20px;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
         }
 
-        .block-title {
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--primary);
-            font-size: 0.95rem;
+        .card-label {
+            font-size: 0.85rem;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-        }
-
-        /* Radio Toggle Styles */
-        .source-toggle {
-            display: flex;
-            gap: 16px;
+            color: var(--primary);
             margin-bottom: 12px;
         }
 
-        .radio-label {
+        /* Source Selection Toggle */
+        .source-selector {
+            display: flex;
+            gap: 18px;
+            margin-bottom: 14px;
+        }
+
+        .radio-option {
             display: flex;
             align-items: center;
             gap: 8px;
             font-size: 0.9rem;
             color: var(--text-muted);
             cursor: pointer;
-            user-select: none;
+            position: relative;
         }
 
-        .radio-label input[type="radio"] {
+        .radio-option input[type="radio"] {
             accent-color: var(--primary);
             margin: 0;
             width: 16px;
             height: 16px;
         }
 
-        .radio-label input[type="radio"]:checked + span {
+        .radio-option input[type="radio"]:checked + span {
             color: var(--text-main);
             font-weight: 500;
         }
 
-        /* Form Controls */
-        .field-group {
+        /* Input Controls */
+        .input-field-wrapper {
             position: relative;
         }
 
         select, input[type="text"] {
             width: 100%;
-            padding: 10px 12px;
-            background-color: var(--bg-dark);
+            padding: 11px 14px;
+            background-color: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: 8px;
             color: var(--text-main);
-            font-size: 1rem;
+            font-size: 0.95rem;
             box-sizing: border-box;
-            transition: border-color 0.2s;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         select:focus, input[type="text"]:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
         }
 
         .hidden {
             display: none !important;
         }
 
-        button {
+        /* Submission Trigger */
+        .btn-submit {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background-color: var(--primary);
             color: white;
             border: none;
@@ -125,142 +181,237 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: background-color 0.15s ease, transform 0.1s ease;
+            margin-top: 10px;
         }
 
-        button:hover {
+        .btn-submit:hover {
             background-color: var(--primary-hover);
+        }
+
+        .btn-submit:active {
+            transform: scale(0.99);
+        }
+
+        /* Animate item shifts smoothly during shuffle triggers */
+        @keyframes dynamicFlash {
+            0% { border-color: var(--accent); background-color: rgba(99, 102, 241, 0.15); }
+            100% { border-color: var(--border); background-color: rgba(15, 23, 42, 0.3); }
+        }
+
+        .shuffle-active-pulse {
+            animation: dynamicFlash 0.5s cubic-bezier(0.25, 1, 0.5, 1);
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Match Setup</h2>
-    
-    <form id="matchForm" onsubmit="handleSubmit(event)">
-        <!-- Team 1 Selection -->
-        <div class="team-selection-block">
-            <div class="block-title">Team 1 (Home)</div>
+<div class="app-container">
+    <header>
+        <h1>Matchup Shuffler</h1>
+        <p>Configure teams manually or trigger random generation</p>
+    </header>
+
+    <!-- Global Shuffle Stage Options -->
+    <div class="global-actions">
+        <button type="button" class="btn-shuffle" onclick="executeShufflePipeline('predefined')">
+            🎲 Shuffle Pool
+        </button>
+        <button type="button" class="btn-shuffle" onclick="executeShufflePipeline('custom')">
+            ✨ Random Custom
+        </button>
+    </div>
+
+    <form id="shuffleAppForm" onsubmit="processApplicationExecution(event)">
+        
+        <!-- Team Block 1 -->
+        <div id="wrapper_team_1" class="team-config-card">
+            <div class="card-label">Team Slot 1</div>
             
-            <div class="source-toggle">
-                <label class="radio-label">
-                    <input type="radio" name="team1Source" value="predefined" checked onchange="toggleTeamSource(1)">
-                    <span>Predefined</span>
+            <div class="source-selector">
+                <label class="radio-option">
+                    <input type="radio" id="src_predefined_1" name="teamSource_1" value="predefined" checked onchange="handleUIStateToggle(1)">
+                    <span>Predefined List</span>
                 </label>
-                <label class="radio-label">
-                    <input type="radio" name="team1Source" value="custom" onchange="toggleTeamSource(1)">
-                    <span>Custom Name</span>
+                <label class="radio-option">
+                    <input type="radio" id="src_custom_1" name="teamSource_1" value="custom" onchange="handleUIStateToggle(1)">
+                    <span>Custom Input</span>
                 </label>
             </div>
 
-            <div class="field-group">
-                <select id="team1Dropdown">
-                    <option value="" disabled selected>Select a team...</option>
+            <div class="input-field-wrapper">
+                <select id="predefined_1">
+                    <option value="" disabled selected>Select dynamic team...</option>
                     <option value="Real Madrid">Real Madrid</option>
                     <option value="Manchester City">Manchester City</option>
                     <option value="Bayern Munich">Bayern Munich</option>
                     <option value="Paris Saint-Germain">Paris Saint-Germain</option>
                     <option value="Barcelona">Barcelona</option>
+                    <option value="Arsenal">Arsenal</option>
+                    <option value="Inter Milan">Inter Milan</option>
                 </select>
-                <input type="text" id="team1Custom" class="hidden" placeholder="Enter custom team name...">
+                <input type="text" id="custom_1" class="hidden" placeholder="Type custom squad name...">
             </div>
         </div>
 
-        <!-- Team 2 Selection -->
-        <div class="team-selection-block">
-            <div class="block-title">Team 2 (Away)</div>
+        <!-- Team Block 2 -->
+        <div id="wrapper_team_2" class="team-config-card">
+            <div class="card-label">Team Slot 2</div>
             
-            <div class="source-toggle">
-                <label class="radio-label">
-                    <input type="radio" name="team2Source" value="predefined" checked onchange="toggleTeamSource(2)">
-                    <span>Predefined</span>
+            <div class="source-selector">
+                <label class="radio-option">
+                    <input type="radio" id="src_predefined_2" name="teamSource_2" value="predefined" checked onchange="handleUIStateToggle(2)">
+                    <span>Predefined List</span>
                 </label>
-                <label class="radio-label">
-                    <input type="radio" name="team2Source" value="custom" onchange="toggleTeamSource(2)">
-                    <span>Custom Name</span>
+                <label class="radio-option">
+                    <input type="radio" id="src_custom_2" name="teamSource_2" value="custom" onchange="handleUIStateToggle(2)">
+                    <span>Custom Input</span>
                 </label>
             </div>
 
-            <div class="field-group">
-                <select id="team2Dropdown">
-                    <option value="" disabled selected>Select a team...</option>
+            <div class="input-field-wrapper">
+                <select id="predefined_2">
+                    <option value="" disabled selected>Select dynamic team...</option>
                     <option value="Real Madrid">Real Madrid</option>
                     <option value="Manchester City">Manchester City</option>
                     <option value="Bayern Munich">Bayern Munich</option>
                     <option value="Paris Saint-Germain">Paris Saint-Germain</option>
                     <option value="Barcelona">Barcelona</option>
+                    <option value="Arsenal">Arsenal</option>
+                    <option value="Inter Milan">Inter Milan</option>
                 </select>
-                <input type="text" id="team2Custom" class="hidden" placeholder="Enter custom team name...">
+                <input type="text" id="custom_2" class="hidden" placeholder="Type custom squad name...">
             </div>
         </div>
 
-        <button type="submit">Start Match</button>
+        <button type="submit" class="btn-submit">Confirm Match Setup</button>
     </form>
 </div>
 
 <script>
-    // Handles toggling visibility between dropdown and text input
-    function toggleTeamSource(teamNum) {
-        const selectedSource = document.querySelector(`input[name="team${teamNum}Source"]:checked`).value;
-        const dropdown = document.getElementById(`team${dropdownField(teamNum)}`);
-        const customInput = document.getElementById(`team${customField(teamNum)}`);
+    // In-memory placeholder arrays for localized generation matching custom targets
+    const customAlternativePool = [
+        "Thunder Wolves", "Shadow Dragons", "Alpha Titans", "Viper FC", 
+        "Blaze Athletics", "Quantum United", "Phantoms", "Rogue Syndicate"
+    ];
 
-        if (selectedSource === 'predefined') {
-            document.getElementById(`team${teamNum}Dropdown`).classList.remove('hidden');
-            document.getElementById(`team${teamNum}Custom`).classList.add('hidden');
-            document.getElementById(`team${teamNum}Custom`).value = ''; // Reset custom input
+    /**
+     * Toggles layout field types based on chosen source parameters
+     * @param {number} elementIndex - Numeric contextual tracking block index
+     */
+    function handleUIStateToggle(elementIndex) {
+        const sourceStrategy = document.querySelector(`input[name="teamSource_${elementIndex}"]:checked`).value;
+        const selectMenu = document.getElementById(`predefined_${elementIndex}`);
+        const stringInput = document.getElementById(`custom_${elementIndex}`);
+
+        if (sourceStrategy === 'predefined') {
+            selectMenu.classList.remove('hidden');
+            stringInput.classList.add('hidden');
+            stringInput.value = ''; 
         } else {
-            document.getElementById(`team${teamNum}Dropdown`).classList.add('hidden');
-            document.getElementById(`team${teamNum}Custom`).classList.remove('hidden');
-            document.getElementById(`team${teamNum}Dropdown`).selectedIndex = 0; // Reset dropdown selection
+            selectMenu.classList.add('hidden');
+            stringInput.classList.remove('hidden');
+            selectMenu.selectedIndex = 0; 
         }
     }
 
-    // Helper functions for IDs to avoid template literal syntax issues in raw strings
-    function dropdownField(num) { return num + 'Dropdown'; }
-    function customField(num) { return num + 'Custom'; }
+    /**
+     * Extracts values safely depending on target parameters activated
+     * @param {number} elementIndex - Contextual component mapping key
+     * @returns {string} Clean string value matching user configuration inputs
+     */
+    function resolveTargetTeamName(elementIndex) {
+        const activeStrategy = document.querySelector(`input[name="teamSource_${elementIndex}"]:checked`).value;
+        if (activeStrategy === 'predefined') {
+            return document.getElementById(`predefined_${elementIndex}`).value;
+        } else {
+            return document.getElementById(`custom_${elementIndex}`).value.trim();
+        }
+    }
 
-    // Form submission processing
-    function handleSubmit(event) {
-        event.preventDefault();
+    /**
+     * Executes localized logic calculations across lists to select distinct options
+     * @param {string} strategyContext - Categorical source string target pointer
+     */
+    function executeShufflePipeline(strategyContext) {
+        // Trigger visual state change confirmation feedbacks
+        const rowWrapper1 = document.getElementById('wrapper_team_1');
+        const rowWrapper2 = document.getElementById('wrapper_team_2');
         
-        let team1Name = '';
-        let team2Name = '';
+        rowWrapper1.classList.remove('shuffle-active-pulse');
+        rowWrapper2.classList.remove('shuffle-active-pulse');
+        void rowWrapper1.offsetWidth; // Force display rendering calculation to clear frames
+        rowWrapper1.classList.add('shuffle-active-pulse');
+        rowWrapper2.classList.add('shuffle-active-pulse');
 
-        // Get Team 1 Value
-        const team1Source = document.querySelector('input[name="team1Source"]:checked').value;
-        if (team1Source === 'predefined') {
-            team1Name = document.getElementById('team1Dropdown').value;
-        } else {
-            team1Name = document.getElementById('team1Custom').value.trim();
+        if (strategyContext === 'predefined') {
+            const masterDropdownElement = document.getElementById('predefined_1');
+            const collectionPool = Array.from(masterDropdownElement.options)
+                                        .map(elementOption => elementOption.value)
+                                        .filter(cleanValue => cleanValue !== "");
+
+            if (collectionPool.length < 2) return;
+
+            let randomPointer1 = Math.floor(Math.random() * collectionPool.length);
+            let randomPointer2 = Math.floor(Math.random() * collectionPool.length);
+            while (randomPointer1 === randomPointer2) {
+                randomPointer2 = Math.floor(Math.random() * collectionPool.length);
+            }
+
+            // Enforce proper state checks prior to applying assignments
+            document.getElementById('src_predefined_1').checked = true;
+            document.getElementById('src_predefined_2').checked = true;
+            handleUIStateToggle(1);
+            handleUIStateToggle(2);
+
+            document.getElementById('predefined_1').value = collectionPool[randomPointer1];
+            document.getElementById('predefined_2').value = collectionPool[randomPointer2];
+
+        } else if (strategyContext === 'custom') {
+            let alternativeIndex1 = Math.floor(Math.random() * customAlternativePool.length);
+            let alternativeIndex2 = Math.floor(Math.random() * customAlternativePool.length);
+            while (alternativeIndex1 === alternativeIndex2) {
+                alternativeIndex2 = Math.floor(Math.random() * customAlternativePool.length);
+            }
+
+            document.getElementById('src_custom_1').checked = true;
+            document.getElementById('src_custom_2').checked = true;
+            handleUIStateToggle(1);
+            handleUIStateToggle(2);
+
+            document.getElementById('custom_1').value = customAlternativePool[alternativeIndex1];
+            document.getElementById('custom_2').value = customAlternativePool[alternativeIndex2];
         }
+    }
 
-        // Get Team 2 Value
-        const team2Source = document.querySelector('input[name="team2Source"]:checked').value;
-        if (team2Source === 'predefined') {
-            team2Name = document.getElementById('team2Dropdown').value;
-        } else {
-            team2Name = document.getElementById('team2Custom').value.trim();
-        }
+    /**
+     * Submits tracking metrics validation checkpoints before completing final initialization
+     */
+    function processApplicationExecution(formEvent) {
+        formEvent.preventDefault();
 
-        // Validation
-        if (!team1Name) {
-            alert('Please select or enter a name for Team 1.');
+        const matchTeamValue1 = resolveTargetTeamName(1);
+        const matchTeamValue2 = resolveTargetTeamName(2);
+
+        if (!matchTeamValue1) {
+            alert('Please assign a structural configuration target for Team 1.');
             return;
         }
-        if (!team2Name) {
-            alert('Please select or enter a name for Team 2.');
+        if (!matchTeamValue2) {
+            alert('Please assign a structural configuration target for Team 2.');
             return;
         }
-        if (team1Name.toLowerCase() === team2Name.toLowerCase()) {
-            alert('A team cannot play against itself. Please choose two different names.');
+        if (matchTeamValue1.toLowerCase() === matchTeamValue2.toLowerCase()) {
+            alert('Invalid matchup parameters. Teams cannot face duplicate targets.');
             return;
         }
 
-        // Output results to console log (or handle your navigation/state logic here)
-        console.log('Match Initialized:', { team1: team1Name, team2: team2Name });
-        alert('Match Started!\n' + team1Name + ' vs ' + team2Name);
+        console.log('Shuffle Sequence Completed Strategy Out:', { 
+            teamSlotOne: matchTeamValue1, 
+            teamSlotTwo: matchTeamValue2 
+        });
+        
+        alert(`Match Confirmed!\n${matchTeamValue1} vs ${matchTeamValue2}`);
     }
 </script>
 
