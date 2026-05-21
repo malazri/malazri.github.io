@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handover Tracker - Date Update</title>
+    <title>Handover Tracker - Smart Digital PDF</title>
+    <!-- Add html2pdf.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         :root {
             --primary: #2c3e50; --secondary: #34495e; --accent: #3498db;
@@ -21,6 +24,8 @@
         .user-select-nav option { color: black; }
         .nav-links button { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; margin-left: 5px; }
         .nav-links button:hover { background: rgba(255,255,255,0.1); }
+        .btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: bold; transition: 0.2s; }
+        .btn-export-nav:hover { background: #e67e22 !important; }
 
         .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
 
@@ -29,7 +34,7 @@
             .sidebar { width: 100% !important; max-height: 35vh; }
             .main-content { height: 65vh; }
             nav { flex-direction: column; gap: 10px; align-items: flex-start; }
-            .nav-controls { width: 100%; justify-content: space-between; }
+            .nav-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
         }
 
         /* Sidebar */
@@ -61,10 +66,6 @@
         .del-comment-btn { position: absolute; right: 5px; top: 5px; color: #ccc; cursor: pointer; font-size: 1.2rem; border: none; background: none; }
         .del-comment-btn:hover { color: var(--danger); }
 
-        /* Drag & Drop */
-        .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 1.5rem; text-align: center; color: #999; margin-bottom: 1rem; cursor: pointer; }
-        .drop-zone.drag-over { border-color: var(--accent); background: #eef7ff; color: var(--accent); }
-
         /* Admin Overlay */
         .admin-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--white); z-index: 1000; display: none; padding: 2rem; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
@@ -79,9 +80,14 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-warning { background: var(--warning); color: white; }
         .btn-info { background: #95a5a6; color: white; }
-        .btn-outline { background: rgba(255,255,255,0.2); color: white; border: 1px solid white; font-size: 0.7rem; }
         
         input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { font-size: 0.85rem; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+        
+        /* Drag & Drop */
+        .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 1.5rem; text-align: center; color: #999; margin-bottom: 1rem; cursor: pointer; }
+        .drop-zone.drag-over { border-color: var(--accent); background: #eef7ff; color: var(--accent); }
     </style>
 </head>
 <body>
@@ -94,6 +100,7 @@
             <select id="globalUserSelect" class="user-select-nav"></select>
         </div>
         <div class="nav-links">
+            <button class="btn-export-nav" id="exportBtnNav" onclick="openModal('exportModal')">📄 Download PDF</button>
             <button onclick="toggleView('dashboard')">Dashboard</button>
             <button onclick="toggleView('admin')">Admin</button>
         </div>
@@ -101,7 +108,6 @@
 </nav>
 
 <div class="app-container">
-    <!-- Sidebar -->
     <aside class="sidebar">
         <div style="padding: 1rem; border-bottom: 1px solid #eee;">
             <button class="btn btn-success" style="width:100%; margin-bottom: 10px;" onclick="openModal('topicModal')">+ New Topic</button>
@@ -113,7 +119,6 @@
         <div class="topic-list" id="topicList"></div>
     </aside>
 
-    <!-- Content -->
     <main class="main-content">
         <div id="welcome" style="padding: 5rem 2rem; text-align: center; color: #bbb;">
             <h3>No Topic Selected</h3>
@@ -129,7 +134,6 @@
             </div>
         </div>
 
-        <!-- Admin Management Panel -->
         <div id="adminView" class="admin-view">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h1>Admin Management</h1>
@@ -142,7 +146,7 @@
                     <div id="userAdminList"></div>
                     <div style="background:#f9f9f9; padding: 1rem; border-radius: 8px; margin-top: 10px;">
                         <input id="newUserName" placeholder="Full Name">
-                        <input id="newUserMobile" placeholder="Mobile Number">
+                        <input id="newUserMobile" placeholder="Mobile Number (e.g., +968 9123 4567)">
                         <button class="btn btn-success" style="width:100%" onclick="addUser()">Add Staff Member</button>
                     </div>
                 </div>
@@ -190,48 +194,91 @@
 <div id="commentModal" class="modal"><div class="modal-content">
     <h3>Add Update / Comment</h3>
     <textarea id="coIn" rows="4" placeholder="Type notes here..."></textarea>
-    
     <div id="dropZone" class="drop-zone">
         <span id="dzText">Drag & Drop file or click here</span>
         <input type="file" id="fileIn" style="display:none;">
         <div id="dzStatus" style="font-size:0.8rem; color:var(--success); margin-top:5px; font-weight:bold;"></div>
     </div>
-
     <button class="btn btn-success" style="width:100%" onclick="saveComment()">Post to Section</button>
     <button class="btn" style="width:100%; margin-top:5px;" onclick="closeModal('commentModal')">Cancel</button>
 </div></div>
 
+<!-- UPDATE YOUR EXPORT MODAL TO THIS -->
+<div id="exportModal" class="modal">
+    <div class="modal-content">
+        <h3>Export Handover Report</h3>
+        
+        <div class="form-group">
+            <label>Outgoing Employee</label>
+            <select id="exOutEmp"></select>
+        </div>
+        
+        <div class="form-group">
+            <label>Incoming Employee</label>
+            <select id="exInEmp"></select>
+        </div>
+        
+        <div class="form-group">
+            <label>Date Filter Option</label>
+            <select id="exPeriod" onchange="toggleCustomDates()">
+                <option value="all">Full Active History</option>
+                <option value="custom">Custom Date Range</option>
+            </select>
+        </div>
+        
+        <div id="customDateFields" class="form-group" style="display:none; gap:10px;">
+            <div>
+                <label>From</label>
+                <input type="date" id="exFrom">
+            </div>
+            <div>
+                <label>To</label>
+                <input type="date" id="exTo">
+            </div>
+        </div>
+
+        <!-- NEW SCOPE DROPDOWNS -->
+        <div class="form-group">
+            <label>Filter by Specific Topic</label>
+            <select id="exTopic" onchange="populateExportSections()">
+                <option value="all">All Topics</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Filter by Specific Section</label>
+            <select id="exSection" disabled>
+                <option value="all">All Sections</option>
+            </select>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('exportModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="generatePDF()">Download PDF</button>
+        </div>
+    </div>
+</div>
 <script>
-    // --- DATABASE ---
-    // Switched key to v8 to ensure smooth updating without cache conflicts
-    let db = JSON.parse(localStorage.getItem('handover_v8')) || {
+    // --- DATABASE CONFIG ---
+    let db = JSON.parse(localStorage.getItem('handover_v10')) || {
         users: [{id:'u1', name:'Manager', mobile:'0000'}],
         categories: ['General', 'HSE', 'Project'],
         topics: [], sections: [], comments: []
     };
 
-    // Migration helper: If user had data in v7, copy it to v8
-    if(!localStorage.getItem('handover_v8') && localStorage.getItem('handover_v7')) {
-        db = JSON.parse(localStorage.getItem('handover_v7'));
-        localStorage.setItem('handover_v8', JSON.stringify(db));
-    }
-
     let activeT = null, activeS = null, droppedFile = null;
-    let showArchivedSecs = false; // Tracks if completed sections are visible
+    let showArchivedSecs = false;
 
-    // Run on startup
     window.onload = () => { populateGlobalUser(); renderTopics(); renderAdmin(); };
 
-    // Close all dropdowns when clicking anywhere outside
     window.onclick = function(event) {
         if (!event.target.matches('.dots-btn')) {
             document.querySelectorAll('.dropdown-content').forEach(el => el.style.display = 'none');
         }
     }
 
-    const sync = () => { localStorage.setItem('handover_v8', JSON.stringify(db)); renderTopics(); renderAdmin(); };
+    const sync = () => { localStorage.setItem('handover_v10', JSON.stringify(db)); renderTopics(); renderAdmin(); };
 
-    // --- NAVIGATION & GLOBAL INIT ---
     function toggleView(v) {
         document.getElementById('adminView').style.display = (v === 'admin' ? 'block' : 'none');
         if(v === 'admin') renderAdmin();
@@ -240,13 +287,13 @@
     function populateGlobalUser() {
         const sel = document.getElementById('globalUserSelect');
         const currentVal = sel.value; 
-        sel.innerHTML = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        const opts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        sel.innerHTML = opts;
         if(currentVal && db.users.find(u => u.id === currentVal)) sel.value = currentVal;
     }
 
     function openModal(id, sid = null) {
-        activeS = sid;
-        droppedFile = null;
+        activeS = sid; droppedFile = null;
         if(id === 'topicModal') {
             document.getElementById('tcIn').innerHTML = db.categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
@@ -255,9 +302,23 @@
             document.getElementById('dzStatus').innerText = "";
             document.getElementById('dzText').innerText = "Drag & Drop file or click here";
         }
+        if(id === 'exportModal') {
+            const userOpts = `<option value="">-- Select Employee --</option>` + db.users.map(u => `<option value="${u.id}">${u.name} (${u.mobile || 'No Mobile'})</option>`).join('');
+            document.getElementById('exOutEmp').innerHTML = userOpts;
+            document.getElementById('exInEmp').innerHTML = userOpts;
+            
+            const curUserId = document.getElementById('globalUserSelect').value;
+            if(curUserId) document.getElementById('exOutEmp').value = curUserId;
+        }
         document.getElementById(id).style.display = 'flex';
     }
+    
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function toggleCustomDates() {
+        const val = document.getElementById('exPeriod').value;
+        document.getElementById('customDateFields').style.display = val === 'custom' ? 'flex' : 'none';
+    }
 
     function toggleDropdown(id, event) {
         event.stopPropagation();
@@ -268,7 +329,7 @@
         dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
     }
 
-    // --- ARCHIVING & TOPICS ---
+    // --- PROCEDURAL LOGIC ---
     function saveTopic() {
         const title = document.getElementById('tIn').value;
         if(!title) return;
@@ -300,7 +361,6 @@
         sync();
     }
 
-    // --- SECTIONS ---
     function saveSection() {
         const title = document.getElementById('sIn').value;
         if(!title) return;
@@ -328,19 +388,16 @@
         sync(); renderSections();
     }
 
-    function toggleArchivedSecsVisibility() {
-        showArchivedSecs = !showArchivedSecs;
-        renderSections();
-    }
+    function toggleArchivedSecsVisibility() { showArchivedSecs = !showArchivedSecs; renderSections(); }
 
-    // --- COMMENT & FILE LOGIC ---
+    // --- DRAG & DROP ATTACHMENTS ---
     const dz = document.getElementById('dropZone');
     const fi = document.getElementById('fileIn');
-    dz.onclick = () => fi.click();
-    dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
-    dz.ondragleave = () => dz.classList.remove('drag-over');
-    dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
-    fi.onchange = (e) => handleFiles(e.target.files);
+    if(dz) dz.onclick = () => fi.click();
+    if(dz) dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag-over'); };
+    if(dz) dz.ondragleave = () => dz.classList.remove('drag-over');
+    if(dz) dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
+    if(fi) fi.onchange = (e) => handleFiles(e.target.files);
 
     function handleFiles(files) {
         if(files.length > 0) {
@@ -352,7 +409,7 @@
     function saveComment() {
         const text = document.getElementById('coIn').value;
         const userId = document.getElementById('globalUserSelect').value;
-        if(!userId) return alert("Please select an Acting User in the top bar.");
+        if(!userId) return alert("Please select an Acting User.");
         if(!text) return alert("Please enter text.");
 
         if(droppedFile) {
@@ -366,7 +423,15 @@
 
     function commitComment(text, userId, fData, fName, fType) {
         db.comments.push({ id:'c'+Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
-        sync(); closeModal('commentModal'); renderSections();
+        
+        // FIX: Reset tracking and clear out interface for next entry
+        droppedFile = null;
+        const statusEl = document.getElementById('dzStatus');
+        if(statusEl) statusEl.innerText = "Drag & drop files here or click to upload";
+        
+        sync(); 
+        closeModal('commentModal'); 
+        renderSections();
     }
 
     function deleteComment(cid) {
@@ -374,7 +439,52 @@
         sync(); renderSections();
     }
 
-    // --- RENDERING ---
+    // --- EXPORT TARGET SCOPE SELECTORS ---
+    function openExportModalWrapper() {
+        openModal('exportModal');
+        
+        const outSel = document.getElementById('exOutEmp');
+        const inSel = document.getElementById('exInEmp');
+        const userOpts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
+        
+        if(outSel) outSel.innerHTML = `<option value="">Select User</option>` + userOpts;
+        if(inSel) inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
+
+        const topicSel = document.getElementById('exTopic');
+        if(topicSel) {
+            topicSel.innerHTML = '<option value="all">All Topics (Full History)</option>' + 
+                db.topics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
+        }
+        
+        const secSel = document.getElementById('exSection');
+        if(secSel) {
+            secSel.innerHTML = '<option value="all">All Sections</option>';
+            secSel.disabled = true;
+        }
+    }
+
+    function populateExportSections() {
+        const topicId = document.getElementById('exTopic').value;
+        const secSel = document.getElementById('exSection');
+        if(!secSel) return;
+
+        if(topicId === 'all') {
+            secSel.innerHTML = '<option value="all">All Sections</option>';
+            secSel.disabled = true;
+        } else {
+            secSel.disabled = false;
+            const filteredSections = db.sections.filter(s => s.topicId === topicId);
+            secSel.innerHTML = '<option value="all">All Sections under this Topic</option>' + 
+                filteredSections.map(s => `<option value="${s.id}">${s.title} ${s.archived ? '(Completed)' : ''}</option>`).join('');
+        }
+    }
+
+    function toggleCustomDates() {
+        const p = document.getElementById('exPeriod').value;
+        document.getElementById('customDateFields').style.display = (p === 'custom') ? 'flex' : 'none';
+    }
+
+    // --- CORE RENDERING ENGINE ---
     function renderTopics() {
         const filterVal = document.getElementById('topicFilter').value;
         const isArchivedView = (filterVal === 'archived');
@@ -388,8 +498,7 @@
     }
 
     function viewTopic(id) {
-        activeT = id;
-        showArchivedSecs = false; // Reset the view to hidden for completed sections
+        activeT = id; showArchivedSecs = false; 
         document.getElementById('welcome').style.display = 'none';
         document.getElementById('topicDetail').style.display = 'flex';
         
@@ -404,11 +513,8 @@
                 <button class="btn btn-danger" onclick="deleteTopic('${t.id}')">Del</button>
             </div>
         `;
-        
         document.getElementById('newSectionFooter').style.display = t.archived ? 'none' : 'flex';
-
-        renderSections(); 
-        renderTopics(); // Refresh highlight
+        renderSections(); renderTopics(); 
     }
 
     function buildSectionHtml(s, isArchived) {
@@ -445,103 +551,347 @@
 
         if(archivedSecs.length > 0) {
             const toggleBtnText = showArchivedSecs ? "Hide Completed Sections" : `Show ${archivedSecs.length} Completed Section(s)`;
-            html += `
-            <div style="text-align: center; margin: 1.5rem 0 1rem 0;">
-                <button class="btn btn-info" onclick="toggleArchivedSecsVisibility()">${toggleBtnText}</button>
-            </div>`;
-            
-            if(showArchivedSecs) {
-                html += archivedSecs.map(s => buildSectionHtml(s, true)).join('');
-            }
+            html += `<div style="text-align: center; margin: 1.5rem 0 1rem 0;"><button class="btn btn-info" onclick="toggleArchivedSecsVisibility()">${toggleBtnText}</button></div>`;
+            if(showArchivedSecs) html += archivedSecs.map(s => buildSectionHtml(s, true)).join('');
         }
-        
         document.getElementById('sectionsArea').innerHTML = html;
     }
 
     function renderComments(sid) {
         const filtered = db.comments.filter(c => c.sectionId === sid);
         const sectionIsArchived = db.sections.find(s => s.id === sid)?.archived;
-        
         if(!filtered.length) return `<p style="color:#ccc; font-size:0.8rem;">No updates.</p>`;
+        
         return filtered.map(c => {
-            const u = db.users.find(x => x.id === c.userId) || {name:'Unknown'};
+            const u = db.users.find(x => x.id === c.userId) || {name:'Unknown', mobile:''};
             let fileHtml = '';
             if(c.fData) {
                 fileHtml = c.fType.startsWith('image/') 
                     ? `<img src="${c.fData}" class="attachment-preview" onclick="window.open(this.src)">`
                     : `<div style="margin-top:10px;">📎 <a href="${c.fData}" download="${c.fName}">${c.fName}</a></div>`;
             }
-            
             const delBtn = sectionIsArchived ? '' : `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
-            
-            // Format to show Date only, no time
-            const dateStr = new Date(c.date).toLocaleDateString();
-
             return `<div class="comment">
                 <div class="user-badge">${u.name.charAt(0)}</div>
                 <div class="comment-body">
-                    <small><b>${u.name}</b> <span style="color:#888;">• ${dateStr}</span></small>
-                    <p style="margin-top:5px;">${c.text}</p>
-                    ${fileHtml}
-                </div>
-                ${delBtn}
+                    <small><b>${u.name}</b> ${u.mobile ? `<span style="color:var(--accent);">(${u.mobile})</span>` : ''} <span style="color:#888;">• ${new Date(c.date).toLocaleDateString()}</span></small>
+                    <p style="margin-top:5px;">${c.text}</p>${fileHtml}
+                </div>${delBtn}
             </div>`;
         }).join('');
     }
 
-    // --- ADMIN ACTIONS ---
+    function isCommentInDateRange(cDateStr, period, fromStr, toStr) {
+        if(period === 'all') return true;
+        const cDate = new Date(cDateStr);
+        cDate.setHours(0,0,0,0);
+        
+        if(period === 'custom') {
+            if(!fromStr && !toStr) return true;
+            let valid = true;
+            if(fromStr) {
+                const fDate = new Date(fromStr); fDate.setHours(0,0,0,0);
+                if(cDate.getTime() < fDate.getTime()) valid = false;
+            }
+            if(toStr) {
+                const tDate = new Date(toStr); tDate.setHours(23,59,59,999);
+                if(cDate.getTime() > tDate.getTime()) valid = false;
+            }
+            return valid;
+        }
+        return true;
+    }
+
+    // --- HTML2PDF REPORT GENERATION ENGINE ---
+    function generatePDF() {
+        const navBtn = document.getElementById('exportBtnNav');
+        const oldTxt = navBtn ? navBtn.innerText : "Export";
+        if(navBtn) navBtn.innerText = "⏳ Preparing...";
+        closeModal('exportModal');
+
+        const outUserId = document.getElementById('exOutEmp').value;
+        const inUserId = document.getElementById('exInEmp').value;
+        const period = document.getElementById('exPeriod').value;
+        const fDate = document.getElementById('exFrom').value;
+        const tDate = document.getElementById('exTo').value;
+        
+        const scopeTopicId = document.getElementById('exTopic').value;
+        const scopeSectionId = document.getElementById('exSection').value;
+
+        const outUser = db.users.find(u => u.id === outUserId);
+        const inUser = db.users.find(u => u.id === inUserId);
+
+        const outStr = outUser ? `${outUser.name} (${outUser.mobile || 'N/A'})` : "_____________________";
+        const inStr = inUser ? `${inUser.name} (${inUser.mobile || 'N/A'})` : "_____________________";
+
+        let dateDisplay = new Date().toLocaleDateString();
+        if(period === 'custom' && (fDate || tDate)) {
+            dateDisplay = `${fDate ? new Date(fDate).toLocaleDateString() : 'Start'} to ${tDate ? new Date(tDate).toLocaleDateString() : 'Present'}`;
+        } else if (period === 'all') {
+            dateDisplay = "Complete System History";
+        }
+
+        // 1. GENERATE REPORT MARKUP
+        let reportHtml = `
+            <div style="text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 25px;">
+                <h1 style="margin: 0; font-size: 26px; text-transform: uppercase; color: #2c3e50;">Shift Handover Report</h1>
+                <p style="margin: 8px 0 0 0; color: #7f8c8d; font-size: 13px;">Date / Filter Range: ${dateDisplay}</p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; background-color: #f8f9fa; padding: 15px; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 25px;">
+                <div style="width: 48%;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; border-bottom: 1px solid #ced4da; padding-bottom: 4px;">Outgoing (On Duty)</h3>
+                    <p style="margin: 0; font-weight: bold; text-align: center; font-size: 13px;">${outStr}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 9px; color: #adb5bd; text-align: center;">Signature / Time</p>
+                </div>
+                <div style="width: 48%;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; border-bottom: 1px solid #ced4da; padding-bottom: 4px;">Incoming (Coming to Duty)</h3>
+                    <p style="margin: 0; font-weight: bold; text-align: center; font-size: 13px;">${inStr}</p>
+                    <p style="margin: 4px 0 0 0; font-size: 9px; color: #adb5bd; text-align: center;">Signature / Time</p>
+                </div>
+            </div>
+        `;
+
+        let totalDataRendered = 0;
+
+        db.categories.forEach(cat => {
+            let catTopics = db.topics.filter(t => t.cat === cat);
+            if (scopeTopicId !== 'all') {
+                catTopics = catTopics.filter(t => t.id === scopeTopicId);
+            }
+            if(catTopics.length === 0) return;
+
+            let catHtml = '';
+
+            catTopics.forEach(t => {
+                let tSections = db.sections.filter(s => s.topicId === t.id);
+                if (scopeSectionId !== 'all') {
+                    tSections = tSections.filter(s => s.id === scopeSectionId);
+                }
+                
+                let topicHtml = '';
+
+                tSections.forEach(s => {
+                    const allComments = db.comments.filter(c => c.sectionId === s.id);
+                    if (allComments.length === 0) return;
+
+                    let includeSection = false;
+
+                    if (!t.archived && !s.archived) {
+                        includeSection = true;
+                    } else {
+                        const hasActivityInPeriod = allComments.some(c => isCommentInDateRange(c.date, period, fDate, tDate));
+                        if (hasActivityInPeriod) {
+                            includeSection = true;
+                        }
+                    }
+
+                    if (includeSection) {
+                        let statusBadge = (t.archived || s.archived) 
+                            ? `<span style="font-size: 10px; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Completed</span>`
+                            : `<span style="font-size: 10px; background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold;">Active / Open</span>`;
+
+                        let secHtml = `
+                            <div style="margin-left: 15px; margin-bottom: 15px; page-break-inside: avoid;">
+                                <h4 style="font-size: 15px; font-weight: 600; color: #34495e; margin: 0 0 8px 0; display: flex; align-items: center;">
+                                    <span style="color: #3498db; margin-right: 6px;">▶</span> Section: ${s.title} ${statusBadge}
+                                </h4>
+                                <div style="margin-left: 20px;">
+                        `;
+                        
+                        allComments.forEach(c => {
+                            if (!isCommentInDateRange(c.date, period, fDate, tDate)) return;
+
+                            const u = db.users.find(x => x.id === c.userId) || {name:'Unknown', mobile:''};
+                            const cDateStr = new Date(c.date).toLocaleDateString();
+                            
+                            let attachStr = '';
+                            if (c.fData) {
+                                if (c.fType && c.fType.startsWith('image/')) {
+                                    attachStr = `
+                                        <div style="margin-top: 8px; border: 1px solid #eee; padding: 4px; border-radius: 4px; display: inline-block; background: #fff;">
+                                            <p style="font-size: 9px; color: #95a5a6; margin: 0 0 4px 0;">Attachment: ${c.fName}</p>
+                                            <img src="${c.fData}" style="max-width: 100%; max-height: 220px; object-fit: contain; border-radius: 2px;" />
+                                        </div>
+                                    `;
+                                } else {
+                                    attachStr = `<p style="margin: 6px 0 0 0;"><a href="${c.fData}" download="${c.fName}" style="color: #2980b9; text-decoration: underline; font-size: 11px; font-weight: bold;">📎 Download Attachment: ${c.fName}</a></p>`;
+                                }
+                            }
+                            
+                            secHtml += `
+                                <div style="padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 10px;">
+                                    <p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.4;">
+                                        <span style="font-weight: bold; color: #1e293b;">${u.name} ${u.mobile ? `<span style="color: #3b82f6; font-weight: normal; font-size: 10px;">(${u.mobile})</span>` : ''}</span> 
+                                        <span style="color: #94a3b8; font-size: 10px;">(${cDateStr})</span>: 
+                                        <span style="display: block; margin-top: 2px;">${c.text}</span>
+                                    </p>
+                                    ${attachStr}
+                                </div>
+                            `;
+                        });
+                        
+                        secHtml += `</div></div>`;
+                        topicHtml += secHtml;
+                    }
+                });
+
+                if(topicHtml !== '') {
+                    let topicBadge = t.archived ? `<span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Archived</span>` : '';
+                    catHtml += `
+                        <div style="margin-left: 10px; margin-bottom: 20px;">
+                            <h3 style="font-size: 16px; font-weight: 600; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; margin: 0 0 12px 0;">Topic: ${t.title} ${topicBadge}</h3>
+                            ${topicHtml}
+                        </div>
+                    `;
+                }
+            });
+
+            if(catHtml !== '') {
+                totalDataRendered++;
+                reportHtml += `
+                    <div style="margin-bottom: 30px; page-break-inside: avoid;">
+                        <h2 style="background-color: #1e293b; color: white; padding: 6px 12px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 4px; margin: 0 0 15px 0;">Category: ${cat}</h2>
+                        ${catHtml}
+                    </div>
+                `;
+            }
+        });
+
+        if(totalDataRendered === 0) {
+            reportHtml += `<div style="text-align: center; padding: 30px; color: #94a3b8; font-style: italic; font-size: 13px;">No operational logs found matching these parameters.</div>`;
+        }
+
+        reportHtml += `<div style="margin-top: 40px; text-align: center; font-size: 9px; color: #cbd5e1; border-top: 1px solid #e2e8f0; padding-top: 10px;">End of Report — Generated by Shift Handover Tracker</div>`;
+
+        // 2. OPEN NEW WINDOW AND INJECT REPORT
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert("Popup blocked! Please allow popups for this site to generate the PDF.");
+            if(navBtn) navBtn.innerText = oldTxt;
+            return;
+        }
+
+        const fileName = `Shift_Handover_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+
+        // We inject html2pdf via CDN directly into the new window and run the execution script
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Exporting PDF...</title>
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+                <style>
+                    body { font-family: Helvetica, Arial, sans-serif; background: #e2e8f0; margin: 0; padding: 20px; }
+                    #pdf-export-dom { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 750px; margin: 0 auto; color: #333; }
+                    .status-bar { text-align: center; font-size: 18px; color: #3498db; margin-bottom: 20px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="status-bar" id="status-text">Rendering report layout...</div>
+                <div id="pdf-export-dom">
+                    ${reportHtml}
+                </div>
+                <script>
+                    window.onload = function() {
+                        const statusEl = document.getElementById('status-text');
+                        statusEl.innerText = "Generating PDF File, please wait...";
+                        
+                        const element = document.getElementById('pdf-export-dom');
+                        const opt = {
+                            margin:       0.4,
+                            filename:     '${fileName}',
+                            image:        { type: 'jpeg', quality: 0.98 },
+                            html2canvas:  { 
+                                scale: 2, 
+                                useCORS: true, 
+                                logging: false,
+                                width: 750,
+                                windowWidth: 750
+                            },
+                            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+                        };
+
+                        // A slight delay allows the DOM to finish painting large base64 images
+                        setTimeout(() => {
+                            html2pdf().set(opt).from(element).save().then(() => {
+                                statusEl.style.color = "#2ecc71";
+                                statusEl.innerText = "PDF Generated Successfully! You may close this tab.";
+                            }).catch(err => {
+                                statusEl.style.color = "#e74c3c";
+                                statusEl.innerText = "Error generating PDF. See console for details.";
+                                console.error(err);
+                            });
+                        }, 750); 
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+        if(navBtn) navBtn.innerText = oldTxt;
+    }
+
+    // --- ADMIN BACK PANEL FUNCTIONS ---
     function renderAdmin() {
         let uH = `<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>`;
-        db.users.forEach(u => {
-            uH += `<tr><td>${u.name}</td><td>${u.mobile}</td><td>
-                <button class="btn btn-warning" onclick="editUser('${u.id}')">Edit</button>
-                <button class="btn btn-danger" onclick="deleteUser('${u.id}')">Del</button>
-            </td></tr>`;
-        });
+        db.users.forEach(u => { uH += `<tr><td>${u.name}</td><td>${u.mobile || '---'}</td><td><button class="btn btn-warning" onclick="editUser('${u.id}')">Edit</button> <button class="btn btn-danger" onclick="deleteUser('${u.id}')">Del</button></td></tr>`; });
         document.getElementById('userAdminList').innerHTML = uH + `</table>`;
 
         let cH = `<table><tr><th>Category Name</th><th>Actions</th></tr>`;
-        db.categories.forEach((c, i) => {
-            cH += `<tr><td>${c}</td><td>
-                <button class="btn btn-warning" onclick="editCat(${i})">Rename</button>
-                <button class="btn btn-danger" onclick="deleteCat(${i})">Del</button>
-            </td></tr>`;
-        });
+        db.categories.forEach((c, i) => { cH += `<tr><td>${c}</td><td><button class="btn btn-warning" onclick="editCat(${i})">Rename</button> <button class="btn btn-danger" onclick="deleteCat(${i})">Del</button></td></tr>`; });
         document.getElementById('catAdminList').innerHTML = cH + `</table>`;
     }
 
     function addUser() {
         const name = document.getElementById('newUserName').value;
         const mobile = document.getElementById('newUserMobile').value;
-        if(name) { 
-            db.users.push({id:'u'+Date.now(), name, mobile}); 
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserMobile').value = '';
-            sync(); populateGlobalUser();
-        }
+        if(name) { db.users.push({id:'u'+Date.now(), name, mobile}); document.getElementById('newUserName').value = ''; document.getElementById('newUserMobile').value = ''; sync(); populateGlobalUser(); }
     }
+    
     function editUser(id) {
         const u = db.users.find(x => x.id === id);
-        const n = prompt("Name:", u.name);
-        const m = prompt("Mobile:", u.mobile);
+        const n = prompt("Name:", u.name); const m = prompt("Mobile:", u.mobile);
         if(n) { u.name = n; u.mobile = m; sync(); populateGlobalUser(); }
     }
-    function deleteUser(id) {
-        if(db.users.length > 1) { db.users = db.users.filter(x => x.id !== id); sync(); populateGlobalUser(); }
-        else { alert("Cannot delete the last user."); }
+    
+    function deleteUser(id) { 
+        if(db.users.length > 1) { 
+            db.users = db.users.filter(x => x.id !== id); 
+            sync(); 
+            populateGlobalUser(); 
+        } else { 
+            alert("Cannot delete the last user."); 
+        } 
     }
-    function addCategory() {
-        const n = prompt("New Category Name:");
-        if(n) { db.categories.push(n); sync(); }
+    
+    function addCategory() { 
+        const n = prompt("New Category Name:"); 
+        if(n) { db.categories.push(n); sync(); } 
     }
-    function editCat(i) {
-        const n = prompt("Rename:", db.categories[i]);
-        if(n) { db.categories[i] = n; sync(); }
+    
+    function editCat(i) { 
+        const n = prompt("Rename:", db.categories[i]); 
+        if(n) { db.categories[i] = n; sync(); } 
     }
-    function deleteCat(i) {
-        db.categories.splice(i, 1); sync();
+    
+    function deleteCat(i) { 
+        if(confirm("Delete this category? All assigned topics will be lost.")) {
+            const catName = db.categories[i];
+            db.topics = db.topics.filter(t => t.cat !== catName);
+            db.categories.splice(i, 1); 
+            sync(); 
+            renderAdmin();
+        }
     }
-    function hardReset() { if(confirm("ABSOLUTELY EVERYTHING will be deleted. Proceed?")) { localStorage.clear(); location.reload(); } }
+    
+    function hardReset() { 
+        if(confirm("ABSOLUTELY EVERYTHING will be deleted. Proceed?")) { 
+            localStorage.clear(); 
+            location.reload(); 
+        } 
+    }
 </script>
 </body>
 </html>
