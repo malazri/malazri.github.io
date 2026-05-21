@@ -17,13 +17,16 @@
 body { background-color: #f4f7f6; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Navigation */
-nav { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
-.nav-controls { display: flex; align-items: center; gap: 15px; }
-.user-select-nav { padding: 0.4rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); color: white; font-weight: bold; outline: none; }
+nav { background: var(--primary); color: white; padding: 0.6rem 1.2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.nav-brand { font-size: 1.15rem; font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+.nav-controls { display: flex; align-items: center; gap: 12px; }
+.user-select-nav { padding: 0.35rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.15); color: white; font-weight: 500; outline: none; font-size: 0.85rem; cursor: pointer; max-width: 140px; }
 .user-select-nav option { color: black; }
-.nav-links button { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; margin-left: 5px; }
-.nav-links button:hover { background: rgba(255,255,255,0.1); }
-.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: bold; transition: 0.2s; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-links button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 0.4rem 0.7rem; cursor: pointer; border-radius: 4px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s, transform 0.1s; font-weight: 500; }
+.nav-links button:hover { background: rgba(255,255,255,0.2); }
+.nav-links button:active { transform: scale(0.97); }
+.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: 600; }
 .btn-export-nav:hover { background: #e67e22 !important; }
 
 .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
@@ -32,8 +35,10 @@ nav { background: var(--primary); color: white; padding: 1rem; display: flex; ju
 .app-container { flex-direction: column; overflow-y: auto; }
 .sidebar { width: 100% !important; max-height: 35vh; }
 .main-content { height: 65vh; }
-nav { flex-direction: column; gap: 10px; align-items: flex-start; }
-.nav-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+nav { padding: 0.5rem 1rem; }
+.nav-brand { font-size: 1rem; }
+.nav-text { display: none; }
+.nav-links button { padding: 0.4rem 0.5rem; }
 }
 
 /* Sidebar */
@@ -53,26 +58,32 @@ nav { flex-direction: column; gap: 10px; align-items: flex-start; }
 /* Dropdown Menu */
 .dropdown { position: relative; display: inline-block; }
 .dots-btn { background: none; border: none; color: white; font-size: 1.4rem; cursor: pointer; padding: 0 5px; line-height: 1; margin-left: 5px; }
-.dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #fff; min-width: 130px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2); z-index: 10; border-radius: 4px; overflow: hidden; }
-.dropdown-content button { color: #333; padding: 10px 15px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.9rem; }
+.dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #fff; min-width: 130px; box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+z-index: 10; border-radius: 4px; overflow: hidden; }
+.dropdown-content button { color: #333; padding: 10px 15px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background: none;
+cursor: pointer; font-size: 0.9rem; }
 .dropdown-content button:hover { background-color: #f1f1f1; }
 
 /* Comments & Attachments */
 .comment { display: flex; gap: 0.8rem; margin-bottom: 1rem; position: relative; padding-right: 30px; }
-.user-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; flex-shrink: 0; font-weight: bold; }
-.comment-body { background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #eee; flex: 1; font-size: 0.9rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+.user-badge { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
+flex-shrink: 0; font-weight: bold; }
+.comment-body { background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #eee; flex: 1; font-size: 0.9rem;
+box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 .attachment-preview { max-width: 100%; max-height: 250px; border-radius: 4px; margin-top: 10px; border: 1px solid #ddd; cursor: zoom-in; }
 .del-comment-btn { position: absolute; right: 5px; top: 5px; color: #ccc; cursor: pointer; font-size: 1.2rem; border: none; background: none; }
 .del-comment-btn:hover { color: var(--danger); }
 
 /* Admin Overlay */
-.admin-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--white); z-index: 1000; display: none; padding: 2rem; overflow-y: auto; }
+.admin-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--white); z-index: 1000; display: none; padding: 2rem;
+overflow-y: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
 
 /* Modals */
-.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
-.modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center;
+justify-content: center; }
+.modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
 .btn { padding: 0.5rem 0.8rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
 .btn-success { background: var(--success); color: white; }
@@ -80,32 +91,29 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
 .btn-warning { background: var(--warning); color: white; }
 .btn-info { background: #95a5a6; color: white; }
 
-input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px;
+font-size: 0.9rem; }
 .form-group { margin-bottom: 15px; text-align: left; }
 .form-group label { font-size: 0.85rem; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
 
 /* Drag & Drop */
 .drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 1.5rem; text-align: center; color: #999; margin-bottom: 1rem; cursor: pointer; }
 .drop-zone.drag-over { border-color: var(--accent); background: #eef7ff; color: var(--accent); }
-
-/* Checkbox specific styles */
-.cb-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; margin-bottom: 6px; }
-.cb-label input { width: auto; margin: 0; }
 </style>
 </head>
 <body>
 
 <nav>
-<h2 id="pageTitle">Shift Handover Tracker</h2>
+<div class="nav-brand" id="pageTitle">⏱️ Handover</div>
 <div class="nav-controls">
-<div style="display:flex; align-items:center; gap: 5px;">
-<label style="font-size: 0.8rem; color: #ccc;">Acting User:</label>
+<div style="display:flex; align-items:center; gap: 4px;">
+<span title="Acting User" style="font-size: 0.95rem;">👤</span>
 <select id="globalUserSelect" class="user-select-nav"></select>
 </div>
 <div class="nav-links">
-<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()">📄 Download PDF</button>
-<button onclick="toggleView('dashboard')">Dashboard</button>
-<button onclick="toggleView('admin')">Admin</button>
+<button onclick="toggleView('dashboard')" title="Dashboard">📊 <span class="nav-text">Dashboard</span></button>
+<button onclick="toggleView('admin')" title="Admin Management">⚙️ <span class="nav-text">Admin</span></button>
+<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()" title="Download PDF Report">📄 <span class="nav-text">Export</span></button>
 </div>
 </div>
 </nav>
@@ -205,47 +213,54 @@ input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0;
 
 <div id="exportModal" class="modal">
 <div class="modal-content">
-<h3 style="margin-bottom: 15px;">Export Handover Report</h3>
+<h3>Export Handover Report</h3>
 
-<div style="display:flex; gap:10px;">
-<div class="form-group" style="flex:1;">
+<div class="form-group">
 <label>Outgoing Employee</label>
 <select id="exOutEmp"></select>
 </div>
-<div class="form-group" style="flex:1;">
+
+<div class="form-group">
 <label>Incoming Employee</label>
 <select id="exInEmp"></select>
-</div>
 </div>
 
 <div class="form-group">
 <label>Date Filter Option</label>
-<select id="exPeriod" onchange="toggleCustomDates()">
+<select id="exPeriod" onchange="toggleCustomDates(); populateExportTopics();">
 <option value="all">Full Active History</option>
 <option value="custom">Custom Date Range</option>
 </select>
 </div>
 
 <div id="customDateFields" class="form-group" style="display:none; gap:10px;">
-<div style="flex:1;">
+<div>
 <label>From</label>
-<input type="date" id="exFrom">
+<input type="date" id="exFrom" onchange="populateExportTopics();">
 </div>
-<div style="flex:1;">
+<div>
 <label>To</label>
-<input type="date" id="exTo">
+<input type="date" id="exTo" onchange="populateExportTopics();">
 </div>
 </div>
 
 <div class="form-group">
-<label>Select Content to Export</label>
-<div id="exportCheckboxTree" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #fafafa;">
-</div>
+<label>Filter by Specific Topic</label>
+<select id="exTopic" onchange="populateExportSections()">
+<option value="all">All Topics</option>
+</select>
 </div>
 
-<div style="display:flex; gap:10px; margin-top:20px;">
-<button class="btn btn-info" style="flex:1;" onclick="closeModal('exportModal')">Cancel</button>
-<button class="btn btn-warning" style="flex:1; font-weight:bold;" onclick="generatePDF()">Download PDF</button>
+<div class="form-group">
+<label>Filter by Specific Section</label>
+<select id="exSection" disabled>
+<option value="all">All Sections</option>
+</select>
+</div>
+
+<div class="modal-actions" style="display:flex; gap:10px; margin-top:15px;">
+<button class="btn" style="flex:1" onclick="closeModal('exportModal')">Cancel</button>
+<button class="btn btn-success" style="flex:1" onclick="generatePDF()">Download PDF</button>
 </div>
 </div>
 </div>
@@ -253,23 +268,23 @@ input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0;
 <script>
 // --- AUTO-DOWNLOAD HANDLER FOR DEEP LINKS ---
 document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const downloadId = urlParams.get('downloadCommentId');
-    if (downloadId && typeof db !== 'undefined' && db.comments) {
-        const targetComment = db.comments.find(c => c.id === downloadId);
-        if (targetComment && targetComment.fData) {
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.href = targetComment.fData;
-            downloadAnchor.download = targetComment.fName;
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            document.body.removeChild(downloadAnchor);
-            
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-            alert("The requested attachment could not be located in the system records.");
-        }
-    }
+const urlParams = new URLSearchParams(window.location.search);
+const downloadId = urlParams.get('downloadCommentId');
+if (downloadId && typeof db !== 'undefined' && db.comments) {
+const targetComment = db.comments.find(c => c.id === downloadId);
+if (targetComment && targetComment.fData) {
+const downloadAnchor = document.createElement('a');
+downloadAnchor.href = targetComment.fData;
+downloadAnchor.download = targetComment.fName;
+document.body.appendChild(downloadAnchor);
+downloadAnchor.click();
+document.body.removeChild(downloadAnchor);
+
+window.history.replaceState({}, document.title, window.location.pathname);
+} else {
+alert("The requested attachment could not be located in the system records.");
+}
+}
 });
 
 // --- DATABASE CONFIG ---
@@ -428,6 +443,7 @@ commitComment(text, userId, null, null, null);
 
 function commitComment(text, userId, fData, fName, fType) {
 db.comments.push({ id:'c'+Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
+
 droppedFile = null;
 const statusEl = document.getElementById('dzStatus');
 if(statusEl) statusEl.innerText = "Drag & drop files here or click to upload";
@@ -442,7 +458,7 @@ db.comments = db.comments.filter(c => c.id !== cid);
 sync(); renderSections();
 }
 
-// --- EXPORT TARGET SCOPE CHECKBOXES ---
+// --- EXPORT TARGET SCOPE SELECTORS ---
 function openExportModalWrapper() {
 openModal('exportModal');
 
@@ -456,64 +472,65 @@ if(inSel) inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 const curUserId = document.getElementById('globalUserSelect').value;
 if(curUserId && outSel) outSel.value = curUserId;
 
-buildExportCheckboxTree();
+// Automated Incoming user pre-selection feature if only 2 team members exist
+if(db.users.length === 2 && inSel && curUserId) {
+const secondaryUser = db.users.find(u => u.id !== curUserId);
+if(secondaryUser) inSel.value = secondaryUser.id;
 }
 
-function buildExportCheckboxTree() {
-const container = document.getElementById('exportCheckboxTree');
-if(!container) return;
-
-if(db.topics.length === 0) {
-container.innerHTML = '<p style="color:#999; font-size:0.85rem; margin:0;">No topics available.</p>';
-return;
+populateExportTopics();
 }
 
-let html = '';
-db.topics.forEach(t => {
-const sections = db.sections.filter(s => s.topicId === t.id);
-html += `
-<div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee;">
-<label class="cb-label" style="font-weight:bold; color:var(--primary);">
-<input type="checkbox" id="chk_t_${t.id}" class="topic-cb" checked onchange="toggleTopicCheckboxes('${t.id}', this.checked)">
-${t.title} ${t.archived ? '<span style="color:#e74c3c; font-size:0.75rem;">(Archived)</span>' : ''}
-</label>
-<div style="margin-left: 25px; margin-top: 5px;">
-`;
+function populateExportTopics() {
+const period = document.getElementById('exPeriod').value;
+const fromStr = document.getElementById('exFrom').value;
+const toStr = document.getElementById('exTo').value;
+const topicSel = document.getElementById('exTopic');
+if(!topicSel) return;
 
-if(sections.length === 0) {
-html += `<span style="font-size:0.8rem; color:#aaa; font-style:italic;">No sections</span>`;
+let filteredTopics = db.topics;
+
+if (period === 'custom') {
+filteredTopics = db.topics.filter(t => {
+const tSections = db.sections.filter(s => s.topicId === t.id);
+return db.comments.some(c => {
+const isSec = tSections.some(s => s.id === c.sectionId);
+return isSec && isCommentInDateRange(c.date, period, fromStr, toStr);
+});
+});
+}
+
+topicSel.innerHTML = '<option value="all">All Topics (Filtered History)</option>' +
+filteredTopics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
+
+populateExportSections();
+}
+
+function populateExportSections() {
+const topicId = document.getElementById('exTopic').value;
+const period = document.getElementById('exPeriod').value;
+const fromStr = document.getElementById('exFrom').value;
+const toStr = document.getElementById('exTo').value;
+const secSel = document.getElementById('exSection');
+if(!secSel) return;
+
+if(topicId === 'all') {
+secSel.innerHTML = '<option value="all">All Sections</option>';
+secSel.disabled = true;
 } else {
-sections.forEach(s => {
-html += `
-<label class="cb-label" style="color:#555;">
-<input type="checkbox" value="${s.id}" class="sec-cb t-sec-${t.id}" checked onchange="updateTopicCheckbox('${t.id}')">
-${s.title} ${s.archived ? '<span style="color:#7f8c8d; font-size:0.75rem;">(Completed)</span>' : ''}
-</label>
-`;
+secSel.disabled = false;
+let filteredSections = db.sections.filter(s => s.topicId === topicId);
+
+if(period === 'custom') {
+filteredSections = filteredSections.filter(s => {
+return db.comments.some(c => c.sectionId === s.id && isCommentInDateRange(c.date, period, fromStr, toStr));
 });
 }
-html += `</div></div>`;
-});
 
-container.innerHTML = html;
-}
-
-function toggleTopicCheckboxes(topicId, isChecked) {
-const checkboxes = document.querySelectorAll(`.t-sec-${topicId}`);
-checkboxes.forEach(cb => cb.checked = isChecked);
-}
-
-function updateTopicCheckbox(topicId) {
-const topicCb = document.getElementById(`chk_t_${topicId}`);
-const secCheckboxes = document.querySelectorAll(`.t-sec-${topicId}`);
-if(topicCb && secCheckboxes.length > 0) {
-const allChecked = Array.from(secCheckboxes).every(cb => cb.checked);
-const someChecked = Array.from(secCheckboxes).some(cb => cb.checked);
-topicCb.checked = allChecked;
-topicCb.indeterminate = someChecked && !allChecked;
+secSel.innerHTML = '<option value="all">All Sections under this Topic</option>' +
+filteredSections.map(s => `<option value="${s.id}">${s.title} ${s.archived ? '(Completed)' : ''}</option>`).join('');
 }
 }
-
 
 // --- CORE RENDERING ENGINE ---
 function renderTopics() {
@@ -633,11 +650,11 @@ return valid;
 return true;
 }
 
-// --- BROWSER NATIVE PDF GENERATION ENGINE ---
+// --- HTML2PDF REPORT GENERATION ENGINE ---
 function generatePDF() {
 const navBtn = document.getElementById('exportBtnNav');
-const oldTxt = navBtn ? navBtn.innerText : "Export";
-if(navBtn) navBtn.innerText = "⏳ Preparing...";
+const oldTxt = navBtn ? navBtn.innerHTML : "Export";
+if(navBtn) navBtn.innerHTML = "⏳ Preparing...";
 closeModal('exportModal');
 
 const outUserId = document.getElementById('exOutEmp').value;
@@ -646,8 +663,8 @@ const period = document.getElementById('exPeriod').value;
 const fDate = document.getElementById('exFrom').value;
 const tDate = document.getElementById('exTo').value;
 
-// Gather all selected section IDs from checkboxes
-const selectedSectionIds = Array.from(document.querySelectorAll('.sec-cb:checked')).map(cb => cb.value);
+const scopeTopicId = document.getElementById('exTopic').value;
+const scopeSectionId = document.getElementById('exSection').value;
 
 const outUser = db.users.find(u => u.id === outUserId);
 const inUser = db.users.find(u => u.id === inUserId);
@@ -688,15 +705,18 @@ let totalDataRendered = 0;
 
 db.categories.forEach(cat => {
 let catTopics = db.topics.filter(t => t.cat === cat);
+if (scopeTopicId !== 'all') {
+catTopics = catTopics.filter(t => t.id === scopeTopicId);
+}
 if(catTopics.length === 0) return;
 
 let catHtml = '';
 
 catTopics.forEach(t => {
-// Keep only sections that belong to this topic AND were checked by the user
-let tSections = db.sections.filter(s => s.topicId === t.id && selectedSectionIds.includes(s.id));
-
-if (tSections.length === 0) return; // Skip entirely if no sections are checked for this topic
+let tSections = db.sections.filter(s => s.topicId === t.id);
+if (scopeSectionId !== 'all') {
+tSections = tSections.filter(s => s.id === scopeSectionId);
+}
 
 let topicHtml = '';
 
@@ -721,7 +741,7 @@ let statusBadge = (t.archived || s.archived)
 : `<span style="font-size: 10px; background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold;">Active / Open</span>`;
 
 let secHtml = `
-<div style="margin-left: 15px; margin-bottom: 15px; page-break-inside: avoid; display:block;">
+<div style="margin-left: 15px; margin-bottom: 15px; page-break-inside: avoid;">
 <h4 style="font-size: 15px; font-weight: 600; color: #34495e; margin: 0 0 8px 0; display: flex; align-items: center;">
 <span style="color: #3498db; margin-right: 6px;">▶</span> Section: ${s.title} ${statusBadge}
 </h4>
@@ -738,30 +758,24 @@ let attachStr = '';
 if (c.fData) {
 if (c.fType && c.fType.startsWith('image/')) {
 attachStr = `
-<div style="margin-top: 8px; display: block; page-break-inside: avoid;">
-<img src="${c.fData}" style="max-width: 100%; max-height: 200px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 4px;" />
+<div style="margin-top: 8px; border: 1px solid #eee; padding: 4px; border-radius: 4px; display: inline-block; background: #fff;">
+<p style="font-size: 9px; color: #95a5a6; margin: 0 0 4px 0;">Attachment: ${c.fName}</p>
+<img src="${c.fData}" style="max-width: 100%; max-height: 220px; object-fit: contain; border-radius: 2px;" />
 </div>
 `;
 } else {
 const secureFileLink = `${appBaseUrl}?downloadCommentId=${c.id}`;
-attachStr = `
-<div style="margin-top: 6px; display: block; clear: both; page-break-inside: avoid;">
-<a href="${secureFileLink}" target="_blank" style="display: inline-block; color: #1d4ed8; text-decoration: underline; font-size: 11px; font-weight: 600; padding: 2px 0;">
-📎 Download Attachment: ${c.fName}
-</a>
-</div>
-`;
+attachStr = `<p style="margin: 6px 0 0 0;"><a href="${secureFileLink}" target="_blank" style="color: #2980b9; text-decoration: underline; font-size: 11px; font-weight: bold;">📎 Download Attachment: ${c.fName}</a></p>`;
 }
 }
 
 secHtml += `
-<div style="padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; display: block; page-break-inside: avoid;">
-<p style="margin: 0; font-size: 12px; color: #334155; line-height: 1.5;">
-<strong style="color: #0f172a;">${u.name}</strong>
-${u.mobile ? `<span style="color: #2563eb; font-size: 10px;">(${u.mobile})</span>` : ''}
-<span style="color: #64748b; font-size: 10px;">• ${cDateStr}</span>
+<div style="padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; margin-bottom: 10px;">
+<p style="margin: 0; font-size: 12px; color: #475569; line-height: 1.4;">
+<span style="font-weight: bold; color: #1e293b;">${u.name} ${u.mobile ? `<span style="color: #3b82f6; font-weight: normal; font-size: 10px;">(${u.mobile})</span>` : ''}</span>
+<span style="color: #94a3b8; font-size: 10px;">(${cDateStr})</span>:
+<span style="display: block; margin-top: 2px;">${c.text}</span>
 </p>
-<p style="margin: 4px 0 0 0; font-size: 12px; color: #334155;">${c.text}</p>
 ${attachStr}
 </div>
 `;
@@ -803,35 +817,54 @@ reportHtml += `<div style="margin-top: 40px; text-align: center; font-size: 9px;
 const printWindow = window.open('', '_blank');
 if (!printWindow) {
 alert("Popup blocked! Please allow popups for this site to generate the PDF.");
-if(navBtn) navBtn.innerText = oldTxt;
+if(navBtn) navBtn.innerHTML = oldTxt;
 return;
 }
 
-const fileName = `Shift_Handover_Report_${new Date().toISOString().split('T')[0]}`;
+const fileName = `Shift_Handover_Report_${new Date().toISOString().split('T')[0]}.pdf`;
 
 printWindow.document.write(`
 <!DOCTYPE html>
 <html>
 <head>
-<title>${fileName}</title>
+<title>Exporting PDF...</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
 <style>
-body { font-family: Helvetica, Arial, sans-serif; background: #fff; margin: 0; padding: 40px; color: #333; }
-@media print {
-body { padding: 0; margin: 0; }
-@page { margin: 10mm; }
-* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-a, a * { display: inline-block !important; position: relative !important; visibility: visible !important; z-index: 99999 !important; }
-div { overflow: visible !important; }
-}
+body { font-family: Helvetica, Arial, sans-serif; background: #e2e8f0; margin: 0; padding: 20px; }
+#pdf-export-dom { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 750px; margin: 0 auto; color: #333; }
+.status-bar { text-align: center; font-size: 18px; color: #3498db; margin-bottom: 20px; font-weight: bold; }
 </style>
 </head>
 <body>
+<div class="status-bar" id="status-text">Rendering report layout...</div>
+<div id="pdf-export-dom">
 ${reportHtml}
+</div>
 <script>
 window.onload = function() {
+const statusEl = document.getElementById('status-text');
+statusEl.innerText = "Generating PDF File, please wait...";
+
+const element = document.getElementById('pdf-export-dom');
+const opt = {
+margin:       0.4,
+filename:     '${fileName}',
+image:        { type: 'jpeg', quality: 0.98 },
+html2canvas:  { scale: 2, useCORS: true, logging: false, width: 750, windowWidth: 750 },
+jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+enableLinks:  true
+};
+
 setTimeout(() => {
-window.print();
-}, 500);
+html2pdf().set(opt).from(element).save().then(() => {
+statusEl.style.color = "#2ecc71";
+statusEl.innerText = "PDF Generated Successfully! You may close this tab.";
+}).catch(err => {
+statusEl.style.color = "#e74c3c";
+statusEl.innerText = "Error generating PDF. See console for details.";
+console.error(err);
+});
+}, 750);
 };
 <\/script>
 </body>
@@ -839,7 +872,7 @@ window.print();
 `);
 
 printWindow.document.close();
-if(navBtn) navBtn.innerText = oldTxt;
+if(navBtn) navBtn.innerHTML = oldTxt;
 }
 
 // --- ADMIN BACK PANEL FUNCTIONS ---
