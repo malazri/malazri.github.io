@@ -17,17 +17,46 @@
 body { background-color: #f4f7f6; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Navigation */
-nav { background: var(--primary); color: white; padding: 0.6rem 1.2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-.nav-brand { font-size: 1.15rem; font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
-.nav-controls { display: flex; align-items: center; gap: 12px; }
-.user-select-nav { padding: 0.35rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.15); color: white; font-weight: 500; outline: none; font-size: 0.85rem; cursor: pointer; max-width: 140px; }
+nav { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
+.nav-controls { display: flex; align-items: center; gap: 15px; }
+.user-select-nav { padding: 0.4rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); color: white; font-weight: bold; outline: none; }
 .user-select-nav option { color: black; }
-.nav-links { display: flex; align-items: center; gap: 6px; }
-.nav-links button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 0.4rem 0.7rem; cursor: pointer; border-radius: 4px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s, transform 0.1s; font-weight: 500; }
-.nav-links button:hover { background: rgba(255,255,255,0.2); }
-.nav-links button:active { transform: scale(0.97); }
-.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: 600; }
+
+/* Interactive Hover Reveal Layout for Nav Actions */
+.nav-links { display: flex; align-items: center; }
+.nav-links button { 
+    background: transparent; 
+    border: 1px solid rgba(255,255,255,0.3); 
+    color: white; 
+    padding: 0.5rem 1rem; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: background 0.2s, max-width 0.3s ease;
+}
+.nav-links button:hover { background: rgba(255,255,255,0.1); }
+.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: bold; }
 .btn-export-nav:hover { background: #e67e22 !important; }
+
+/* Text visibility toggle logic on hover */
+.nav-links button .nav-text {
+    max-width: 0;
+    opacity: 0;
+    display: inline-block;
+    transition: max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.nav-links button:hover .nav-text {
+    max-width: 150px;
+    opacity: 1;
+    margin-left: 6px;
+}
 
 .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
 
@@ -35,10 +64,8 @@ nav { background: var(--primary); color: white; padding: 0.6rem 1.2rem; display:
 .app-container { flex-direction: column; overflow-y: auto; }
 .sidebar { width: 100% !important; max-height: 35vh; }
 .main-content { height: 65vh; }
-nav { padding: 0.5rem 1rem; }
-.nav-brand { font-size: 1rem; }
-.nav-text { display: none; }
-.nav-links button { padding: 0.4rem 0.5rem; }
+nav { flex-direction: column; gap: 10px; align-items: flex-start; }
+.nav-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
 }
 
 /* Sidebar */
@@ -90,6 +117,8 @@ justify-content: center; }
 .btn-danger { background: var(--danger); color: white; }
 .btn-warning { background: var(--warning); color: white; }
 .btn-info { background: #95a5a6; color: white; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-outline { background: transparent; border: 1px solid #ccc; color: #555; }
 
 input, select, textarea { width: 100%; padding: 0.7rem; margin: 0.5rem 0 1rem 0; border: 1px solid #ddd; border-radius: 4px;
 font-size: 0.9rem; }
@@ -104,16 +133,16 @@ font-size: 0.9rem; }
 <body>
 
 <nav>
-<div class="nav-brand" id="pageTitle">⏱️ Handover</div>
+<h2 id="pageTitle">Shift Handover Tracker</h2>
 <div class="nav-controls">
-<div style="display:flex; align-items:center; gap: 4px;">
-<span title="Acting User" style="font-size: 0.95rem;">👤</span>
+<div style="display:flex; align-items:center; gap: 5px;">
+<label style="font-size: 0.8rem; color: #ccc;">Acting User:</label>
 <select id="globalUserSelect" class="user-select-nav"></select>
 </div>
 <div class="nav-links">
-<button onclick="toggleView('dashboard')" title="Dashboard">📊 <span class="nav-text">Dashboard</span></button>
-<button onclick="toggleView('admin')" title="Admin Management">⚙️ <span class="nav-text">Admin</span></button>
-<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()" title="Download PDF Report">📄 <span class="nav-text">Export</span></button>
+<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()">📄<span class="nav-text">Download PDF</span></button>
+<button onclick="toggleView('dashboard')">📊<span class="nav-text">Dashboard</span></button>
+<button onclick="toggleView('admin')">⚙️<span class="nav-text">Admin</span></button>
 </div>
 </div>
 </nav>
@@ -227,7 +256,7 @@ font-size: 0.9rem; }
 
 <div class="form-group">
 <label>Date Filter Option</label>
-<select id="exPeriod" onchange="toggleCustomDates(); populateExportTopics();">
+<select id="exPeriod" onchange="toggleCustomDates(); validateExportHasData();">
 <option value="all">Full Active History</option>
 <option value="custom">Custom Date Range</option>
 </select>
@@ -236,31 +265,31 @@ font-size: 0.9rem; }
 <div id="customDateFields" class="form-group" style="display:none; gap:10px;">
 <div>
 <label>From</label>
-<input type="date" id="exFrom" onchange="populateExportTopics();">
+<input type="date" id="exFrom" onchange="validateExportHasData()">
 </div>
 <div>
 <label>To</label>
-<input type="date" id="exTo" onchange="populateExportTopics();">
+<input type="date" id="exTo" onchange="validateExportHasData()">
 </div>
 </div>
 
 <div class="form-group">
 <label>Filter by Specific Topic</label>
-<select id="exTopic" onchange="populateExportSections()">
+<select id="exTopic" onchange="populateExportSections(); validateExportHasData();">
 <option value="all">All Topics</option>
 </select>
 </div>
 
 <div class="form-group">
 <label>Filter by Specific Section</label>
-<select id="exSection" disabled>
+<select id="exSection" onchange="validateExportHasData()" disabled>
 <option value="all">All Sections</option>
 </select>
 </div>
 
-<div class="modal-actions" style="display:flex; gap:10px; margin-top:15px;">
-<button class="btn" style="flex:1" onclick="closeModal('exportModal')">Cancel</button>
-<button class="btn btn-success" style="flex:1" onclick="generatePDF()">Download PDF</button>
+<div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+<button class="btn btn-outline" onclick="closeModal('exportModal')">Cancel</button>
+<button class="btn btn-primary" onclick="generatePDF()">Download PDF</button>
 </div>
 </div>
 </div>
@@ -280,6 +309,7 @@ document.body.appendChild(downloadAnchor);
 downloadAnchor.click();
 document.body.removeChild(downloadAnchor);
 
+// Clean the URL without reloading the page
 window.history.replaceState({}, document.title, window.location.pathname);
 } else {
 alert("The requested attachment could not be located in the system records.");
@@ -329,6 +359,14 @@ if(id === 'commentModal') {
 document.getElementById('coIn').value = "";
 document.getElementById('dzStatus').innerText = "";
 document.getElementById('dzText').innerText = "Drag & Drop file or click here";
+}
+if(id === 'exportModal') {
+const userOpts = `<option value="">-- Select Employee --</option>` + db.users.map(u => `<option value="${u.id}">${u.name} (${u.mobile || 'No Mobile'})</option>`).join('');
+document.getElementById('exOutEmp').innerHTML = userOpts;
+document.getElementById('exInEmp').innerHTML = userOpts;
+
+const curUserId = document.getElementById('globalUserSelect').value;
+if(curUserId) document.getElementById('exOutEmp').value = curUserId;
 }
 document.getElementById(id).style.display = 'flex';
 }
@@ -410,7 +448,7 @@ sync(); renderSections();
 
 function toggleArchivedSecsVisibility() { showArchivedSecs = !showArchivedSecs; renderSections(); }
 
-// --- DRAG & DROP ATTACHMENTS ---
+/* Drag & Drop Attachments */
 const dz = document.getElementById('dropZone');
 const fi = document.getElementById('fileIn');
 if(dz) dz.onclick = () => fi.click();
@@ -444,6 +482,7 @@ commitComment(text, userId, null, null, null);
 function commitComment(text, userId, fData, fName, fType) {
 db.comments.push({ id:'c'+Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
 
+// FIX: Reset tracking and clear out interface for next entry
 droppedFile = null;
 const statusEl = document.getElementById('dzStatus');
 if(statusEl) statusEl.innerText = "Drag & drop files here or click to upload";
@@ -458,7 +497,7 @@ db.comments = db.comments.filter(c => c.id !== cid);
 sync(); renderSections();
 }
 
-// --- EXPORT TARGET SCOPE SELECTORS ---
+// --- EXPORT TARGET SCOPE SELECTORS & VALIDATION ---
 function openExportModalWrapper() {
 openModal('exportModal');
 
@@ -469,48 +508,24 @@ const userOpts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`)
 if(outSel) outSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 if(inSel) inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 
-const curUserId = document.getElementById('globalUserSelect').value;
-if(curUserId && outSel) outSel.value = curUserId;
-
-// Automated Incoming user pre-selection feature if only 2 team members exist
-if(db.users.length === 2 && inSel && curUserId) {
-const secondaryUser = db.users.find(u => u.id !== curUserId);
-if(secondaryUser) inSel.value = secondaryUser.id;
-}
-
-populateExportTopics();
-}
-
-function populateExportTopics() {
-const period = document.getElementById('exPeriod').value;
-const fromStr = document.getElementById('exFrom').value;
-const toStr = document.getElementById('exTo').value;
 const topicSel = document.getElementById('exTopic');
-if(!topicSel) return;
-
-let filteredTopics = db.topics;
-
-if (period === 'custom') {
-filteredTopics = db.topics.filter(t => {
-const tSections = db.sections.filter(s => s.topicId === t.id);
-return db.comments.some(c => {
-const isSec = tSections.some(s => s.id === c.sectionId);
-return isSec && isCommentInDateRange(c.date, period, fromStr, toStr);
-});
-});
+if(topicSel) {
+topicSel.innerHTML = '<option value="all">All Topics (Full History)</option>' +
+db.topics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
 }
 
-topicSel.innerHTML = '<option value="all">All Topics (Filtered History)</option>' +
-filteredTopics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
+const secSel = document.getElementById('exSection');
+if(secSel) {
+secSel.innerHTML = '<option value="all">All Sections</option>';
+secSel.disabled = true;
+}
 
-populateExportSections();
+// Perform initial validation lock scan
+validateExportHasData();
 }
 
 function populateExportSections() {
 const topicId = document.getElementById('exTopic').value;
-const period = document.getElementById('exPeriod').value;
-const fromStr = document.getElementById('exFrom').value;
-const toStr = document.getElementById('exTo').value;
 const secSel = document.getElementById('exSection');
 if(!secSel) return;
 
@@ -519,16 +534,70 @@ secSel.innerHTML = '<option value="all">All Sections</option>';
 secSel.disabled = true;
 } else {
 secSel.disabled = false;
-let filteredSections = db.sections.filter(s => s.topicId === topicId);
-
-if(period === 'custom') {
-filteredSections = filteredSections.filter(s => {
-return db.comments.some(c => c.sectionId === s.id && isCommentInDateRange(c.date, period, fromStr, toStr));
-});
-}
-
+const filteredSections = db.sections.filter(s => s.topicId === topicId);
 secSel.innerHTML = '<option value="all">All Sections under this Topic</option>' +
 filteredSections.map(s => `<option value="${s.id}">${s.title} ${s.archived ? '(Completed)' : ''}</option>`).join('');
+}
+}
+
+function validateExportHasData() {
+const period = document.getElementById('exPeriod').value;
+const fDate = document.getElementById('exFrom').value;
+const tDate = document.getElementById('exTo').value;
+const scopeTopicId = document.getElementById('exTopic').value;
+const scopeSectionId = document.getElementById('exSection').value;
+
+let totalMatchCount = 0;
+
+db.categories.forEach(cat => {
+let catTopics = db.topics.filter(t => t.cat === cat);
+if (scopeTopicId !== 'all') {
+catTopics = catTopics.filter(t => t.id === scopeTopicId);
+}
+
+catTopics.forEach(t => {
+let tSections = db.sections.filter(s => s.topicId === t.id);
+if (scopeSectionId !== 'all') {
+tSections = tSections.filter(s => s.id === scopeSectionId);
+}
+
+tSections.forEach(s => {
+const allComments = db.comments.filter(c => c.sectionId === s.id);
+if (allComments.length === 0) return;
+
+let includeSection = false;
+if (!t.archived && !s.archived) {
+if (period === 'custom') {
+includeSection = allComments.some(c => isCommentInDateRange(c.date, period, fDate, tDate));
+} else {
+includeSection = true;
+}
+} else {
+if (allComments.some(c => isCommentInDateRange(c.date, period, fDate, tDate))) {
+includeSection = true;
+}
+}
+
+if (includeSection) {
+const commentsInRange = allComments.filter(c => isCommentInDateRange(c.date, period, fDate, tDate));
+totalMatchCount += commentsInRange.length;
+}
+});
+});
+
+const downloadBtn = document.querySelector("#exportModal .btn-primary");
+if (downloadBtn) {
+if (totalMatchCount === 0) {
+downloadBtn.disabled = true;
+downloadBtn.style.opacity = "0.4";
+downloadBtn.style.cursor = "not-allowed";
+downloadBtn.innerText = "No Logs Available";
+} else {
+downloadBtn.disabled = false;
+downloadBtn.style.opacity = "1";
+downloadBtn.style.cursor = "pointer";
+downloadBtn.innerText = "Download PDF";
+}
 }
 }
 
@@ -653,8 +722,8 @@ return true;
 // --- HTML2PDF REPORT GENERATION ENGINE ---
 function generatePDF() {
 const navBtn = document.getElementById('exportBtnNav');
-const oldTxt = navBtn ? navBtn.innerHTML : "Export";
-if(navBtn) navBtn.innerHTML = "⏳ Preparing...";
+const oldTxt = navBtn ? navBtn.innerHTML : "📄 Download PDF";
+if(navBtn) navBtn.innerHTML = "⏳<span class='nav-text'>Preparing...</span>";
 closeModal('exportModal');
 
 const outUserId = document.getElementById('exOutEmp').value;
