@@ -17,33 +17,19 @@
 body { background-color: #f4f7f6; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Navigation */
-nav { background: var(--primary); color: white; padding: 1rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; }
-.nav-controls { display: flex; align-items: center; gap: 15px; }
-.user-select-nav { padding: 0.4rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); color: white; font-weight: bold; outline: none; }
+nav { background: var(--primary); color: white; padding: 0.6rem 1.2rem; display: flex; justify-content: space-between; align-items: center; z-index: 1001; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.nav-brand { font-size: 1.15rem; font-weight: bold; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+.nav-controls { display: flex; align-items: center; gap: 12px; }
+.user-select-nav { padding: 0.35rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.15); color: white; font-weight: 500; outline: none; font-size: 0.85rem; cursor: pointer; max-width: 140px; }
 .user-select-nav option { color: black; }
-
-/* Interactive Hover Reveal Layout for Nav Actions */
-.nav-links { display: flex; align-items: center; }
-.nav-links button { 
-    background: transparent; 
-    border: 1px solid rgba(255,255,255,0.3); 
-    color: white; 
-    padding: 0.5rem 1rem; 
-    cursor: pointer; 
-    border-radius: 4px; 
-    margin-left: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    white-space: nowrap;
-    transition: background 0.2s, max-width 0.3s ease;
-}
-.nav-links button:hover { background: rgba(255,255,255,0.1); }
-.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: bold; }
+.nav-links { display: flex; align-items: center; gap: 6px; }
+.nav-links button { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 0.4rem 0.7rem; cursor: pointer; border-radius: 4px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s, transform 0.1s; font-weight: 500; overflow: hidden; white-space: nowrap; }
+.nav-links button:hover { background: rgba(255,255,255,0.2); }
+.nav-links button:active { transform: scale(0.97); }
+.btn-export-nav { background: var(--warning) !important; color: white !important; border: none !important; font-weight: 600; }
 .btn-export-nav:hover { background: #e67e22 !important; }
 
-/* Text visibility toggle logic on hover */
+/* Interactive Hover Reveal Layout */
 .nav-links button .nav-text {
     max-width: 0;
     opacity: 0;
@@ -64,8 +50,10 @@ nav { background: var(--primary); color: white; padding: 1rem; display: flex; ju
 .app-container { flex-direction: column; overflow-y: auto; }
 .sidebar { width: 100% !important; max-height: 35vh; }
 .main-content { height: 65vh; }
-nav { flex-direction: column; gap: 10px; align-items: flex-start; }
-.nav-controls { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+nav { padding: 0.5rem 1rem; }
+.nav-brand { font-size: 1rem; }
+.nav-text { display: none; }
+.nav-links button { padding: 0.4rem 0.5rem; }
 }
 
 /* Sidebar */
@@ -112,7 +100,7 @@ th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
 justify-content: center; }
 .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-.btn { padding: 0.5rem 0.8rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+.btn { padding: 0.5rem 0.8rem; border-radius: 4px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 500; transition: opacity 0.2s; }
 .btn-success { background: var(--success); color: white; }
 .btn-danger { background: var(--danger); color: white; }
 .btn-warning { background: var(--warning); color: white; }
@@ -133,16 +121,16 @@ font-size: 0.9rem; }
 <body>
 
 <nav>
-<h2 id="pageTitle">Shift Handover Tracker</h2>
+<div class="nav-brand" id="pageTitle">⏱️ Handover</div>
 <div class="nav-controls">
-<div style="display:flex; align-items:center; gap: 5px;">
-<label style="font-size: 0.8rem; color: #ccc;">Acting User:</label>
+<div style="display:flex; align-items:center; gap: 4px;">
+<span title="Acting User" style="font-size: 0.95rem;">👤</span>
 <select id="globalUserSelect" class="user-select-nav"></select>
 </div>
 <div class="nav-links">
-<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()">📄<span class="nav-text">Download PDF</span></button>
-<button onclick="toggleView('dashboard')">📊<span class="nav-text">Dashboard</span></button>
-<button onclick="toggleView('admin')">⚙️<span class="nav-text">Admin</span></button>
+<button onclick="toggleView('dashboard')" title="Dashboard">📊<span class="nav-text">Dashboard</span></button>
+<button onclick="toggleView('admin')" title="Admin Management">⚙️<span class="nav-text">Admin</span></button>
+<button class="btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper()" title="Download PDF Report">📄<span class="nav-text">Export</span></button>
 </div>
 </div>
 </nav>
@@ -256,20 +244,20 @@ font-size: 0.9rem; }
 
 <div class="form-group">
 <label>Date Filter Option</label>
-<select id="exPeriod" onchange="toggleCustomDates(); validateExportHasData();">
+<select id="exPeriod" onchange="toggleCustomDates(); populateExportTopics();">
 <option value="all">Full Active History</option>
 <option value="custom">Custom Date Range</option>
 </select>
 </div>
 
 <div id="customDateFields" class="form-group" style="display:none; gap:10px;">
-<div>
+<div style="flex:1">
 <label>From</label>
-<input type="date" id="exFrom" onchange="validateExportHasData()">
+<input type="date" id="exFrom" onchange="populateExportTopics()">
 </div>
-<div>
+<div style="flex:1">
 <label>To</label>
-<input type="date" id="exTo" onchange="validateExportHasData()">
+<input type="date" id="exTo" onchange="populateExportTopics()">
 </div>
 </div>
 
@@ -288,8 +276,8 @@ font-size: 0.9rem; }
 </div>
 
 <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-<button class="btn btn-outline" onclick="closeModal('exportModal')">Cancel</button>
-<button class="btn btn-primary" onclick="generatePDF()">Download PDF</button>
+<button class="btn btn-outline" style="flex:1" onclick="closeModal('exportModal')">Cancel</button>
+<button class="btn btn-primary" style="flex:1; font-weight:bold" id="executeExportBtn" onclick="generatePDF()">Download PDF</button>
 </div>
 </div>
 </div>
@@ -308,8 +296,6 @@ downloadAnchor.download = targetComment.fName;
 document.body.appendChild(downloadAnchor);
 downloadAnchor.click();
 document.body.removeChild(downloadAnchor);
-
-// Clean the URL without reloading the page
 window.history.replaceState({}, document.title, window.location.pathname);
 } else {
 alert("The requested attachment could not be located in the system records.");
@@ -359,14 +345,6 @@ if(id === 'commentModal') {
 document.getElementById('coIn').value = "";
 document.getElementById('dzStatus').innerText = "";
 document.getElementById('dzText').innerText = "Drag & Drop file or click here";
-}
-if(id === 'exportModal') {
-const userOpts = `<option value="">-- Select Employee --</option>` + db.users.map(u => `<option value="${u.id}">${u.name} (${u.mobile || 'No Mobile'})</option>`).join('');
-document.getElementById('exOutEmp').innerHTML = userOpts;
-document.getElementById('exInEmp').innerHTML = userOpts;
-
-const curUserId = document.getElementById('globalUserSelect').value;
-if(curUserId) document.getElementById('exOutEmp').value = curUserId;
 }
 document.getElementById(id).style.display = 'flex';
 }
@@ -482,7 +460,6 @@ commitComment(text, userId, null, null, null);
 function commitComment(text, userId, fData, fName, fType) {
 db.comments.push({ id:'c'+Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
 
-// FIX: Reset tracking and clear out interface for next entry
 droppedFile = null;
 const statusEl = document.getElementById('dzStatus');
 if(statusEl) statusEl.innerText = "Drag & drop files here or click to upload";
@@ -508,24 +485,47 @@ const userOpts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`)
 if(outSel) outSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 if(inSel) inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 
+const curUserId = document.getElementById('globalUserSelect').value;
+if(curUserId && outSel) outSel.value = curUserId;
+
+if(db.users.length === 2 && inSel && curUserId) {
+const secondaryUser = db.users.find(u => u.id !== curUserId);
+if(secondaryUser) inSel.value = secondaryUser.id;
+}
+
+populateExportTopics();
+}
+
+function populateExportTopics() {
+const period = document.getElementById('exPeriod').value;
+const fromStr = document.getElementById('exFrom').value;
+const toStr = document.getElementById('exTo').value;
 const topicSel = document.getElementById('exTopic');
-if(topicSel) {
-topicSel.innerHTML = '<option value="all">All Topics (Full History)</option>' +
-db.topics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
+if(!topicSel) return;
+
+let filteredTopics = db.topics;
+
+if (period === 'custom') {
+filteredTopics = db.topics.filter(t => {
+const tSections = db.sections.filter(s => s.topicId === t.id);
+return db.comments.some(c => {
+const isSec = tSections.some(s => s.id === c.sectionId);
+return isSec && isCommentInDateRange(c.date, period, fromStr, toStr);
+});
+});
 }
 
-const secSel = document.getElementById('exSection');
-if(secSel) {
-secSel.innerHTML = '<option value="all">All Sections</option>';
-secSel.disabled = true;
-}
+topicSel.innerHTML = '<option value="all">All Topics (Filtered History)</option>' +
+filteredTopics.map(t => `<option value="${t.id}">${t.title} ${t.archived ? '(Archived)' : ''}</option>`).join('');
 
-// Perform initial validation lock scan
-validateExportHasData();
+populateExportSections();
 }
 
 function populateExportSections() {
 const topicId = document.getElementById('exTopic').value;
+const period = document.getElementById('exPeriod').value;
+const fromStr = document.getElementById('exFrom').value;
+const toStr = document.getElementById('exTo').value;
 const secSel = document.getElementById('exSection');
 if(!secSel) return;
 
@@ -534,10 +534,18 @@ secSel.innerHTML = '<option value="all">All Sections</option>';
 secSel.disabled = true;
 } else {
 secSel.disabled = false;
-const filteredSections = db.sections.filter(s => s.topicId === topicId);
+let filteredSections = db.sections.filter(s => s.topicId === topicId);
+
+if(period === 'custom') {
+filteredSections = filteredSections.filter(s => {
+return db.comments.some(c => c.sectionId === s.id && isCommentInDateRange(c.date, period, fromStr, toStr));
+});
+}
+
 secSel.innerHTML = '<option value="all">All Sections under this Topic</option>' +
 filteredSections.map(s => `<option value="${s.id}">${s.title} ${s.archived ? '(Completed)' : ''}</option>`).join('');
 }
+validateExportHasData();
 }
 
 function validateExportHasData() {
@@ -585,7 +593,7 @@ totalMatchCount += commentsInRange.length;
 });
 });
 
-const downloadBtn = document.querySelector("#exportModal .btn-primary");
+const downloadBtn = document.getElementById("executeExportBtn");
 if (downloadBtn) {
 if (totalMatchCount === 0) {
 downloadBtn.disabled = true;
@@ -607,11 +615,14 @@ const filterVal = document.getElementById('topicFilter').value;
 const isArchivedView = (filterVal === 'archived');
 const filteredTopics = db.topics.filter(t => !!t.archived === isArchivedView);
 
-document.getElementById('topicList').innerHTML = filteredTopics.map(t => `
+document.getElementById('topicList').innerHTML = filteredTopics.map(t => {
+const archTxt = t.archived ? '<b>(Archived)</b>' : '';
+return `
 <div class="topic-card ${t.id === activeT ? 'active' : ''} ${t.archived ? 'is-archived' : ''}" onclick="viewTopic('${t.id}')">
-<small>${t.cat} ${t.archived ? '<b>(Archived)</b>' : ''}</small>
+<small>${t.cat} ${archTxt}</small>
 <h4>${t.title}</h4>
-</div>`).join('');
+</div>`;
+}).join('');
 }
 
 function viewTopic(id) {
@@ -676,7 +687,9 @@ document.getElementById('sectionsArea').innerHTML = html;
 
 function renderComments(sid) {
 const filtered = db.comments.filter(c => c.sectionId === sid);
-const sectionIsArchived = db.sections.find(s => s.id === sid)?.archived;
+const sec = db.sections.find(s => s.id === sid);
+const sectionIsArchived = sec ? sec.archived : false;
+
 if(!filtered.length) return `<p style="color:#ccc; font-size:0.8rem;">No updates.</p>`;
 
 return filtered.map(c => {
@@ -892,53 +905,15 @@ return;
 
 const fileName = `Shift_Handover_Report_${new Date().toISOString().split('T')[0]}.pdf`;
 
-printWindow.document.write(`
-<!DOCTYPE html>
-<html>
-<head>
-<title>Exporting PDF...</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
-<style>
-body { font-family: Helvetica, Arial, sans-serif; background: #e2e8f0; margin: 0; padding: 20px; }
-#pdf-export-dom { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 750px; margin: 0 auto; color: #333; }
-.status-bar { text-align: center; font-size: 18px; color: #3498db; margin-bottom: 20px; font-weight: bold; }
-</style>
-</head>
-<body>
-<div class="status-bar" id="status-text">Rendering report layout...</div>
-<div id="pdf-export-dom">
-${reportHtml}
-</div>
-<script>
-window.onload = function() {
-const statusEl = document.getElementById('status-text');
-statusEl.innerText = "Generating PDF File, please wait...";
-
-const element = document.getElementById('pdf-export-dom');
-const opt = {
-margin:       0.4,
-filename:     '${fileName}',
-image:        { type: 'jpeg', quality: 0.98 },
-html2canvas:  { scale: 2, useCORS: true, logging: false, width: 750, windowWidth: 750 },
-jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
-enableLinks:  true
-};
-
-setTimeout(() => {
-html2pdf().set(opt).from(element).save().then(() => {
-statusEl.style.color = "#2ecc71";
-statusEl.innerText = "PDF Generated Successfully! You may close this tab.";
-}).catch(err => {
-statusEl.style.color = "#e74c3c";
-statusEl.innerText = "Error generating PDF. See console for details.";
-console.error(err);
-});
-}, 750);
-};
-<\/script>
-</body>
-</html>
-`);
+// Secure string concatenation prevents HTML parsers from triggering SyntaxErrors
+printWindow.document.write("<!DOCTYPE html><html><head><title>Exporting PDF...</title>");
+printWindow.document.write("<scr" + "ipt src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'></scr" + "ipt>");
+printWindow.document.write("<style>body { font-family: Helvetica, Arial, sans-serif; background: #e2e8f0; margin: 0; padding: 20px; } #pdf-export-dom { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 750px; margin: 0 auto; color: #333; } .status-bar { text-align: center; font-size: 18px; color: #3498db; margin-bottom: 20px; font-weight: bold; }</style></head><body>");
+printWindow.document.write("<div class='status-bar' id='status-text'>Rendering report layout...</div>");
+printWindow.document.write("<div id='pdf-export-dom'>" + reportHtml + "</div>");
+printWindow.document.write("<scr" + "ipt>");
+printWindow.document.write("window.onload = function() { const statusEl = document.getElementById('status-text'); statusEl.innerText = 'Generating PDF File, please wait...'; const element = document.getElementById('pdf-export-dom'); const opt = { margin: 0.4, filename: '" + fileName + "', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false, width: 750, windowWidth: 750 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }, enableLinks: true }; setTimeout(() => { html2pdf().set(opt).from(element).save().then(() => { statusEl.style.color = '#2ecc71'; statusEl.innerText = 'PDF Generated Successfully! You may close this tab.'; }).catch(err => { statusEl.style.color = '#e74c3c'; statusEl.innerText = 'Error generating PDF. See console for details.'; console.error(err); }); }, 750); };");
+printWindow.document.write("</scr" + "ipt></body></html>");
 
 printWindow.document.close();
 if(navBtn) navBtn.innerHTML = oldTxt;
