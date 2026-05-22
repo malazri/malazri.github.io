@@ -56,7 +56,16 @@ nav {
 }
 .user-select-nav option { color: black; }
 
-/* Interactive Buttons */
+/* Universal Flex Button Formatting */
+.btn-flex {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+/* Interactive Top Nav Buttons */
 .action-btn {
     background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white;
     padding: 0.6rem; border-radius: 6px; display: inline-flex; align-items: center;
@@ -88,6 +97,20 @@ nav {
 .welcome-msg { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
 .welcome-name { font-weight: 700; color: var(--primary); font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
 
+/* Topic/Filter Header Container */
+.menu-controls-group { display: flex; align-items: center; gap: 8px; width: 100%; }
+
+/* Toggle Switch Filter */
+.filter-toggle-container {
+    display: flex; background-color: #e2e8f0; padding: 4px; border-radius: 8px; flex: 1; height: 40px;
+}
+.filter-toggle-btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 0.85rem; font-weight: 600; border: none; background: transparent; color: var(--secondary);
+    border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.filter-toggle-btn.active { background-color: var(--white); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
 /* Topics List */
 .topic-list { flex: 1; padding: 1rem; }
 .topic-card { 
@@ -102,7 +125,7 @@ nav {
 
 /* Main Content Area */
 .main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); overflow: hidden; position: relative; }
-#topicHeader { padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; background: var(--white); display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+#topicHeader { padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; background: var(--white); display: flex; justify-content: space-between; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 #sectionsArea { flex: 1; overflow-y: auto; padding: 2rem; }
 
 .section-container { margin-bottom: 2rem; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); background: var(--white); }
@@ -124,7 +147,7 @@ nav {
 .dropdown { position: relative; display: inline-block; }
 .dots-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; margin-left: 8px; }
 .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background-color: #fff; min-width: 140px; box-shadow: 0px 10px 25px rgba(0,0,0,0.15); z-index: 10; border-radius: 6px; overflow: hidden; border: 1px solid #e2e8f0; }
-.dropdown-content button { color: #333; padding: 12px 15px; text-decoration: none; display: block; width: 100%; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s; }
+.dropdown-content button { color: #333; padding: 12px 15px; text-decoration: none; display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: none; background: none; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s; }
 .dropdown-content button:hover { background-color: #f1f5f9; }
 
 /* Admin Overlay */
@@ -140,7 +163,7 @@ th { background: #f8fafc; font-weight: 600; color: #475569; }
 .modal-content { background: white; padding: 2rem; border-radius: 12px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
 
 /* Buttons & Inputs */
-.btn { padding: 0.6rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn { padding: 0.6rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s ease; height: 40px; }
 .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.08); }
 .btn-success { background: var(--success); color: white; }
 .btn-danger { background: var(--danger); color: white; }
@@ -193,6 +216,21 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     .sidebar.open { left: 0; }
     .mobile-close-btn { display: block; }
 
+    /* Globally Hide ALL Text inside Buttons on Mobile */
+    .btn-text { display: none !important; }
+
+    /* Turn standard buttons into square icons on Mobile */
+    .btn, .action-btn {
+        padding: 0 !important;
+        width: 40px; height: 40px;
+        min-width: 40px;
+        flex: 0 0 40px; /* Prevent stretching */
+    }
+
+    /* Keep dropdown buttons looking like a list */
+    .dropdown-content .btn-text { display: inline-block !important; }
+    .dropdown-content button { width: 100%; height: auto; padding: 12px 15px !important; justify-content: flex-start; flex: none; }
+
     /* Move Navigation Controls to Bottom Row of Mobile Sidebar */
     .nav-controls {
         position: static; height: auto; background: var(--primary); 
@@ -202,12 +240,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     
     /* Mobile Touch Buttons Layout */
     .user-select-wrapper, .action-btn {
-        flex: 1; height: 50px; border-radius: 8px;
+        flex: 1; height: 45px; border-radius: 8px;
         background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
         display: flex; align-items: center; justify-content: center;
     }
-    .action-btn { padding: 0; box-shadow: none; }
-    .action-btn:hover { padding: 0; background: rgba(255,255,255,0.15); }
+    .action-btn { box-shadow: none; }
+    .action-btn:hover { background: rgba(255,255,255,0.15); }
     .action-btn .btn-icon { font-size: 1.5rem; margin: 0; }
     
     /* Invisible Select Overlay for Switch User */
@@ -218,34 +256,37 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         opacity: 0; margin: 0; padding: 0; z-index: 2;
     }
     
-    /* Main Content fixes */
+    /* Main Content fixes - Enforce Horizontal Layouts */
     .main-content { flex: none; height: auto; min-height: 100vh; }
-    #topicHeader { flex-direction: column; padding: 1.2rem; gap: 10px; }
-    #topicHeader > div:last-child { width: 100%; display: flex; }
-    #topicHeader button { flex: 1; }
-    #sectionsArea { padding: 1rem; padding-bottom: 80px; } /* Space for FAB */
+    #topicHeader { flex-direction: row; align-items: center; padding: 1.2rem; gap: 10px; flex-wrap: nowrap; }
+    #topicHeader > div:first-child { flex: 1; min-width: 0; } /* Allow text wrapping */
+    #topicHeader > div:last-child { display: flex; flex-direction: row; gap: 6px; flex-wrap: nowrap; }
+    
+    /* Section Headers */
+    .section-header { flex-direction: row; align-items: center; flex-wrap: nowrap; padding: 1rem; }
+    .section-header > span:first-child { flex: 1; min-width: 0; }
+    .section-header > div:last-child { display: flex; flex-direction: row; align-items: center; gap: 5px; flex-wrap: nowrap; }
+    
+    /* Admin Headers */
+    .admin-view > div:first-child { flex-direction: row; flex-wrap: nowrap; }
+    
+    /* Tables action buttons side-by-side */
+    table td:last-child { display: flex; flex-direction: row; gap: 6px; flex-wrap: nowrap; }
     
     /* Modals & Forms */
-    .responsive-row { flex-direction: column; gap: 0; }
+    .responsive-row { flex-direction: row; gap: 10px; }
+    .responsive-row > .btn { flex: 1; }
     .modal-content { padding: 1.5rem; }
-    .section-header { flex-wrap: wrap; }
-    .section-header > div:last-child { width: 100%; justify-content: flex-end; margin-top: 10px; }
     #tcIn { gap: 15px !important; }
     
-    /* Sections Button Transformations for Mobile (Pure CSS) */
+    #sectionsArea { padding: 1rem; padding-bottom: 80px; } /* Space for FAB */
+    
+    /* Sections Add Button Floating Action Button for Mobile */
     .btn-add-section {
-        position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; 
-        border-radius: 50%; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); z-index: 100;
+        position: fixed; bottom: 25px; right: 25px; width: 60px !important; height: 60px !important; 
+        border-radius: 50%; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); z-index: 100; flex: 0 0 60px !important;
     }
     #newSectionFooter { background: transparent !important; border: none !important; }
-    
-    /* Modify dynamically injected '+ Update' button */
-    .section-header .btn-outline {
-        font-size: 0; padding: 0; width: 36px; height: 36px; display: flex; 
-        align-items: center; justify-content: center; border-radius: 8px; 
-        background: rgba(255,255,255,0.2) !important;
-    }
-    .section-header .btn-outline::after { content: "✍️"; font-size: 1.1rem; }
 }
 </style>
 </head>
@@ -263,10 +304,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
             <span class="acting-user-label">Acting User:</span>
             <select id="globalUserSelectDesktop" class="user-select-nav" onchange="document.getElementById('globalUserSelect').value = this.value; document.getElementById('globalUserSelect').dispatchEvent(new Event('change'));"></select>
         </div>
-        <button class="btn action-btn" onclick="toggleView('admin')" title="Admin Management">
+        <button class="btn action-btn btn-flex" onclick="toggleView('admin')" title="Admin Management">
             <span class="btn-icon">⚙️</span><span class="nav-text">Admin</span>
         </button>
-        <button class="btn action-btn btn-export-nav" onclick="openExportModalWrapper()" title="Download PDF Report">
+        <button class="btn action-btn btn-export-nav btn-flex" onclick="openExportModalWrapper()" title="Download PDF Report">
             <span class="btn-icon">📄📤</span><span class="nav-text">Export PDF</span>
         </button>
     </div>
@@ -289,14 +330,22 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         </div>
 
         <div style="padding: 1.2rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-            <button class="btn btn-success" style="width:100%; margin-bottom: 12px; padding: 0.8rem;" onclick="openModal('topicModal'); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}">
-                <span class="mobile-icon-only">➕ 📁</span>
-                <span class="desktop-only">+ New Topic</span>
-            </button>
-            <select id="topicFilter" onchange="renderTopics()" style="margin:0; padding: 0.6rem; width: 100%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                <option value="active">📂 Active Topics</option>
-                <option value="archived">📦 Archived Topics</option>
-            </select>
+            <div class="menu-controls-group">
+                <button class="btn btn-success btn-flex" onclick="openModal('topicModal'); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" style="height: 40px; padding: 0 15px;">
+                    <span class="btn-icon">➕</span><span class="btn-text">Topic</span>
+                </button>
+                
+                <input type="hidden" id="topicFilter" value="active">
+                
+                <div class="filter-toggle-container">
+                    <button class="filter-toggle-btn btn-flex active" onclick="document.getElementById('topicFilter').value='active'; this.parentElement.children[1].classList.remove('active'); this.classList.add('active'); renderTopics();">
+                        <span class="btn-icon">📂</span><span class="btn-text">Active</span>
+                    </button>
+                    <button class="filter-toggle-btn btn-flex" onclick="document.getElementById('topicFilter').value='archived'; this.parentElement.children[0].classList.remove('active'); this.classList.add('active'); renderTopics();">
+                        <span class="btn-icon">📦</span><span class="btn-text">Archived</span>
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="topic-list" id="topicList" onclick="if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}"></div>
     </div>
@@ -308,11 +357,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
                 <select id="globalUserSelect" class="user-select-nav"></select>
             </div>
             
-            <button class="btn action-btn" onclick="toggleView('admin'); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Admin Management">
+            <button class="btn action-btn btn-flex" onclick="toggleView('admin'); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Admin Management">
                 <span class="btn-icon">⚙️</span>
             </button>
             
-            <button class="btn action-btn btn-export-nav" id="exportBtnNav" onclick="openExportModalWrapper(); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Download PDF Report">
+            <button class="btn action-btn btn-export-nav btn-flex" id="exportBtnNav" onclick="openExportModalWrapper(); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Download PDF Report">
                 <span class="btn-icon">📄📤</span>
             </button>
         </div>
@@ -331,17 +380,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 <div id="sectionsArea"></div>
 
 <div id="newSectionFooter" style="padding: 1.2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: center;">
-<button class="btn btn-success btn-add-section" onclick="openModal('sectionModal')">
-    <span class="mobile-icon-only" style="font-size: 1.5rem; margin:0;">➕</span>
-    <span class="desktop-only">+ Add New Section</span>
+<button class="btn btn-success btn-add-section btn-flex" onclick="openModal('sectionModal')">
+    <span class="btn-icon">➕</span><span class="btn-text">Add New Section</span>
 </button>
 </div>
 </div>
 
 <div id="adminView" class="admin-view">
-<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
-<h1 style="color: #1e293b;">Admin Management</h1>
-<button class="btn btn-danger" onclick="toggleView('dashboard')">Close Admin Panel</button>
+<div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px;">
+<h1 style="color: #1e293b; font-size: 1.4rem;">Admin Panel</h1>
+<button class="btn btn-danger btn-flex" onclick="toggleView('dashboard')"><span class="btn-icon">❌</span><span class="btn-text">Close Panel</span></button>
 </div>
 
 <div class="admin-grid">
@@ -352,19 +400,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: #64748b;">Register New Staff</h4>
         <input id="newUserName" placeholder="Full Name" />
         <input id="newUserMobile" placeholder="Mobile Number (e.g., +968 9123 4567)" />
-        <button class="btn btn-success" style="width:100%" onclick="addUser()">Add Staff Member</button>
+        <button class="btn btn-success btn-flex" style="width:100%" onclick="addUser()"><span class="btn-icon">➕</span><span class="btn-text">Add Staff Member</span></button>
     </div>
 </div>
 
 <div class="admin-card">
     <h3 style="color: #334155; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Categories</h3>
     <div id="catAdminList" style="margin-bottom: 15px;"></div>
-    <button class="btn btn-primary" style="width:100%; margin-bottom: 30px;" onclick="addCategory()">+ Create New Category</button>
+    <button class="btn btn-primary btn-flex" style="width:100%; margin-bottom: 30px;" onclick="addCategory()"><span class="btn-icon">➕</span><span class="btn-text">Create New Category</span></button>
 
     <div style="background: #fff5f5; border: 1px solid #fed7d7; padding: 1.5rem; border-radius: 8px;">
         <h3 style="color: #c53030; margin-bottom: 10px; font-size: 1rem;">System Health</h3>
         <p style="font-size: 0.85rem; color: #742a2a; margin-bottom: 15px;">Warning: This action is irreversible and clears all local data.</p>
-        <button class="btn btn-danger" style="width:100%" onclick="hardReset()">Factory Reset Database</button>
+        <button class="btn btn-danger btn-flex" style="width:100%" onclick="hardReset()"><span class="btn-icon">⚠️</span><span class="btn-text">Factory Reset Database</span></button>
     </div>
 </div>
 </div>
@@ -384,8 +432,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     <div id="tcIn"></div>
 </div>
 <div class="responsive-row">
-    <button class="btn btn-outline" onclick="closeModal('topicModal')">Cancel</button>
-    <button class="btn btn-success" onclick="saveTopic()">Create Topic</button>
+    <button class="btn btn-outline btn-flex" onclick="closeModal('topicModal')"><span class="btn-icon">❌</span><span class="btn-text">Cancel</span></button>
+    <button class="btn btn-success btn-flex" onclick="saveTopic()"><span class="btn-icon">✅</span><span class="btn-text">Create Topic</span></button>
 </div>
 </div>
 </div>
@@ -407,8 +455,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     </select>
 </div>
 <div class="responsive-row">
-    <button class="btn btn-outline" onclick="closeModal('sectionModal')">Cancel</button>
-    <button class="btn btn-success" onclick="saveSection()">Add Section</button>
+    <button class="btn btn-outline btn-flex" onclick="closeModal('sectionModal')"><span class="btn-icon">❌</span><span class="btn-text">Cancel</span></button>
+    <button class="btn btn-success btn-flex" onclick="saveSection()"><span class="btn-icon">➕</span><span class="btn-text">Add Section</span></button>
 </div>
 </div>
 </div>
@@ -427,8 +475,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     <div id="dzStatus" style="font-size:0.85rem; color:var(--success); margin-top:8px; font-weight:bold;"></div>
 </div>
 <div class="responsive-row">
-    <button class="btn btn-outline" onclick="closeModal('commentModal')">Cancel</button>
-    <button class="btn btn-success" onclick="saveComment()">Post Update</button>
+    <button class="btn btn-outline btn-flex" onclick="closeModal('commentModal')"><span class="btn-icon">❌</span><span class="btn-text">Cancel</span></button>
+    <button class="btn btn-success btn-flex" onclick="saveComment()"><span class="btn-icon">📤</span><span class="btn-text">Post Update</span></button>
 </div>
 </div>
 </div>
@@ -474,9 +522,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 </div>
 
 <div class="responsive-row" style="margin-top: 25px;">
-    <button class="btn btn-outline" onclick="closeModal('exportModal')">Cancel</button>
-    <button class="btn btn-warning" id="executeExportBtn" onclick="generatePDF()">
-        <span>📄</span> Download PDF
+    <button class="btn btn-outline btn-flex" onclick="closeModal('exportModal')"><span class="btn-icon">❌</span><span class="btn-text">Cancel</span></button>
+    <button class="btn btn-warning btn-flex" id="executeExportBtn" onclick="generatePDF()">
+        <span class="btn-icon">📄</span><span class="btn-text">Download PDF</span>
     </button>
 </div>
 </div>
@@ -499,13 +547,11 @@ document.body.removeChild(downloadAnchor);
 
 window.history.replaceState({}, document.title, window.location.pathname);
 } else {
-alert(
-"The requested attachment could not be located in the system records.",
-);
+alert("The requested attachment could not be located in the system records.");
 }
 }
 
-// --- ISOLATED WELCOME TEXT UPDATER (Does not change existing functions) ---
+// --- ISOLATED WELCOME TEXT UPDATER (Does not change existing logic functions) ---
 const updateWelcomeMsg = () => {
     const sel = document.getElementById("globalUserSelect");
     if(sel && sel.options.length > 0) {
@@ -533,9 +579,7 @@ sections: [],
 comments: [],
 };
 
-let activeT = null,
-activeS = null,
-droppedFile = null;
+let activeT = null, activeS = null, droppedFile = null;
 let showArchivedSecs = false;
 
 window.onload = () => {
@@ -546,9 +590,7 @@ renderAdmin();
 
 window.onclick = function (event) {
 if (!event.target.matches(".dots-btn")) {
-document
-.querySelectorAll(".dropdown-content")
-.forEach((el) => (el.style.display = "none"));
+document.querySelectorAll(".dropdown-content").forEach((el) => (el.style.display = "none"));
 }
 };
 
@@ -559,22 +601,18 @@ renderAdmin();
 };
 
 function toggleView(v) {
-document.getElementById("adminView").style.display =
-v === "admin" ? "block" : "none";
+document.getElementById("adminView").style.display = v === "admin" ? "block" : "none";
 if (v === "admin") renderAdmin();
 }
 
 function populateGlobalUser() {
 const sel = document.getElementById("globalUserSelect");
 const currentVal = sel.value;
-const opts = db.users
-.map((u) => `<option value="${u.id}">${u.name}</option>`)
-.join("");
+const opts = db.users.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
 sel.innerHTML = opts;
-if (currentVal && db.users.find((u) => u.id === currentVal))
-sel.value = currentVal;
+if (currentVal && db.users.find((u) => u.id === currentVal)) sel.value = currentVal;
 
-// Auto trigger our non-intrusive UI updater
+// Auto trigger our UI label updater
 sel.dispatchEvent(new Event('change'));
 }
 
@@ -583,34 +621,23 @@ activeS = sid;
 droppedFile = null;
 if (id === "topicModal") {
 const container = document.getElementById("tcIn");
-
-// 1. Style the parent container to center the items and space them evenly
 container.style.display = "flex";
-container.style.justifyContent = "center"; 
-container.style.gap = "40px"; 
-container.style.flexWrap = "wrap"; 
+container.style.justifyContent = "center";
+container.style.gap = "40px";
+container.style.flexWrap = "wrap";
 
-// 2. Generate the checkboxes 
-container.innerHTML = db.categories
-.map(
-(c, index) => `
+container.innerHTML = db.categories.map((c, index) => `
 <label style="display: flex; flex-direction: column; align-items: center; cursor: pointer; text-align: center;">
-<input type="checkbox"
-class="tcIn-checkbox"
-value="${c}"
-${index === 0 ? "checked" : ""}
+<input type="checkbox" class="tcIn-checkbox" value="${c}" ${index === 0 ? "checked" : ""}
 onchange="if(this.checked) { document.querySelectorAll('.tcIn-checkbox').forEach(cb => { if(cb !== this) cb.checked = false; }) }">
 <span style="margin-top: 6px; font-size: 14px;">${c}</span>
 </label>
-`,
-)
-.join("");
+`).join("");
 }
 if (id === "commentModal") {
 document.getElementById("coIn").value = "";
 document.getElementById("dzStatus").innerText = "";
-document.getElementById("dzText").innerText =
-"Drag & Drop file or click here";
+document.getElementById("dzText").innerText = "Drag & Drop file or click here";
 }
 document.getElementById(id).style.display = "flex";
 }
@@ -621,8 +648,7 @@ document.getElementById(id).style.display = "none";
 
 function toggleCustomDates() {
 const val = document.getElementById("exPeriod").value;
-document.getElementById("customDateFields").style.display =
-val === "custom" ? "flex" : "none";
+document.getElementById("customDateFields").style.display = val === "custom" ? "flex" : "none";
 }
 
 function toggleDropdown(id, event) {
@@ -636,11 +662,7 @@ dd.style.display = dd.style.display === "block" ? "none" : "block";
 
 // Expand / Collapse logic for UI sections
 window.toggleSectionExpand = function (sid, event) {
-if (
-(event && event.target.closest(".dropdown")) ||
-event.target.closest("button")
-)
-return;
+if ((event && event.target.closest(".dropdown")) || event.target.closest("button")) return;
 const content = document.getElementById(`sec-content-${sid}`);
 const caret = document.getElementById(`sec-caret-${sid}`);
 if (content.style.display === "none") {
@@ -656,13 +678,7 @@ if (caret) caret.classList.add("collapsed");
 function saveTopic() {
 const title = document.getElementById("tIn").value;
 if (!title) return;
-db.topics.unshift({
-id: "t" + Date.now(),
-title,
-cat: document.querySelector(".tcIn-checkbox:checked").value,
-archived: false,
-date: new Date(),
-});
+db.topics.unshift({ id: "t" + Date.now(), title, cat: document.querySelector(".tcIn-checkbox:checked").value, archived: false, date: new Date() });
 document.getElementById("tIn").value = "";
 sync();
 closeModal("topicModal");
@@ -684,9 +700,7 @@ function deleteTopic(id) {
 if (!confirm("Delete this entire topic and all its contents?")) return;
 db.topics = db.topics.filter((t) => t.id !== id);
 db.sections = db.sections.filter((s) => s.topicId !== id);
-db.comments = db.comments.filter((c) =>
-db.sections.find((s) => s.id === c.sectionId),
-);
+db.comments = db.comments.filter((c) => db.sections.find((s) => s.id === c.sectionId));
 activeT = null;
 document.getElementById("topicDetail").style.display = "none";
 document.getElementById("welcome").style.display = "block";
@@ -696,13 +710,7 @@ sync();
 function saveSection() {
 const title = document.getElementById("sIn").value;
 if (!title) return;
-db.sections.push({
-id: "s" + Date.now(),
-topicId: activeT,
-title,
-color: document.getElementById("scIn").value,
-archived: false,
-});
+db.sections.push({ id: "s" + Date.now(), topicId: activeT, title, color: document.getElementById("scIn").value, archived: false });
 document.getElementById("sIn").value = "";
 sync();
 closeModal("sectionModal");
@@ -712,11 +720,7 @@ renderSections();
 function editSection(sid) {
 const s = db.sections.find((x) => x.id === sid);
 const n = prompt("Rename section:", s.title);
-if (n) {
-s.title = n;
-sync();
-renderSections();
-}
+if (n) { s.title = n; sync(); renderSections(); }
 }
 
 function toggleSectionArchive(sid) {
@@ -743,25 +747,15 @@ renderSections();
 const dz = document.getElementById("dropZone");
 const fi = document.getElementById("fileIn");
 if (dz) dz.onclick = () => fi.click();
-if (dz)
-dz.ondragover = (e) => {
-e.preventDefault();
-dz.classList.add("drag-over");
-};
+if (dz) dz.ondragover = (e) => { e.preventDefault(); dz.classList.add("drag-over"); };
 if (dz) dz.ondragleave = () => dz.classList.remove("drag-over");
-if (dz)
-dz.ondrop = (e) => {
-e.preventDefault();
-dz.classList.remove("drag-over");
-handleFiles(e.dataTransfer.files);
-};
+if (dz) dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove("drag-over"); handleFiles(e.dataTransfer.files); };
 if (fi) fi.onchange = (e) => handleFiles(e.target.files);
 
 function handleFiles(files) {
 if (files.length > 0) {
 droppedFile = files[0];
-document.getElementById("dzStatus").innerText =
-"Ready: " + droppedFile.name;
+document.getElementById("dzStatus").innerText = "Ready: " + droppedFile.name;
 }
 }
 
@@ -773,14 +767,7 @@ if (!text) return alert("Please enter text.");
 
 if (droppedFile) {
 const reader = new FileReader();
-reader.onload = (e) =>
-commitComment(
-text,
-userId,
-e.target.result,
-droppedFile.name,
-droppedFile.type,
-);
+reader.onload = (e) => commitComment(text, userId, e.target.result, droppedFile.name, droppedFile.type);
 reader.readAsDataURL(droppedFile);
 } else {
 commitComment(text, userId, null, null, null);
@@ -788,21 +775,10 @@ commitComment(text, userId, null, null, null);
 }
 
 function commitComment(text, userId, fData, fName, fType) {
-db.comments.push({
-id: "c" + Date.now(),
-sectionId: activeS,
-userId,
-text,
-fData,
-fName,
-fType,
-date: new Date(),
-});
+db.comments.push({ id: "c" + Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() });
 droppedFile = null;
 const statusEl = document.getElementById("dzStatus");
-if (statusEl)
-statusEl.innerText = "Drag & drop files here or click to upload";
-
+if (statusEl) statusEl.innerText = "Drag & drop files here or click to upload";
 sync();
 closeModal("commentModal");
 renderSections();
@@ -820,24 +796,18 @@ openModal("exportModal");
 
 const outSel = document.getElementById("exOutEmp");
 const inSel = document.getElementById("exInEmp");
-const userOpts = db.users
-.map((u) => `<option value="${u.id}">${u.name}</option>`)
-.join("");
+const userOpts = db.users.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
 
-if (outSel)
-outSel.innerHTML = `<option value="">Select User</option>` + userOpts;
-if (inSel)
-inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
+if (outSel) outSel.innerHTML = `<option value="">Select User</option>` + userOpts;
+if (inSel) inSel.innerHTML = `<option value="">Select User</option>` + userOpts;
 
 const curUserId = document.getElementById("globalUserSelect").value;
 if (curUserId && outSel) outSel.value = curUserId;
 
-// Automated Incoming user pre-selection feature if only 2 team members exist
 if (db.users.length === 2 && inSel && curUserId) {
 const secondaryUser = db.users.find((u) => u.id !== curUserId);
 if (secondaryUser) inSel.value = secondaryUser.id;
 }
-
 buildExportCheckboxTree();
 }
 
@@ -855,14 +825,9 @@ let matchCount = 0;
 db.topics.forEach((t) => {
 let sections = db.sections.filter((s) => s.topicId === t.id);
 
-// If custom date, filter sections to only show those that have updates in the range
 if (period === "custom") {
 sections = sections.filter((s) => {
-return db.comments.some(
-(c) =>
-c.sectionId === s.id &&
-isCommentInDateRange(c.date, period, fDate, tDate),
-);
+return db.comments.some((c) => c.sectionId === s.id && isCommentInDateRange(c.date, period, fDate, tDate));
 });
 }
 
@@ -885,18 +850,15 @@ ${s.title} ${s.archived ? '<span style="color:#7f8c8d; font-size:0.75rem;">(Comp
 </label>
 `;
 });
-
 html += `</div></div>`;
 }
 });
 
 if (matchCount === 0) {
-container.innerHTML =
-'<p style="color:#999; font-size:0.85rem; margin:0;">No operational logs found matching this period.</p>';
+container.innerHTML = '<p style="color:#999; font-size:0.85rem; margin:0;">No operational logs found matching this period.</p>';
 } else {
 container.innerHTML = html;
 }
-
 validateExportHasData();
 }
 
@@ -927,12 +889,12 @@ if (checkedSections.length === 0) {
 downloadBtn.disabled = true;
 downloadBtn.style.opacity = "0.4";
 downloadBtn.style.cursor = "not-allowed";
-downloadBtn.innerText = "No Logs Selected";
+downloadBtn.innerHTML = "<span class='btn-icon'>❌</span><span class='btn-text'>No Logs Selected</span>";
 } else {
 downloadBtn.disabled = false;
 downloadBtn.style.opacity = "1";
 downloadBtn.style.cursor = "pointer";
-downloadBtn.innerHTML = "<span>📄</span> Download PDF";
+downloadBtn.innerHTML = "<span class='btn-icon'>📄</span><span class='btn-text'>Download PDF</span>";
 }
 }
 }
@@ -941,19 +903,13 @@ downloadBtn.innerHTML = "<span>📄</span> Download PDF";
 function renderTopics() {
 const filterVal = document.getElementById("topicFilter").value;
 const isArchivedView = filterVal === "archived";
-const filteredTopics = db.topics.filter(
-(t) => !!t.archived === isArchivedView,
-);
+const filteredTopics = db.topics.filter((t) => !!t.archived === isArchivedView);
 
-document.getElementById("topicList").innerHTML = filteredTopics
-.map(
-(t) => `
+document.getElementById("topicList").innerHTML = filteredTopics.map((t) => `
 <div class="topic-card ${t.id === activeT ? "active" : ""} ${t.archived ? "is-archived" : ""}" onclick="viewTopic('${t.id}')">
 <small style="color: #64748b; font-weight: 600;">${t.cat} ${t.archived ? "<span style='color: #ef4444;'>(Archived)</span>" : ""}</small>
 <h4>${t.title}</h4>
-</div>`,
-)
-.join("");
+</div>`).join("");
 }
 
 function viewTopic(id) {
@@ -963,7 +919,8 @@ document.getElementById("welcome").style.display = "none";
 document.getElementById("topicDetail").style.display = "flex";
 
 const t = db.topics.find((x) => x.id === id);
-const archiveBtnTxt = t.archived ? "Unarchive Topic" : "Archive Topic";
+const archiveBtnTxt = t.archived ? "Unarchive" : "Archive";
+const archiveBtnIcon = t.archived ? "📂" : "📦";
 const archiveBtnColor = t.archived ? "btn-warning" : "btn-info";
 
 document.getElementById("topicHeader").innerHTML = `
@@ -971,42 +928,41 @@ document.getElementById("topicHeader").innerHTML = `
     <small style="color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">${t.cat} ${t.archived ? '<span style="color:#e74c3c">(Archived)</span>' : ""}</small>
     <h2 style="color: var(--primary); margin-top: 5px;">${t.title}</h2>
 </div>
-<div style="display:flex; gap:10px;">
-<button class="btn ${archiveBtnColor}" onclick="toggleTopicArchive('${t.id}')">${archiveBtnTxt}</button>
-<button class="btn btn-danger" onclick="deleteTopic('${t.id}')">Del</button>
+<div>
+<button class="btn ${archiveBtnColor} btn-flex" onclick="toggleTopicArchive('${t.id}')">
+    <span class="btn-icon">${archiveBtnIcon}</span><span class="btn-text">${archiveBtnTxt}</span>
+</button>
+<button class="btn btn-danger btn-flex" onclick="deleteTopic('${t.id}')">
+    <span class="btn-icon">🗑️</span><span class="btn-text">Del</span>
+</button>
 </div>
 `;
-document.getElementById("newSectionFooter").style.display = t.archived
-? "none"
-: "flex";
+document.getElementById("newSectionFooter").style.display = t.archived ? "none" : "flex";
 renderSections();
 renderTopics();
 }
 
 function buildSectionHtml(s, isArchived) {
 const archBtnTxt = isArchived ? "Unarchive" : "Archive";
-const updateBtn = isArchived
-? ""
-: `<button class="btn btn-outline" onclick="openModal('commentModal', '${s.id}'); event.stopPropagation();" style="background:white; color:${s.color}; font-weight:bold; margin-right:5px; border-color: transparent;">+ Update</button>`;
-const editOpt = isArchived
-? ""
-: `<button onclick="editSection('${s.id}'); event.stopPropagation();">Edit</button>`;
+const archBtnIcon = isArchived ? "📂" : "📦";
+const updateBtn = isArchived ? "" : `<button class="btn btn-outline btn-flex" onclick="openModal('commentModal', '${s.id}'); event.stopPropagation();" style="background:white; color:${s.color}; border-color: transparent;"><span class="btn-icon">➕</span><span class="btn-text">Update</span></button>`;
+const editOpt = isArchived ? "" : `<button class="btn-flex" onclick="editSection('${s.id}'); event.stopPropagation();"><span class="btn-icon">✏️</span><span class="btn-text">Edit</span></button>`;
 
 return `
 <div class="section-container ${isArchived ? "archived-sec" : ""}">
 <div class="section-header" style="background:${isArchived ? "#7f8c8d" : s.color}" onclick="toggleSectionExpand('${s.id}', event)">
-<span style="display:flex; align-items:center;">
+<span>
 <span id="sec-caret-${s.id}" class="caret">▼</span>
 ${s.title} ${isArchived ? "(Completed)" : ""}
 </span>
-<div style="display:flex; align-items:center;">
+<div>
 ${updateBtn}
 <div class="dropdown">
 <button class="dots-btn" onclick="toggleDropdown('${s.id}', event)">⋮</button>
 <div id="dd-${s.id}" class="dropdown-content">
 ${editOpt}
-<button onclick="toggleSectionArchive('${s.id}'); event.stopPropagation();">${archBtnTxt}</button>
-<button style="color:var(--danger)" onclick="deleteSection('${s.id}'); event.stopPropagation();">Delete</button>
+<button class="btn-flex" onclick="toggleSectionArchive('${s.id}'); event.stopPropagation();"><span class="btn-icon">${archBtnIcon}</span><span class="btn-text">${archBtnTxt}</span></button>
+<button class="btn-flex" style="color:var(--danger)" onclick="deleteSection('${s.id}'); event.stopPropagation();"><span class="btn-icon">🗑️</span><span class="btn-text">Delete</span></button>
 </div>
 </div>
 </div>
@@ -1023,12 +979,9 @@ const archivedSecs = allSecs.filter((s) => s.archived);
 let html = activeSecs.map((s) => buildSectionHtml(s, false)).join("");
 
 if (archivedSecs.length > 0) {
-const toggleBtnText = showArchivedSecs
-? "Hide Completed Sections"
-: `Show ${archivedSecs.length} Completed Section(s)`;
-html += `<div style="text-align: center; margin: 1.5rem 0 1rem 0;"><button class="btn btn-info" style="border-radius: 20px; padding: 0.4rem 1.2rem; font-size: 0.8rem;" onclick="toggleArchivedSecsVisibility()">${toggleBtnText}</button></div>`;
-if (showArchivedSecs)
-html += archivedSecs.map((s) => buildSectionHtml(s, true)).join("");
+const toggleBtnText = showArchivedSecs ? "Hide Completed Sections" : `Show ${archivedSecs.length} Completed Section(s)`;
+html += `<div style="text-align: center; margin: 1.5rem 0 1rem 0;"><button class="btn btn-info btn-flex" style="border-radius: 20px; padding: 0.4rem 1.2rem; font-size: 0.8rem;" onclick="toggleArchivedSecsVisibility()"><span class="btn-icon">${showArchivedSecs ? '⬆️' : '⬇️'}</span><span class="btn-text">${toggleBtnText}</span></button></div>`;
+if (showArchivedSecs) html += archivedSecs.map((s) => buildSectionHtml(s, true)).join("");
 }
 document.getElementById("sectionsArea").innerHTML = html;
 }
@@ -1038,24 +991,17 @@ const filtered = db.comments.filter((c) => c.sectionId === sid);
 const sec = db.sections.find((s) => s.id === sid);
 const sectionIsArchived = sec ? sec.archived : false;
 
-if (!filtered.length)
-return `<div style="text-align: center; padding: 1.5rem; color: #cbd5e1; font-style: italic; font-size: 0.9rem;">No updates logged for this section yet.</div>`;
+if (!filtered.length) return `<div style="text-align: center; padding: 1.5rem; color: #cbd5e1; font-style: italic; font-size: 0.9rem;">No updates logged for this section yet.</div>`;
 
-return filtered
-.map((c) => {
-const u = db.users.find((x) => x.id === c.userId) || {
-name: "Unknown",
-mobile: "",
-};
+return filtered.map((c) => {
+const u = db.users.find((x) => x.id === c.userId) || { name: "Unknown", mobile: "" };
 let fileHtml = "";
 if (c.fData) {
 fileHtml = c.fType.startsWith("image/")
 ? `<img src="${c.fData}" class="attachment-preview" onclick="window.open(this.src)">`
 : `<div style="margin-top:12px; background: white; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">📎 <a href="${c.fData}" download="${c.fName}" style="color: var(--accent); font-weight: 600; text-decoration: none;">${c.fName}</a></div>`;
 }
-const delBtn = sectionIsArchived
-? ""
-: `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
+const delBtn = sectionIsArchived ? "" : `<button class="del-comment-btn" onclick="deleteComment('${c.id}')">&times;</button>`;
 return `<div class="comment">
 <div class="user-badge">${u.name.charAt(0)}</div>
 <div class="comment-body">
@@ -1069,8 +1015,7 @@ return `<div class="comment">
 <p style="color: #334155;">${c.text}</p>${fileHtml}
 </div>${delBtn}
 </div>`;
-})
-.join("");
+}).join("");
 }
 
 function isCommentInDateRange(cDateStr, period, fromStr, toStr) {
@@ -1099,8 +1044,8 @@ return true;
 // --- HTML2PDF REPORT GENERATION ENGINE ---
 function generatePDF() {
 const navBtn = document.getElementById("exportBtnNav");
-const oldTxt = navBtn ? navBtn.innerHTML : "📄 Download PDF";
-if (navBtn) navBtn.innerHTML = "⏳<span class='nav-text'>Preparing...</span>";
+const oldTxt = navBtn ? navBtn.innerHTML : "<span class='btn-icon'>📄📤</span><span class='nav-text'>Export PDF</span>";
+if (navBtn) navBtn.innerHTML = "<span class='btn-icon'>⏳</span><span class='nav-text'>Preparing...</span>";
 closeModal("exportModal");
 
 const outUserId = document.getElementById("exOutEmp").value;
@@ -1110,19 +1055,13 @@ const fDate = document.getElementById("exFrom").value;
 const tDate = document.getElementById("exTo").value;
 
 // Gather all selected section IDs from checkboxes
-const selectedSectionIds = Array.from(
-document.querySelectorAll(".sec-cb:checked"),
-).map((cb) => cb.value);
+const selectedSectionIds = Array.from(document.querySelectorAll(".sec-cb:checked")).map((cb) => cb.value);
 
 const outUser = db.users.find((u) => u.id === outUserId);
 const inUser = db.users.find((u) => u.id === inUserId);
 
-const outStr = outUser
-? `${outUser.name} (${outUser.mobile || "N/A"})`
-: "_____________________";
-const inStr = inUser
-? `${inUser.name} (${inUser.mobile || "N/A"})`
-: "_____________________";
+const outStr = outUser ? `${outUser.name} (${outUser.mobile || "N/A"})` : "_____________________";
+const inStr = inUser ? `${inUser.name} (${inUser.mobile || "N/A"})` : "_____________________";
 
 let dateDisplay = new Date().toLocaleDateString();
 if (period === "custom" && (fDate || tDate)) {
@@ -1163,10 +1102,7 @@ let catHtml = "";
 
 catTopics.forEach((t) => {
 // Keep only sections that belong to this topic AND were checked by the user
-let tSections = db.sections.filter(
-(s) => s.topicId === t.id && selectedSectionIds.includes(s.id),
-);
-
+let tSections = db.sections.filter((s) => s.topicId === t.id && selectedSectionIds.includes(s.id));
 if (tSections.length === 0) return;
 
 let topicHtml = "";
@@ -1180,17 +1116,14 @@ let includeSection = false;
 if (!t.archived && !s.archived) {
 includeSection = true;
 } else {
-const hasActivityInPeriod = allComments.some((c) =>
-isCommentInDateRange(c.date, period, fDate, tDate),
-);
+const hasActivityInPeriod = allComments.some((c) => isCommentInDateRange(c.date, period, fDate, tDate));
 if (hasActivityInPeriod) {
 includeSection = true;
 }
 }
 
 if (includeSection) {
-let statusBadge =
-t.archived || s.archived
+let statusBadge = t.archived || s.archived
 ? `<span style="font-size: 10px; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Completed</span>`
 : `<span style="font-size: 10px; background: #dbeafe; color: #1e40af; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: bold;">Active / Open</span>`;
 
@@ -1205,10 +1138,7 @@ let secHtml = `
 allComments.forEach((c) => {
 if (!isCommentInDateRange(c.date, period, fDate, tDate)) return;
 
-const u = db.users.find((x) => x.id === c.userId) || {
-name: "Unknown",
-mobile: "",
-};
+const u = db.users.find((x) => x.id === c.userId) || { name: "Unknown", mobile: "" };
 const cDateStr = new Date(c.date).toLocaleDateString();
 
 let attachStr = "";
@@ -1250,9 +1180,7 @@ topicHtml += secHtml;
 });
 
 if (topicHtml !== "") {
-let topicBadge = t.archived
-? `<span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Archived</span>`
-: "";
+let topicBadge = t.archived ? `<span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">Archived</span>` : "";
 catHtml += `
 <div style="margin-left: 10px; margin-bottom: 20px;">
 <h3 style="font-size: 16px; font-weight: 600; color: #1e293b; border-bottom: 2px solid #cbd5e1; padding-bottom: 4px; margin: 0 0 12px 0;">Topic: ${t.title} ${topicBadge}</h3>
@@ -1281,9 +1209,7 @@ reportHtml += `<div style="margin-top: 40px; text-align: center; font-size: 9px;
 
 const printWindow = window.open("", "_blank");
 if (!printWindow) {
-alert(
-"Popup blocked! Please allow popups for this site to generate the PDF.",
-);
+alert("Popup blocked! Please allow popups for this site to generate the PDF.");
 if (navBtn) navBtn.innerHTML = oldTxt;
 return;
 }
@@ -1349,13 +1275,13 @@ if (navBtn) navBtn.innerHTML = oldTxt;
 function renderAdmin() {
 let uH = `<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>`;
 db.users.forEach((u) => {
-uH += `<tr><td>${u.name}</td><td>${u.mobile || "---"}</td><td><button class="btn btn-warning" style="padding: 0.3rem 0.6rem; margin-right: 5px;" onclick="editUser('${u.id}')">Edit</button> <button class="btn btn-danger" style="padding: 0.3rem 0.6rem;" onclick="deleteUser('${u.id}')">Del</button></td></tr>`;
+uH += `<tr><td>${u.name}</td><td>${u.mobile || "---"}</td><td style="white-space:nowrap;"><button class="btn btn-warning btn-flex" style="padding: 0.3rem 0.6rem; margin-right: 5px;" onclick="editUser('${u.id}')"><span class="btn-icon">✏️</span><span class="btn-text">Edit</span></button> <button class="btn btn-danger btn-flex" style="padding: 0.3rem 0.6rem;" onclick="deleteUser('${u.id}')"><span class="btn-icon">🗑️</span><span class="btn-text">Del</span></button></td></tr>`;
 });
 document.getElementById("userAdminList").innerHTML = uH + `</table>`;
 
 let cH = `<table><tr><th>Category Name</th><th>Actions</th></tr>`;
 db.categories.forEach((c, i) => {
-cH += `<tr><td>${c}</td><td><button class="btn btn-warning" style="padding: 0.3rem 0.6rem; margin-right: 5px;" onclick="editCat(${i})">Rename</button> <button class="btn btn-danger" style="padding: 0.3rem 0.6rem;" onclick="deleteCat(${i})">Del</button></td></tr>`;
+cH += `<tr><td>${c}</td><td style="white-space:nowrap;"><button class="btn btn-warning btn-flex" style="padding: 0.3rem 0.6rem; margin-right: 5px;" onclick="editCat(${i})"><span class="btn-icon">✏️</span><span class="btn-text">Rename</span></button> <button class="btn btn-danger btn-flex" style="padding: 0.3rem 0.6rem;" onclick="deleteCat(${i})"><span class="btn-icon">🗑️</span><span class="btn-text">Del</span></button></td></tr>`;
 });
 document.getElementById("catAdminList").innerHTML = cH + `</table>`;
 }
