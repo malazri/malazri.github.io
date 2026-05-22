@@ -45,25 +45,8 @@ nav {
 }
 .action-buttons-row { display: flex; align-items: center; gap: 15px; width: 100%; }
 
-/* Desktop Acting User Select */
-.user-select-wrapper { display: flex; align-items: center; gap: 8px; position: relative; }
-.acting-user-label { font-size: 0.85rem; color: #cbd5e1; }
-.mobile-switch-icon { display: none; }
-.user-select-nav { 
-    padding: 0.5rem; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); 
-    background: rgba(255,255,255,0.1); color: white; font-weight: 600; 
-    outline: none; cursor: pointer; max-width: 150px; text-overflow: ellipsis; 
-}
-.user-select-nav option { color: black; }
-
 /* Universal Flex Button Formatting */
-.btn-flex {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    white-space: nowrap;
-}
+.btn-flex { display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
 
 /* Interactive Top Nav Buttons */
 .action-btn {
@@ -75,8 +58,7 @@ nav {
 .action-btn:hover { background: rgba(255,255,255,0.15); padding: 0.6rem 1rem; }
 .action-btn .nav-text {
     max-width: 0; opacity: 0; display: inline-block; overflow: hidden; white-space: nowrap;
-    transition: max-width 0.3s ease, opacity 0.2s ease, margin-left 0.2s ease; 
-    font-size: 0.9rem; font-weight: bold;
+    transition: max-width 0.3s ease, opacity 0.2s ease, margin-left 0.2s ease; font-size: 0.9rem; font-weight: bold;
 }
 .action-btn:hover .nav-text { max-width: 150px; opacity: 1; margin-left: 8px; }
 .btn-export-nav { background: var(--warning) !important; border: none !important; }
@@ -101,14 +83,8 @@ nav {
 .menu-controls-group { display: flex; align-items: center; gap: 8px; width: 100%; }
 
 /* Toggle Switch Filter */
-.filter-toggle-container {
-    display: flex; background-color: #e2e8f0; padding: 4px; border-radius: 8px; flex: 1; height: 40px;
-}
-.filter-toggle-btn {
-    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-    font-size: 0.85rem; font-weight: 600; border: none; background: transparent; color: var(--secondary);
-    border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
-}
+.filter-toggle-container { display: flex; background-color: #e2e8f0; padding: 4px; border-radius: 8px; flex: 1; height: 40px; }
+.filter-toggle-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.85rem; font-weight: 600; border: none; background: transparent; color: var(--secondary); border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .filter-toggle-btn.active { background-color: var(--white); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
 /* Topics List */
@@ -193,6 +169,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .cb-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.95rem; margin-bottom: 8px; padding: 4px 0; }
 .cb-label input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
 
+/* LOGIN SCREEN STYLES (UPDATED FOR DATALIST) */
+#loginScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.login-card { background: white; padding: 2.5rem 2rem; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); text-align: center; }
+.login-title { font-size: 1.6rem; color: var(--primary); margin-bottom: 0.5rem; font-weight: bold; }
+.login-subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 2rem; }
+.login-input { width: 100%; padding: 1rem; margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 8px; transition: border-color 0.2s; background: #fff; }
+.login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
+.name-input { text-align: left; font-size: 1.1rem; font-weight: 600; }
+.pin-input { text-align: center; font-size: 1.8rem; letter-spacing: 12px; font-weight: bold; }
+
 /* =========================================
    MOBILE RESPONSIVENESS (Max Width 768px)
 ========================================= */
@@ -202,12 +188,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     body { height: auto; min-height: 100vh; overflow-y: auto; }
     .app-container { flex-direction: column; overflow: visible; }
     
-    /* Navigation Adjustments */
     nav { padding: 0 1rem; height: 65px; border-bottom: 1px solid #1a252f; justify-content: flex-start; }
     .hamburger-btn { display: block; margin-right: 15px; }
     .nav-brand h2 { font-size: 1.4rem !important; }
 
-    /* Hidden side menu behavior */
     .sidebar {
         position: fixed; top: 0; left: -320px; height: 100vh; width: 300px !important;
         z-index: 2005; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -220,14 +204,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     .btn-text { display: none !important; }
 
     /* Turn standard buttons into square icons on Mobile */
-    .btn, .action-btn {
-        padding: 0 !important;
-        width: 40px; height: 40px;
-        min-width: 40px;
-        flex: 0 0 40px; /* Prevent stretching */
-    }
-
-    /* Keep dropdown buttons looking like a list */
+    .btn, .action-btn { padding: 0 !important; width: 40px; height: 40px; min-width: 40px; flex: 0 0 40px; }
     .dropdown-content .btn-text { display: inline-block !important; }
     .dropdown-content button { width: 100%; height: auto; padding: 12px 15px !important; justify-content: flex-start; flex: none; }
 
@@ -238,59 +215,59 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     }
     .action-buttons-row { flex-direction: row; justify-content: space-between; gap: 12px; }
     
-    /* Mobile Touch Buttons Layout */
-    .user-select-wrapper, .action-btn {
+    .action-btn {
         flex: 1; height: 45px; border-radius: 8px;
         background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-        display: flex; align-items: center; justify-content: center;
+        display: flex; align-items: center; justify-content: center; box-shadow: none;
     }
-    .action-btn { box-shadow: none; }
     .action-btn:hover { background: rgba(255,255,255,0.15); }
     .action-btn .btn-icon { font-size: 1.5rem; margin: 0; }
     
-    /* Invisible Select Overlay for Switch User */
-    .user-select-wrapper { position: relative; }
-    .mobile-switch-icon { display: block; font-size: 1.6rem; }
-    #globalUserSelect {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        opacity: 0; margin: 0; padding: 0; z-index: 2;
-    }
-    
-    /* Main Content fixes - Enforce Horizontal Layouts */
+    /* Main Content fixes */
     .main-content { flex: none; height: auto; min-height: 100vh; }
     #topicHeader { flex-direction: row; align-items: center; padding: 1.2rem; gap: 10px; flex-wrap: nowrap; }
-    #topicHeader > div:first-child { flex: 1; min-width: 0; } /* Allow text wrapping */
+    #topicHeader > div:first-child { flex: 1; min-width: 0; } 
     #topicHeader > div:last-child { display: flex; flex-direction: row; gap: 6px; flex-wrap: nowrap; }
     
-    /* Section Headers */
     .section-header { flex-direction: row; align-items: center; flex-wrap: nowrap; padding: 1rem; }
     .section-header > span:first-child { flex: 1; min-width: 0; }
     .section-header > div:last-child { display: flex; flex-direction: row; align-items: center; gap: 5px; flex-wrap: nowrap; }
     
-    /* Admin Headers */
     .admin-view > div:first-child { flex-direction: row; flex-wrap: nowrap; }
-    
-    /* Tables action buttons side-by-side */
     table td:last-child { display: flex; flex-direction: row; gap: 6px; flex-wrap: nowrap; }
     
-    /* Modals & Forms */
     .responsive-row { flex-direction: row; gap: 10px; }
     .responsive-row > .btn { flex: 1; }
     .modal-content { padding: 1.5rem; }
     #tcIn { gap: 15px !important; }
+    #sectionsArea { padding: 1rem; padding-bottom: 80px; }
     
-    #sectionsArea { padding: 1rem; padding-bottom: 80px; } /* Space for FAB */
-    
-    /* Sections Add Button Floating Action Button for Mobile */
-    .btn-add-section {
-        position: fixed; bottom: 25px; right: 25px; width: 60px !important; height: 60px !important; 
-        border-radius: 50%; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); z-index: 100; flex: 0 0 60px !important;
-    }
+    /* Floating Action Button */
+    .btn-add-section { position: fixed; bottom: 25px; right: 25px; width: 60px !important; height: 60px !important; border-radius: 50%; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); z-index: 100; flex: 0 0 60px !important; }
     #newSectionFooter { background: transparent !important; border: none !important; }
+    .section-header .btn-outline { font-size: 0; padding: 0; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(255,255,255,0.2) !important; }
+    .section-header .btn-outline::after { content: "✍️"; font-size: 1.1rem; }
 }
 </style>
 </head>
 <body>
+
+<div id="loginScreen">
+    <div class="login-card">
+        <div style="font-size: 3rem; margin-bottom: 10px;">🔐</div>
+        <div class="login-title">Shift Handover</div>
+        <div class="login-subtitle">Please select your profile and enter PIN</div>
+        
+        <div class="form-group">
+            <input list="loginUserList" id="loginUserSelect" class="login-input name-input" placeholder="Select or type your name..." autocomplete="off" />
+            <datalist id="loginUserList"></datalist>
+        </div>
+        <div class="form-group">
+            <input type="password" id="loginPinInput" class="login-input pin-input" placeholder="••••••" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem; border-radius: 8px;" onclick="doLogin()">Secure Login</button>
+    </div>
+</div>
 
 <nav>
 <div class="nav-brand">
@@ -300,11 +277,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 <div class="nav-controls desktop-only">
     <div class="action-buttons-row">
-        <div class="user-select-wrapper">
-            <span class="acting-user-label">Acting User:</span>
-            <select id="globalUserSelectDesktop" class="user-select-nav" onchange="document.getElementById('globalUserSelect').value = this.value; document.getElementById('globalUserSelect').dispatchEvent(new Event('change'));"></select>
-        </div>
-        <button class="btn action-btn btn-flex" onclick="toggleView('admin')" title="Admin Management">
+        <button class="btn action-btn btn-flex" onclick="doLogout()" title="Switch User">
+            <span class="btn-icon">👥🔄</span><span class="nav-text">Switch User</span>
+        </button>
+        <button class="btn action-btn btn-flex" onclick="toggleAdminPanel()" title="Admin Management">
             <span class="btn-icon">⚙️</span><span class="nav-text">Admin</span>
         </button>
         <button class="btn action-btn btn-export-nav btn-flex" onclick="openExportModalWrapper()" title="Download PDF Report">
@@ -327,6 +303,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
                 <div class="welcome-msg">Welcome,</div>
                 <div class="welcome-name welcome-name-text">Loading...</div>
             </div>
+            <select id="globalUserSelect" style="display:none;"></select>
         </div>
 
         <div style="padding: 1.2rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
@@ -352,15 +329,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
     <div class="nav-controls mobile-icon-only" style="width: 100%;">
         <div class="action-buttons-row">
-            <div class="user-select-wrapper" title="Switch User">
-                <div class="mobile-switch-icon">👥🔄</div>
-                <select id="globalUserSelect" class="user-select-nav"></select>
-            </div>
-            
-            <button class="btn action-btn btn-flex" onclick="toggleView('admin'); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Admin Management">
+            <button class="btn action-btn btn-flex" onclick="doLogout(); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Switch User">
+                <span class="btn-icon">👥🔄</span>
+            </button>
+            <button class="btn action-btn btn-flex" onclick="toggleAdminPanel(); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Admin Management">
                 <span class="btn-icon">⚙️</span>
             </button>
-            
             <button class="btn action-btn btn-export-nav btn-flex" id="exportBtnNav" onclick="openExportModalWrapper(); if(window.innerWidth <= 768){document.getElementById('appSidebar').classList.remove('open'); document.getElementById('mobileOverlay').classList.remove('open');}" title="Download PDF Report">
                 <span class="btn-icon">📄📤</span>
             </button>
@@ -400,6 +374,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
         <h4 style="margin-bottom: 10px; font-size: 0.9rem; color: #64748b;">Register New Staff</h4>
         <input id="newUserName" placeholder="Full Name" />
         <input id="newUserMobile" placeholder="Mobile Number (e.g., +968 9123 4567)" />
+        <input id="newUserPin" type="text" placeholder="6-Digit Login PIN (e.g., 123456)" maxlength="6" inputmode="numeric" pattern="[0-9]*" />
         <button class="btn btn-success btn-flex" style="width:100%" onclick="addUser()"><span class="btn-icon">➕</span><span class="btn-text">Add Staff Member</span></button>
     </div>
 </div>
@@ -408,6 +383,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     <h3 style="color: #334155; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">Categories</h3>
     <div id="catAdminList" style="margin-bottom: 15px;"></div>
     <button class="btn btn-primary btn-flex" style="width:100%; margin-bottom: 30px;" onclick="addCategory()"><span class="btn-icon">➕</span><span class="btn-text">Create New Category</span></button>
+
+    <div style="background: #f1f5f9; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; margin-bottom: 20px;">
+        <h3 style="color: #334155; margin-bottom: 10px; font-size: 1rem;">Security</h3>
+        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 15px;">Change the master PIN required to access this Admin Panel.</p>
+        <button class="btn btn-info btn-flex" style="width:100%" onclick="changeAdminPin()"><span class="btn-icon">🔐</span><span class="btn-text">Change Admin PIN</span></button>
+    </div>
 
     <div style="background: #fff5f5; border: 1px solid #fed7d7; padding: 1.5rem; border-radius: 8px;">
         <h3 style="color: #c53030; margin-bottom: 10px; font-size: 1rem;">System Health</h3>
@@ -551,16 +532,12 @@ alert("The requested attachment could not be located in the system records.");
 }
 }
 
-// --- ISOLATED WELCOME TEXT UPDATER (Does not change existing logic functions) ---
+// --- ISOLATED WELCOME TEXT UPDATER ---
 const updateWelcomeMsg = () => {
     const sel = document.getElementById("globalUserSelect");
     if(sel && sel.options.length > 0) {
         const name = sel.options[sel.selectedIndex].text;
         document.querySelectorAll('.welcome-name-text').forEach(el => el.innerText = name);
-        // Keep desktop duplicate select in sync
-        const deskSel = document.getElementById("globalUserSelectDesktop");
-        if (deskSel && deskSel.innerHTML === "") deskSel.innerHTML = sel.innerHTML;
-        if (deskSel) deskSel.value = sel.value;
     }
 };
 document.getElementById("globalUserSelect").addEventListener("change", updateWelcomeMsg);
@@ -572,12 +549,15 @@ const pollWelcome = setInterval(() => {
 
 // --- DATABASE CONFIG ---
 let db = JSON.parse(localStorage.getItem("handover_v10")) || {
-users: [{ id: "u1", name: "Manager", mobile: "0000" }],
+users: [{ id: "u1", name: "Manager", mobile: "0000", pin: "123456" }],
+adminPin: "999999",
 categories: ["General", "HSE", "Project"],
-topics: [],
-sections: [],
-comments: [],
+topics: [], sections: [], comments: [],
 };
+
+// Data Migration: Ensure old users get a default PIN and admin has a PIN
+db.users.forEach(u => { if(!u.pin) u.pin = "123456"; });
+if(!db.adminPin) db.adminPin = "999999";
 
 let activeT = null, activeS = null, droppedFile = null;
 let showArchivedSecs = false;
@@ -586,6 +566,7 @@ window.onload = () => {
 populateGlobalUser();
 renderTopics();
 renderAdmin();
+checkSession(); // Trigger Auth Gate
 };
 
 window.onclick = function (event) {
@@ -600,6 +581,73 @@ renderTopics();
 renderAdmin();
 };
 
+// --- AUTHENTICATION GATEWAY (Fixed Datalist Support) ---
+function checkSession() {
+    const sessionStr = localStorage.getItem('handover_session');
+    if(sessionStr) {
+        const session = JSON.parse(sessionStr);
+        if(session.expiry > Date.now()) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById("globalUserSelect").value = session.userId;
+            document.getElementById("globalUserSelect").dispatchEvent(new Event('change'));
+            return;
+        }
+    }
+    // No valid session, show login
+    document.getElementById('loginScreen').style.display = 'flex';
+    
+    // Populate Login Datalist (Searchable)
+    const loginList = document.getElementById('loginUserList');
+    loginList.innerHTML = db.users.map(u => `<option value="${u.name}">`).join('');
+}
+
+function doLogin() {
+    const typedName = document.getElementById('loginUserSelect').value.trim();
+    const pin = document.getElementById('loginPinInput').value.trim();
+    
+    if(!typedName) return alert("Please enter or select your name.");
+    if(!pin) return alert("Please enter your PIN.");
+
+    // Match typed name to db record (case insensitive)
+    const user = db.users.find(u => u.name.toLowerCase() === typedName.toLowerCase());
+    
+    if(user && user.pin === pin) {
+        // 14 Days Expiry (14 * 24 * 60 * 60 * 1000)
+        const expiry = Date.now() + 1209600000; 
+        localStorage.setItem('handover_session', JSON.stringify({userId: user.id, expiry: expiry}));
+        document.getElementById('loginPinInput').value = '';
+        document.getElementById('loginUserSelect').value = ''; // clear for next time
+        checkSession();
+    } else {
+        alert("Access Denied: Incorrect Name or PIN.");
+    }
+}
+
+function doLogout() {
+    localStorage.removeItem('handover_session');
+    checkSession();
+}
+
+function toggleAdminPanel() {
+    const input = prompt("Enter Admin PIN (Default: 999999):");
+    if(input === null) return; // Cancelled
+    if(input === db.adminPin) {
+        toggleView('admin');
+    } else {
+        alert("Access Denied: Incorrect Admin PIN.");
+    }
+}
+
+function changeAdminPin() {
+    const oldPin = prompt("Enter Current Admin PIN:");
+    if (oldPin !== db.adminPin) return alert("Incorrect PIN. Action cancelled.");
+    const newPin = prompt("Enter NEW 6-Digit Admin PIN:");
+    if (!/^\d{6}$/.test(newPin)) return alert("PIN must be exactly 6 numbers.");
+    db.adminPin = newPin;
+    sync();
+    alert("Admin PIN successfully updated.");
+}
+
 function toggleView(v) {
 document.getElementById("adminView").style.display = v === "admin" ? "block" : "none";
 if (v === "admin") renderAdmin();
@@ -611,8 +659,6 @@ const currentVal = sel.value;
 const opts = db.users.map((u) => `<option value="${u.id}">${u.name}</option>`).join("");
 sel.innerHTML = opts;
 if (currentVal && db.users.find((u) => u.id === currentVal)) sel.value = currentVal;
-
-// Auto trigger our UI label updater
 sel.dispatchEvent(new Event('change'));
 }
 
@@ -660,7 +706,6 @@ const dd = document.getElementById("dd-" + id);
 dd.style.display = dd.style.display === "block" ? "none" : "block";
 }
 
-// Expand / Collapse logic for UI sections
 window.toggleSectionExpand = function (sid, event) {
 if ((event && event.target.closest(".dropdown")) || event.target.closest("button")) return;
 const content = document.getElementById(`sec-content-${sid}`);
@@ -1101,7 +1146,6 @@ if (catTopics.length === 0) return;
 let catHtml = "";
 
 catTopics.forEach((t) => {
-// Keep only sections that belong to this topic AND were checked by the user
 let tSections = db.sections.filter((s) => s.topicId === t.id && selectedSectionIds.includes(s.id));
 if (tSections.length === 0) return;
 
@@ -1289,24 +1333,32 @@ document.getElementById("catAdminList").innerHTML = cH + `</table>`;
 function addUser() {
 const name = document.getElementById("newUserName").value;
 const mobile = document.getElementById("newUserMobile").value;
-if (name) {
-db.users.push({ id: "u" + Date.now(), name, mobile });
+const pin = document.getElementById("newUserPin").value;
+
+if (!name || !pin) return alert("Name and Login PIN are required.");
+if (!/^\d{6}$/.test(pin)) return alert("PIN must be exactly 6 numbers.");
+
+db.users.push({ id: "u" + Date.now(), name, mobile, pin });
 document.getElementById("newUserName").value = "";
 document.getElementById("newUserMobile").value = "";
+document.getElementById("newUserPin").value = "";
 sync();
 populateGlobalUser();
-}
 }
 
 function editUser(id) {
 const u = db.users.find((x) => x.id === id);
 const n = prompt("Name:", u.name);
 const m = prompt("Mobile:", u.mobile);
-if (n) {
+const p = prompt("Login PIN (6 Digits):", u.pin);
+if (n && p && /^\d{6}$/.test(p)) {
 u.name = n;
 u.mobile = m;
+u.pin = p;
 sync();
 populateGlobalUser();
+} else if (p && !/^\d{6}$/.test(p)) {
+alert("Edit failed: PIN must be exactly 6 numbers.");
 }
 }
 
