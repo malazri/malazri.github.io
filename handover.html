@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Handover Tracker - Smart Digital PDF</title>
+<title>Lekhwair Handover Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -101,7 +101,7 @@ nav {
 
 /* Main Content Area */
 .main-content { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); overflow: hidden; position: relative; }
-#topicHeader { padding: 1.5rem 2rem; border-bottom: 1px solid #e2e8f0; background: var(--white); display: flex; justify-content: space-between; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+#topicHeader { padding: 1.1rem 2rem; border-bottom: 1px solid #e2e8f0; background: var(--white); display: flex; justify-content: space-between; align-items: center; gap: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
 #sectionsArea { flex: 1; overflow-y: auto; padding: 2rem; }
 
 .section-container { margin-bottom: 2rem; border-radius: 10px; border: 1px solid #e2e8f0; overflow: hidden; transition: 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.04); background: var(--white); }
@@ -157,7 +157,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 /* Responsive Utility Row */
 .responsive-row { display: flex; gap: 15px; width: 100%; }
 .responsive-row > div { flex: 1; }
-.desktop-only { display: inline-block; }
 .mobile-icon-only { display: none; }
 
 /* Drag & Drop */
@@ -272,7 +271,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 <nav>
 <div class="nav-brand">
     <button class="hamburger-btn" onclick="document.getElementById('appSidebar').classList.add('open'); document.getElementById('mobileOverlay').classList.add('open');">☰</button>
-    <h2 id="pageTitle" style="font-size: 1.2rem; margin:0; letter-spacing: 0.5px;">⏱️ Handover</h2>
+    <h2 id="pageTitle" style="font-size: 1.2rem; margin:0; letter-spacing: 0.5px;">⏱️ Lekhwair Handover</h2>
 </div>
 
 <div class="nav-controls desktop-only">
@@ -630,8 +629,19 @@ function doLogout() {
 
 function toggleAdminPanel() {
     const input = prompt("Enter Admin PIN (Default: 999999):");
-    if(input === null) return; // Cancelled
-    if(input === db.adminPin) {
+    if (input === null) return; // Cancelled
+    // 1. Check if the input exceeds 6 characters
+    if (input.length > 6) {
+        alert("Access Denied: PIN cannot exceed 6 digits.");
+        return;
+    }
+    // 2. (Optional but recommended) Check if the input contains only numbers
+    if (!/^\d+$/.test(input)) {
+        alert("Access Denied: PIN must contain only numbers.");
+        return;
+    }
+    // Original logic
+    if (input === db.adminPin) {
         toggleView('admin');
     } else {
         alert("Access Denied: Incorrect Admin PIN.");
