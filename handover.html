@@ -594,6 +594,9 @@ async function initApp() {
         if(loader) loader.style.opacity = "0";
         setTimeout(() => { if(loader) loader.style.display = "none"; }, 300);
         checkSession();
+
+        // ADD THIS LINE: Start checking for updates every 10 seconds
+        setInterval(autoSyncFetch, 10000);
     }, 400); // Give user a moment to see "Migration Complete" if it occurred
 }
 
@@ -613,6 +616,38 @@ async function sync() {
             console.error("Failed to sync with Supabase cloud", e);
         }
     }, 800);
+}
+
+// --- BACKGROUND AUTO-UPDATE FUNCTION ---
+async function autoSyncFetch() {
+    try {
+        const { data, error } = await window._supabase
+            .from('handover_data')
+            .select('state')
+            .eq('id', 1)
+            .maybeSingle();
+
+        if (data && data.state) {
+            const cloudStateStr = JSON.stringify(data.state);
+            const localStateStr = JSON.stringify(db);
+
+            // Only refresh the UI if the cloud database has new/different data
+            if (cloudStateStr !== localStateStr) {
+                db = data.state;
+                localStorage.setItem("handover_v10", cloudStateStr); // Update local backup
+                
+                // Refresh the visible elements seamlessly
+                renderTopics();
+                if (activeT) renderSections(); 
+                if (document.getElementById("adminView").style.display === "block") {
+                    renderAdmin();
+                }
+            }
+        }
+    } catch (e) {
+        // Fail silently in the background if internet connection drops briefly
+        console.warn("Silent auto-update check failed.", e);
+    }
 }
 
 // Deep link parser
