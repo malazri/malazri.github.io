@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Handover Tracker - Smart Digital PDF</title>
+<title>Lekhwair Handover Tracker</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -204,6 +204,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     .sidebar.open { left: 0; }
     .mobile-close-btn { display: block; }
 
+    /* Globally Hide ALL Text inside Buttons on Mobile */
     .btn-text { display: none !important; }
 
     .btn, .action-btn { padding: 0 !important; width: 40px; height: 40px; min-width: 40px; flex: 0 0 40px; }
@@ -563,6 +564,7 @@ async function initApp() {
     }
 
     // Force legacy migration checks
+    if (!db.users) db.users = [{ id: "u1", name: "Manager", mobile: "0000", pin: "123456" }];
     db.users.forEach(u => { if(!u.pin) u.pin = "123456"; });
     if(!db.adminPin) db.adminPin = "999999";
 
@@ -575,7 +577,9 @@ async function initApp() {
     renderAdmin();
     
     // Hide Global Loader and trigger Auth Session
-    document.getElementById("globalLoader").style.display = "none";
+    const loader = document.getElementById("globalLoader");
+    if(loader) loader.style.display = "none";
+    
     checkSession();
 }
 
