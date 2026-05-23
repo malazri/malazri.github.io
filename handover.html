@@ -1154,7 +1154,7 @@ function buildSectionHtml(s, isArchived) {
     <div class="section-container ${isArchived ? "archived-sec" : ""}">
     <div class="section-header" style="background:${isArchived ? "#7f8c8d" : s.color}" onclick="toggleSectionExpand('${s.id}', event)">
     <span>
-    <span id="sec-caret-${s.id}" class="caret">▼</span>
+    <span id="sec-caret-${s.id}" class="caret collapsed">▼</span>
     ${s.title} ${isArchived ? "(Completed)" : ""}
     </span>
     <div>
@@ -1169,7 +1169,7 @@ function buildSectionHtml(s, isArchived) {
     </div>
     </div>
     </div>
-    <div id="sec-content-${s.id}" class="section-content">${renderComments(s.id)}</div>
+    <div id="sec-content-${s.id}" class="section-content" style="display: none;">${renderComments(s.id)}</div>
     </div>`;
 }
 
