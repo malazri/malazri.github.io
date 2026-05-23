@@ -19,7 +19,7 @@
 body { background-color: var(--bg-color); color: var(--text-color); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Global Loading Screen for DB Sync */
-#globalLoader { position: fixed; top:0; left:0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--primary); font-weight: bold; flex-direction: column; gap: 15px; }
+#globalLoader { position: fixed; top:0; left:0; width: 100%; height: 100%; background: var(--bg-color); z-index: 99999; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--primary); font-weight: bold; flex-direction: column; gap: 15px; transition: opacity 0.3s ease; }
 .spinner { border: 4px solid rgba(52, 152, 219, 0.2); width: 50px; height: 50px; border-radius: 50%; border-left-color: var(--accent); animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -254,7 +254,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 <div id="globalLoader">
     <div class="spinner"></div>
-    <div>Connecting to Database...</div>
+    <div id="loaderText">Checking database connection...</div>
 </div>
 
 <div id="loginScreen" style="display: none;">
@@ -519,8 +519,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 
 <script>
 // --- SUPABASE INTEGRATION SCRIPT & APP INITIALIZATION ---
-const SUPABASE_URL = "https://brewgyigjfvexdcfxnpc.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE";
+const SUPABASE_URL = "YOUR_SUPABASE_URL_HERE"; 
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
 
 // Initialize Supabase Client globally
 window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -538,33 +538,45 @@ let showArchivedSecs = false;
 let collapsedCategories = {}; 
 let syncTimeout = null;
 
-// Async Startup Routine
+// Async Startup Routine (UPDATED for empty cloud check migration)
 async function initApp() {
+    const loaderText = document.getElementById("loaderText");
+    
     try {
+        if(loaderText) loaderText.innerText = "Checking cloud database...";
+        
+        // Using maybeSingle() handles an empty table without throwing an error
         const { data, error } = await window._supabase
             .from('handover_data')
             .select('state')
             .eq('id', 1)
-            .single();
+            .maybeSingle();
+
+        if (error) throw error;
 
         if (data && data.state) {
+            // Data exists in cloud
+            if(loaderText) loaderText.innerText = "Loading cloud data...";
             db = data.state;
         } else {
-            // First time setup: check for local storage migration
+            // No data in cloud. Time to migrate local storage up to Supabase.
+            if(loaderText) loaderText.innerText = "Uploading local data to cloud...";
             let localDb = localStorage.getItem("handover_v10");
             if(localDb) {
                 db = JSON.parse(localDb);
             }
             await window._supabase.from('handover_data').upsert({ id: 1, state: db });
+            if(loaderText) loaderText.innerText = "Migration complete!";
         }
     } catch (e) {
-        console.warn("Supabase fetch failed, falling back to local DB if available.", e);
+        console.warn("Supabase fetch failed, falling back to local DB.", e);
+        if(loaderText) loaderText.innerText = "Cloud unavailable. Loading local DB...";
         let localDb = localStorage.getItem("handover_v10");
         if(localDb) db = JSON.parse(localDb);
     }
 
     // Force legacy migration checks
-    if (!db.users) db.users = [{ id: "u1", name: "Manager", mobile: "0000", pin: "123456" }];
+    if (!db.users || db.users.length === 0) db.users = [{ id: "u1", name: "Manager", mobile: "0000", pin: "123456" }];
     db.users.forEach(u => { if(!u.pin) u.pin = "123456"; });
     if(!db.adminPin) db.adminPin = "999999";
 
@@ -577,10 +589,12 @@ async function initApp() {
     renderAdmin();
     
     // Hide Global Loader and trigger Auth Session
-    const loader = document.getElementById("globalLoader");
-    if(loader) loader.style.display = "none";
-    
-    checkSession();
+    setTimeout(() => {
+        const loader = document.getElementById("globalLoader");
+        if(loader) loader.style.opacity = "0";
+        setTimeout(() => { if(loader) loader.style.display = "none"; }, 300);
+        checkSession();
+    }, 400); // Give user a moment to see "Migration Complete" if it occurred
 }
 
 window.onload = initApp;
