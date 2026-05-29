@@ -312,7 +312,7 @@
     // To use your own Cloudflare Worker (recommended), deploy the snippet at the bottom
     // of this file and set PROXY_OVERRIDE to your worker URL, e.g.:
     //   "https://my-proxy.YOUR-SUBDOMAIN.workers.dev/"
-    var PROXY_OVERRIDE = "https://my-tv.3ma-creative.workers.dev/"; // set to your CF Worker URL to skip auto-selection
+    var PROXY_OVERRIDE = "https://my-tv.3ma-creative.workers.dev/?url="; // set to your CF Worker URL to skip auto-selection
 
     var _proxyList = [
         url => "https://corsproxy.io/?" + encodeURIComponent(url),           // paid but still works on localhost
