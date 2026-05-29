@@ -307,8 +307,70 @@
     const SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
     const db = supabase.createClient(SB_URL, SB_KEY);
-    // ── CORS proxy — allorigins is free with no API key required ──
-    var PROXY = url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+    // ── CORS proxy with automatic fallback ───────────────────────
+    // Proxies are tried in order; the first successful one is cached for the session.
+    // To use your own Cloudflare Worker (recommended), deploy the snippet at the bottom
+    // of this file and set PROXY_OVERRIDE to your worker URL, e.g.:
+    //   "https://my-proxy.YOUR-SUBDOMAIN.workers.dev/"
+    var PROXY_OVERRIDE = "https://my-tv.3ma-creative.workers.dev/"; // set to your CF Worker URL to skip auto-selection
+
+    var _proxyList = [
+        url => "https://corsproxy.io/?" + encodeURIComponent(url),           // paid but still works on localhost
+        url => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url),
+        url => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url),
+        url => "https://cors-anywhere.herokuapp.com/" + url,
+        url => "https://corsproxy.org/?" + encodeURIComponent(url),
+    ];
+    var _workingProxyIdx = null; // index into _proxyList once a working one is found
+
+    // Build a proxy URL — uses the cached working proxy or PROXY_OVERRIDE
+    function PROXY(url) {
+        if (PROXY_OVERRIDE) return PROXY_OVERRIDE + encodeURIComponent(url);
+        if (_workingProxyIdx !== null) return _proxyList[_workingProxyIdx](url);
+        return _proxyList[0](url); // default until probe completes
+    }
+
+    // Try each proxy with a cheap HEAD/GET on a small URL; cache the first that responds 2xx
+    async function probeProxies() {
+        const testUrl = BASE + "/";
+        for (let i = 0; i < _proxyList.length; i++) {
+            try {
+                const r = await fetch(_proxyList[i](testUrl), { method: 'GET', signal: AbortSignal.timeout(6000) });
+                if (r.ok || r.status === 403) {
+                    // 403 from the target site (not the proxy) still means the proxy works
+                    _workingProxyIdx = i;
+                    console.log('[Proxy] Using proxy #' + i, _proxyList[i]('TEST'));
+                    return;
+                }
+            } catch(e) { /* try next */ }
+        }
+        console.warn('[Proxy] All proxies failed probe — will use default');
+        _workingProxyIdx = 0;
+    }
+
+    // Fetch with automatic proxy fallback — if the cached proxy fails mid-session, tries others
+    async function proxyFetch(url, opts) {
+        if (PROXY_OVERRIDE) {
+            return fetch(PROXY_OVERRIDE + encodeURIComponent(url), opts);
+        }
+        const start = _workingProxyIdx !== null ? _workingProxyIdx : 0;
+        for (let i = 0; i < _proxyList.length; i++) {
+            const idx = (start + i) % _proxyList.length;
+            try {
+                const r = await fetch(_proxyList[idx](url), { ...opts, signal: AbortSignal.timeout(12000) });
+                if (r.ok || r.status === 403 || r.status === 404) {
+                    if (_workingProxyIdx !== idx) {
+                        console.log('[Proxy] Switched to proxy #' + idx);
+                        _workingProxyIdx = idx;
+                    }
+                    return r;
+                }
+            } catch(e) {
+                console.warn('[Proxy] Proxy #' + idx + ' failed:', e.message);
+            }
+        }
+        throw new Error('كل البروكسيات فشلت — تحقق من اتصالك بالإنترنت');
+    }
     var BASE = "https://akwam.it";
 
     // ── Domain normalizer — rewrites any old stored URL to the current domain ──
@@ -922,7 +984,7 @@
             document.getElementById('btn-fav').classList.remove('active');
         }
         try {
-            var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
+            var res = await proxyFetch(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`);
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
             var unique = new Map();
             var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
@@ -970,7 +1032,7 @@
                 }
             }
         }
-        var res = await fetch(PROXY(item.link));
+        var res = await proxyFetch(item.link);
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         var eps = [];
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
@@ -1052,8 +1114,7 @@
         try {
             // ── Step 1: Fetch the episode/movie page ─────────
             dbgStep('⏳', 'الخطوة 1', 'جلب صفحة العنصر...', 'warn');
-            const proxyUrl1 = PROXY(item.link);
-            const response = await fetch(proxyUrl1);
+            const response = await proxyFetch(item.link);
 
             if (!response.ok) {
                 dbgStep('❌', 'الخطوة 1', `فشل HTTP ${response.status} — ${response.statusText}`, 'err');
@@ -1083,7 +1144,7 @@
 
             // ── Step 4: Fetch download page ───────────────────
             dbgStep('⏳', 'الخطوة 4', 'جلب صفحة التحميل...', 'warn');
-            const dlRes = await fetch(PROXY(downloadPageUrl));
+            const dlRes = await proxyFetch(downloadPageUrl);
 
             if (!dlRes.ok) {
                 dbgStep('❌', 'الخطوة 4', `فشل HTTP ${dlRes.status} — ${dlRes.statusText}`, 'err');
@@ -1187,8 +1248,43 @@
 
     document.getElementById('discovery').onscroll = updateScrollState;
     document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
-    window.onload = checkUser;
+    window.onload = () => { probeProxies(); checkUser(); };
     window.onresize = updateScrollState;
 </script>
+<!--
+════════════════════════════════════════════════════════════════
+ RECOMMENDED: Deploy your own Cloudflare Worker proxy (FREE)
+ This gives you a fast, reliable, permanent proxy with no limits.
+
+ Steps:
+   1. Go to https://workers.cloudflare.com and sign up (free)
+   2. Click "Create a Worker"
+   3. Paste the code below and click "Deploy"
+   4. Copy your worker URL (e.g. https://my-proxy.USERNAME.workers.dev)
+   5. Set  PROXY_OVERRIDE = "https://my-proxy.USERNAME.workers.dev/?url="
+      at the top of this file's script section
+
+── Worker code (paste into the Cloudflare editor) ──────────────
+
+export default {
+  async fetch(request) {
+    const url = new URL(request.url).searchParams.get('url');
+    if (!url) return new Response('Missing url param', { status: 400 });
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://akwam.it/' }
+    });
+    const body = await res.arrayBuffer();
+    return new Response(body, {
+      status: res.status,
+      headers: {
+        'Content-Type': res.headers.get('Content-Type') || 'text/html',
+        'Access-Control-Allow-Origin': '*',
+      }
+    });
+  }
+}
+
+────────────────────────────────────────────────────────────────
+-->
 </body>
 </html>
