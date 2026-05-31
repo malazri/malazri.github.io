@@ -2,217 +2,1334 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AlAzri TV - Final v1.4</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlAzri TV v1.29 - Fixed</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary-red: #e50914; --bg-dark: #0a0a0a; --card-w: 180px; --card-h: 250px; }
-        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        *:focus { outline: 3px solid var(--primary-red) !important; box-shadow: 0 0 15px var(--primary-red); transform: scale(1.05); z-index: 10; }
-        .fixed-header { position: fixed; top: 0; left: 0; right: 0; z-index: 3000; background: #000; padding: 12px 4%; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
-        .brand { color: var(--primary-red); font-weight: 900; font-size: 1.5rem; cursor: pointer; }
-        .header-actions { display: flex; align-items: center; gap: 15px; }
-        .search-container { display: flex; background: #222; border-radius: 5px; padding: 5px 10px; border: 1px solid #444; }
-        .search-input { background: transparent; border: none; color: white; outline: none; width: 200px; font-size: 1.1rem; }
-        .btn-action { background: var(--primary-red); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .content-area { flex: 1; overflow-y: auto; padding: 100px 20px 160px 20px; scroll-behavior: smooth; }
-        .row { display: none; margin-bottom: 30px; }
-        .row.visible { display: block; }
-        .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .row-title { font-size: 1.3rem; font-weight: bold; border-right: 4px solid var(--primary-red); padding-right: 10px; }
-        .row-content { display: flex; gap: 20px; overflow-x: auto; padding: 15px 5px; }
-        .card { min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 8px; position: relative; cursor: pointer; flex-shrink: 0; }
-        .card img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
-        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.9rem; text-align: center; padding: 8px 0; border-bottom-radius: 6px; }
-        #player-container { display: none; width: 100%; max-width: 1000px; margin: 0 auto 30px auto; background: #000; border-radius: 12px; border: 1px solid #333; overflow: hidden; }
-        video { width: 100%; aspect-ratio: 16/9; }
-        .resume-overlay { background: rgba(0,0,0,0.9); padding: 20px; text-align: center; display: none; }
-        #debug-console { position: fixed; bottom: 0; left: 0; right: 0; height: 60px; background: rgba(0,0,0,0.8); color: #0f0; font-size: 10px; overflow-y: auto; pointer-events: none; z-index: 5000; padding: 5px; }
+        :root { --primary-red: #e50914; --inactive-gray: #444; --bg-dark: #050505; --panel-bg: #111; --card-w: 110px; --card-h: 155px; }
+        * { box-sizing: border-box; }
+        body { background-color: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; overflow-x: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        header { height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; flex-shrink: 0; z-index: 2000; }
+        .brand { color: var(--primary-red); font-size: 1.3rem; font-weight: 900; }
+        .header-controls { display: flex; gap: 8px; align-items: center; }
+
+        .top-toggle-btn { background: #333; color: #fff; border: 1px solid #555; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .top-toggle-btn:hover { background: var(--primary-red); border-color: var(--primary-red); }
+
+        .btn-google { background: white; color: black; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; display: flex; align-items: center; gap: 5px; }
+        .btn-logout { background: #222; color: #888; border: 1px solid #333; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; display: none; }
+        .toggle-btn { cursor: pointer; color: #888; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; background: #1a1a1a; border: 1px solid #333; }
+        .toggle-btn.active { color: white; background: var(--primary-red); border-color: var(--primary-red); }
+        .search-box { background: #222; border-radius: 5px; padding: 4px 10px; display: flex; align-items: center; width: 140px; }
+        .search-box input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 0.85rem; }
+
+        .scroll-btn { position: absolute; top: 50%; transform: translateY(-50%); background: var(--inactive-gray); color: #fff; border: none; width: 35px; height: 70px; cursor: pointer; z-index: 10; display: none; align-items: center; justify-content: center; border-radius: 4px; opacity: 0.8; }
+        .scroll-btn.active { display: flex; }
+        .scroll-btn.can-scroll { background: var(--primary-red); opacity: 1; }
+        .s-left { left: 5px; } .s-right { right: 5px; }
+
+        #top-cont { position: relative; background: #0a0a0a; border-bottom: 1px solid #222; flex-shrink: 0; transition: all 0.4s ease; overflow: hidden; max-height: 250px; opacity: 1; z-index: 1000; }
+        #top-cont.hidden { max-height: 0 !important; opacity: 0 !important; border-bottom: none; pointer-events: none; }
+
+        .top-section { display: flex; gap: 15px; padding: 10px 45px; overflow-x: auto; white-space: nowrap; scroll-behavior: smooth; }
+        .top-section::-webkit-scrollbar { display: none; }
+
+        .main-layout { display: grid; grid-template-columns: 300px 1fr; flex: 1; overflow: hidden; }
+        .side-container { position: relative; background: var(--panel-bg); border-left: 1px solid #222; display: none; flex-direction: column; overflow: hidden; }
+        .side-container.has-content { display: flex; }
+        .side-section { flex: 1; overflow-y: auto; padding: 10px; scroll-behavior: smooth; }
+
+        .side-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .toggle-list-btn { background: none; border: 1px solid #444; color: var(--primary-red); cursor: pointer; padding: 2px 8px; border-radius: 4px; display: none; }
+        .episode-list-wrapper.minimized { display: none; }
+
+        .middle-section { background: #000; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        #main-video { width: 100%; flex: 1; background: #000; object-fit: contain; }
+        .player-header { padding: 8px 20px; background: #000; border-bottom: 1px solid #111; font-weight: bold; color: var(--primary-red); font-size: 1rem; }
+        .player-footer { padding: 8px 20px; background: #000; border-top: 1px solid #111; font-size: 0.8rem; color: #999; display: flex; justify-content: space-between; flex-shrink: 0; }
+
+        .card { display: inline-block; min-width: var(--card-w); height: var(--card-h); background: #1a1a1a; border-radius: 4px; overflow: hidden; cursor: pointer; position: relative; margin-left: 12px; vertical-align: top; }
+        .card img { width: 100%; height: 100%; object-fit: cover; }
+        .card-label { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.85); font-size: 0.65rem; text-align: center; padding: 3px; }
+
+        .load-more-card { display: inline-flex; min-width: 60px; height: var(--card-h); background: #222; border: 2px dashed #444; border-radius: 4px; cursor: pointer; align-items: center; justify-content: center; margin-left: 12px; color: #e50914; font-size: 2rem; transition: 0.2s; }
+        .load-more-card:hover { background: #333; border-color: #e50914; }
+
+        .ep-item { display: flex; justify-content: space-between; padding: 12px; background: #1a1a1a; margin-bottom: 5px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; color: #ccc; }
+        .ep-item.active-ep { background: #300; border-right: 3px solid var(--primary-red); color: white; }
+        .ep-progress { font-size: 0.7rem; color: #888; }
+
+        .resume-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; display: none; }
+
+        /* ── Stremio Sync ─────────────────────────────────── */
+        .stremio-btn { background: #1a1a2e; color: #7c5cbf; border: 1px solid #7c5cbf; width: 35px; height: 35px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; font-size: 0.75rem; font-weight: bold; }
+        .stremio-btn:hover, .stremio-btn.connected { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
+        .stremio-btn.syncing { animation: strPulse 1s infinite; }
+        @keyframes strPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+        #stremio-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center; }
+        #stremio-modal.open { display:flex; }
+        .str-box { background:#111; border:1px solid #7c5cbf; border-radius:8px; padding:24px; width:320px; }
+        .str-box h3 { color:#7c5cbf; margin:0 0 4px; font-size:1rem; }
+        .str-box p { color:#888; font-size:0.75rem; margin:0 0 16px; }
+        .str-box input { width:100%; background:#1a1a1a; border:1px solid #333; color:#fff; padding:8px 10px; border-radius:4px; margin-bottom:10px; font-size:0.85rem; outline:none; }
+        .str-box input:focus { border-color:#7c5cbf; }
+        .str-box .str-row { display:flex; gap:8px; }
+        .str-box button { flex:1; padding:9px; border:none; border-radius:4px; cursor:pointer; font-size:0.85rem; font-weight:bold; }
+        .str-save { background:#7c5cbf; color:#fff; }
+        .str-cancel { background:#222; color:#888; }
+        .str-status { font-size:0.72rem; margin-top:10px; text-align:center; min-height:16px; }
+        .str-status.ok { color:#4caf50; } .str-status.err { color:#e50914; }
+
+        .stremio-badge { position:absolute; top:-4px; right:-4px; width:8px; height:8px; border-radius:50%; background:#4caf50; border:1px solid #000; display:none; }
+        .stremio-badge.show { display:block; }
+
+        .str-source-tag { font-size:0.65rem; padding:1px 5px; border-radius:3px; margin-right:4px; }
+        .str-source-tag.stremio { background:#7c5cbf22; color:#7c5cbf; border:1px solid #7c5cbf44; }
+        .str-source-tag.local { background:#e5091422; color:#e50914; border:1px solid #e5091444; }
+
+        @media (max-width: 768px) {
+            body { overflow-y: auto; height: auto; }
+            header { flex-wrap: wrap; height: auto; padding: 10px; }
+            .main-layout { display: flex; flex-direction: column; height: auto; }
+            .middle-section { order: 1; height: 280px; }
+            .side-container { order: 2; height: auto; border-left: none; padding-bottom: 20px; }
+            .side-section { overflow-y: visible; }
+            .toggle-list-btn { display: block; }
+            #top-cont { order: 3; }
+            .scroll-btn { display: none !important; }
+        }
     </style>
 </head>
 <body>
 
-<div class="fixed-header">
-    <div class="brand" onclick="location.reload()" tabindex="0">ALAZRI</div>
-    <div class="header-actions">
-        <i class="fas fa-heart header-icon" style="cursor:pointer; font-size: 1.5rem;" onclick="toggleFavRow()" tabindex="0"></i>
-        <div class="search-container">
-            <input type="text" class="search-input" id="search-input" placeholder="ابحث هنا..." tabindex="0">
+<header>
+    <div class="brand">ALAZRI TV</div>
+    <div class="header-controls">
+        <button class="top-toggle-btn" id="manual-toggle-btn" onclick="toggleTopPanel()" title="إظهار/إخفاء">
+            <i class="fas fa-minus"></i>
+        </button>
+        <div style="position:relative;">
+            <button class="stremio-btn" id="stremio-btn" onclick="openStremioModal()" title="Stremio Sync">S</button>
+            <span class="stremio-badge" id="stremio-badge"></span>
+        </div>
+        <button class="btn-google" id="login-btn" onclick="loginWithGoogle()"><img src="https://www.google.com/favicon.ico" width="14"> دخول</button>
+        <button class="btn-logout" id="logout-btn" onclick="handleLogout()">خروج</button>
+        <button class="toggle-btn active" id="btn-fav" onclick="toggleRowManual('group-favs', 'btn-fav')">المفضلة</button>
+        <div class="search-box"><input type="text" id="search-input" placeholder="بحث..."></div>
+    </div>
+</header>
+
+<div id="top-cont">
+    <button class="scroll-btn s-right" id="scroll-r" onclick="scrollXElem(300)"><i class="fas fa-chevron-right"></i></button>
+    <div class="top-section" id="discovery">
+        <div class="row-group" id="group-favs" style="display:inline-flex;"><div id="content-favs" style="display:flex;"></div></div>
+        <div class="row-group" id="group-search" style="display:none;"><div id="content-search" style="display:flex;"></div></div>
+    </div>
+    <button class="scroll-btn s-left" id="scroll-l" onclick="scrollXElem(-300)"><i class="fas fa-chevron-left"></i></button>
+</div>
+
+<div class="main-layout">
+    <div class="side-container" id="side-panel">
+        <div class="side-section" id="side-area">
+            <div class="side-header">
+                <div id="series-title" style="color:var(--primary-red); font-weight:bold;">القائمة</div>
+                <button class="toggle-list-btn" onclick="toggleEpisodeList()" id="list-plus-icon"><i class="fas fa-plus"></i></button>
+            </div>
+            <div class="episode-list-wrapper" id="ep-wrapper">
+                <button id="fav-btn" style="display:none; width: 100%; margin-bottom:10px; background:var(--primary-red); color:white; border:none; padding:8px; border-radius:4px; font-weight:bold; cursor:pointer;" onclick="handleFavoriteAction()">أضف للمفضلة</button>
+                <div id="episode-list"></div>
+            </div>
+        </div>
+    </div>
+    <div class="middle-section">
+        <div class="player-header" id="v-title">بانتظار الاختيار...</div>
+        <div style="flex:1; position:relative; overflow:hidden;"><video id="main-video" controls></video>
+            <div id="resume-ui" class="resume-overlay">
+                <h3>إكمال المشاهدة؟</h3>
+                <p id="resume-msg" style="color:#aaa; margin-bottom:15px;"></p>
+                <div>
+                    <button onclick="confirmResume(true)" style="background:var(--primary-red); color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">نعم</button>
+                    <button onclick="confirmResume(false)" style="background:#444; color:white; border:none; padding:8px 20px; border-radius:4px; margin-right:10px; cursor:pointer;">لا</button>
+                </div>
+            </div>
+        </div>
+        <div class="player-footer">
+            <div>التاريخ: <span id="meta-date" style="color:#fff;">--</span></div>
+            <div>الموقف: <span id="meta-pos" style="color:#fff;">--</span></div>
         </div>
     </div>
 </div>
 
-<main class="content-area">
-    <div class="row" id="row-favs">
-        <div class="row-header"><div class="row-title">قائمتي المفضلة</div></div>
-        <div id="grid-favs" class="row-content"></div>
-    </div>
-
-    <div class="row" id="row-search">
-        <div class="row-header"><div class="row-title">نتائج البحث</div></div>
-        <div id="grid-search" class="row-content"></div>
-    </div>
-
-    <div class="row" id="row-episodes">
-        <div class="row-header">
-            <div class="row-title" id="episodes-label">الحلقات</div>
-            <button id="fav-toggle-btn" class="btn-action" style="display:none;" onclick="handleFavoriteAction()" tabindex="0">
-                <i id="fav-icon" class="far fa-heart"></i> <span id="fav-text">أضف للمفضلة</span>
-            </button>
+<!-- Stremio Sync Modal -->
+<div id="stremio-modal">
+    <div class="str-box">
+        <h3>⚡ Stremio Sync</h3>
+        <p>ربط تقدم المشاهدة مع Stremio (المسلسلات فقط)</p>
+        <input type="email" id="str-email" placeholder="Stremio Email" autocomplete="email">
+        <input type="password" id="str-pass" placeholder="Stremio Password" autocomplete="current-password">
+        <div class="str-row">
+            <button class="str-save" onclick="stremioSaveLogin()">ربط</button>
+            <button class="str-cancel" onclick="closeStremioModal()">إلغاء</button>
         </div>
-        <div id="grid-episodes" class="row-content"></div>
-    </div>
+        <div id="str-status" class="str-status"></div>
+        <div id="str-info" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #222;">
+            <div style="color:#aaa; font-size:0.72rem; margin-bottom:8px;">متصل بـ <span id="str-email-display" style="color:#7c5cbf;"></span></div>
+            <div style="color:#666; font-size:0.7rem;">مسلسلات Stremio: <span id="str-count" style="color:#fff;">0</span></div>
+            <div style="margin-top:8px; display:flex; gap:6px;">
+                <button onclick="stremioForcSync()" style="flex:1; background:#1a1a2e; color:#7c5cbf; border:1px solid #7c5cbf; padding:6px; border-radius:4px; cursor:pointer; font-size:0.75rem;">مزامنة الآن</button>
+                <button onclick="stremioDisconnect()" style="flex:1; background:#1a1a1a; color:#555; border:1px solid #333; padding:6px; border-radius:4px; cursor:pointer; font-size:0.75rem;">قطع الاتصال</button>
+            </div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid #1a1a1a;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <div style="color:#555; font-size:0.7rem;">تشخيص — المسلسل الحالي:</div>
+                    <button onclick="stremioToggleLibrary()" id="str-lib-toggle" style="background:#0a0a0a; color:#555; border:1px solid #222; padding:3px 8px; border-radius:4px; cursor:pointer; font-size:0.68rem;">عرض المكتبة</button>
+                </div>
+                <div id="str-debug" style="color:#666; font-size:0.68rem; line-height:1.6;"></div>
+                <button onclick="stremioShowDebug()" style="margin-top:6px; width:100%; background:#0a0a0a; color:#444; border:1px solid #222; padding:4px; border-radius:4px; cursor:pointer; font-size:0.68rem;">فحص الربط</button>
 
-    <div id="player-container">
-        <video id="main-video" controls tabindex="0"></video>
-        <div id="resume-ui" class="resume-overlay">
-            <h3 style="margin-top:0;">هل تريد إكمال المشاهدة؟</h3>
-            <p id="resume-msg"></p>
-            <button class="btn-action" onclick="confirmResume(true)" tabindex="0">نعم، إكمال</button>
-            <button class="btn-action" style="background:#444; margin-right:10px;" onclick="confirmResume(false)" tabindex="0">البدء من جديد</button>
+                <!-- Library browser -->
+                <div id="str-lib-panel" style="display:none; margin-top:10px;">
+                    <div style="color:#555; font-size:0.68rem; margin-bottom:5px;">مكتبة Stremio — اضغط على اسم لربطه بالمسلسل الحالي:</div>
+                    <input id="str-lib-search" type="text" placeholder="بحث في المكتبة..." oninput="stremioFilterLibrary(this.value)"
+                        style="width:100%; background:#0d0d0d; border:1px solid #2a2a2a; color:#aaa; padding:5px 8px; border-radius:4px; margin-bottom:6px; font-size:0.72rem; outline:none;">
+                    <div id="str-lib-list" style="max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:3px;"></div>
+                </div>
+            </div>
         </div>
-        <div style="padding:15px;"><div id="active-title" style="font-weight:bold; color:var(--primary-red)"></div></div>
     </div>
-</main>
-
-<div id="debug-console"></div>
+</div>
 
 <script>
-    var PROXY = function(url) { return "https://corsproxy.io/?" + encodeURIComponent(url); };
+    const SB_URL = "https://hksxehxhdlzqmzrqspjc.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhrc3hlaHhoZGx6cW16cnFzcGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2NTI2MzYsImV4cCI6MjA4NzIyODYzNn0.IrMUz0wss2qoJEXqD6Q2hlXa5J13i-_2VYxAUM_R5tY";
+    const db = supabase.createClient(SB_URL, SB_KEY);
+    var PROXY = url => "https://corsproxy.io/?" + encodeURIComponent(url);
     var BASE = "https://ak.sv";
-    var FAV_KEY = "alazri_favs_v1_4";
-    var HIST_KEY = "alazri_hist_v1_4";
-    var state = { currentSeries: null, currentLink: null, savedPos: 0 };
-    var video = document.getElementById('main-video');
 
-    function debugLog(m) { 
-        var el = document.getElementById('debug-console');
-        if(el) { el.innerHTML += '<div>'+m+'</div>'; el.scrollTop = el.scrollHeight; }
+    // ── Stremio State ────────────────────────────────────────
+    var STR_API = "https://api.strem.io";
+    var stremio = {
+        authKey: localStorage.getItem('str_auth') || null,
+        email:   localStorage.getItem('str_email') || null,
+        library: [],       // Stremio library items (series only)
+        seriesCache: {},   // aksv_link → imdbId
+        connected: false
+    };
+
+    // ── Stremio API helpers ──────────────────────────────────
+    async function strAPI(endpoint, body) {
+        // Call Stremio API directly — api.strem.io supports CORS, no proxy needed
+        const r = await fetch(STR_API + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error(`Stremio HTTP ${r.status}`);
+        return r.json();
     }
 
-    // --- History Logic ---
-    function getHist() { var d = localStorage.getItem(HIST_KEY); return d ? JSON.parse(d) : {}; }
-    function savePos() {
-        if(state.currentLink && !video.paused && video.currentTime > 5) {
-            var h = getHist();
-            h[state.currentLink] = Math.floor(video.currentTime);
-            localStorage.setItem(HIST_KEY, JSON.stringify(h));
+    // Visible sync toast
+    function strToast(msg, isErr = false) {
+        let t = document.getElementById('str-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'str-toast';
+            t.style.cssText = 'position:fixed;bottom:20px;left:20px;background:#1a1a2e;border:1px solid #7c5cbf;color:#fff;padding:8px 14px;border-radius:6px;font-size:0.75rem;z-index:99999;transition:opacity 0.4s;pointer-events:none;';
+            document.body.appendChild(t);
+        }
+        t.style.color = isErr ? '#e50914' : '#b39ddb';
+        t.innerText = '⚡ ' + msg;
+        t.style.opacity = '1';
+        clearTimeout(t._hide);
+        t._hide = setTimeout(() => t.style.opacity = '0', 3000);
+    }
+
+    async function stremioInit() {
+        if (!stremio.authKey) return;
+        try {
+            await stremioLoadLibrary();
+            stremio.connected = true;
+            updateStremioUI();
+        } catch(e) {
+            console.warn('Stremio init failed', e);
         }
     }
-    setInterval(savePos, 10000);
 
-    // --- Favorites Logic ---
-    function getFavs() { var d = localStorage.getItem(FAV_KEY); return d ? JSON.parse(d) : []; }
-    function renderFavs() {
-        var favs = getFavs();
-        var row = document.getElementById('row-favs');
-        if(favs.length > 0) {
-            row.classList.add('visible');
-            document.getElementById('grid-favs').innerHTML = favs.map(function(item) {
-                return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(item).replace(/'/g, "&apos;") + ')\'><img src="'+item.img+'"><div class="card-label">'+item.title+'</div></div>';
-            }).join('');
-        } else { row.classList.remove('visible'); }
-    }
-
-    function handleFavoriteAction() {
-        var favs = getFavs();
-        var index = favs.findIndex(function(f) { return f.link === state.currentSeries.link; });
-        if(index > -1) favs.splice(index, 1); else favs.push(state.currentSeries);
-        localStorage.setItem(FAV_KEY, JSON.stringify(favs));
-        updateFavBtnUI();
-        renderFavs();
-    }
-
-    function updateFavBtnUI() {
-        if(!state.currentSeries) return;
-        var isFav = getFavs().some(function(f) { return f.link === state.currentSeries.link; });
-        document.getElementById('fav-icon').className = isFav ? "fas fa-heart" : "far fa-heart";
-        document.getElementById('fav-text').innerText = isFav ? "إزالة من المفضلة" : "أضف للمفضلة";
-    }
-
-    // --- Search & Episode Logic (Fixing Duplicates) ---
-    async function startSearch(q) {
-        if(!q) return;
-        debugLog("Searching...");
-        var res = await fetch(PROXY(BASE + "/search?q=" + q));
-        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        var unique = new Map();
-        doc.querySelectorAll('.entry-box, .subject-item, a[href*="/movie/"], a[href*="/series/"]').forEach(function(el) {
-            var a = el.tagName === 'A' ? el : el.querySelector('a');
-            var img = el.querySelector('img');
-            if(a && img) {
-                var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
-                if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src, isSeries: link.indexOf('/series/') !== -1 });
-            }
+    async function stremioLoadLibrary() {
+        const json = await strAPI('/api/datastoreGet', {
+            authKey: stremio.authKey,
+            collection: 'libraryItem',
+            all: true
         });
-        document.getElementById('grid-search').innerHTML = Array.from(unique.values()).map(function(item) {
-            return '<div class="card" tabindex="0" onclick=\'handleAction(' + JSON.stringify(item).replace(/'/g, "&apos;") + ')\'><img src="'+item.img+'"><div class="card-label">'+item.title+'</div></div>';
+        const all = json.result || [];
+        // Full raw list for browsing — everything Stremio has
+        stremio.allItems = all;
+        // Filtered list used for sync (series with tt IDs only)
+        stremio.library  = all.filter(i => i._id); // keep all items — tt, kitsu, tmdb, youtube, etc.
+        // Count breakdown
+        const byType = {};
+        all.forEach(i => { byType[i.type || 'unknown'] = (byType[i.type || 'unknown'] || 0) + 1; });
+        const breakdown = Object.entries(byType).map(([t, n]) => `${t}: ${n}`).join(' · ');
+        document.getElementById('str-count').innerText = `${all.length} (${breakdown})`;
+        // Load mapping cache from Supabase
+        if (state.user) {
+            const { data } = await db.from('stremio_series_mapping')
+                .select('aksv_link, imdb_id').eq('user_id', state.user.id);
+            if (data) data.forEach(r => stremio.seriesCache[r.aksv_link] = r.imdb_id);
+        }
+    }
+
+    // Fuzzy title match – returns best Stremio library item or null
+    function stremioMatchByTitle(title) {
+        if (!title || !stremio.library.length) return null;
+        const clean = t => t.toLowerCase().replace(/[^a-z0-9\u0600-\u06ff\s]/g, '').trim();
+        const ct = clean(title);
+        let best = null, bestScore = 0;
+        for (const item of stremio.library) {
+            const cs = clean(item.name || '');
+            if (!cs) continue;
+            // Exact
+            if (cs === ct) return item;
+            // Contains
+            if (cs.includes(ct) || ct.includes(cs)) {
+                const score = Math.min(cs.length, ct.length) / Math.max(cs.length, ct.length);
+                if (score > bestScore) { bestScore = score; best = item; }
+            }
+        }
+        return bestScore > 0.6 ? best : null;
+    }
+
+    // Parse Arabic/English episode title → { season, episode }
+    function parseEpNumbers(title) {
+        if (!title) return { season: 1, episode: 1 };
+        let season = 1, episode = 1;
+        // Arabic patterns: الحلقة X, الموسم X
+        const epAr = title.match(/الحلقة\s*(\d+)/);
+        const snAr = title.match(/الموسم\s*(\d+)/);
+        // English patterns: S1E5, Season 1 Episode 5, Ep 5
+        const enSE = title.match(/[Ss](\d+)[Ee](\d+)/);
+        const enEp = title.match(/[Ee]p(?:isode)?\s*(\d+)/i);
+        const enSn = title.match(/[Ss]eason\s*(\d+)/i);
+
+        if (enSE) { season = parseInt(enSE[1]); episode = parseInt(enSE[2]); }
+        else {
+            if (epAr) episode = parseInt(epAr[1]);
+            else if (enEp) episode = parseInt(enEp[1]);
+            if (snAr) season = parseInt(snAr[1]);
+            else if (enSn) season = parseInt(enSn[1]);
+        }
+        return { season, episode };
+    }
+
+    // Extract episode number from the episode URL
+    // URL format: https://ak.sv/episode/94050/series-name/الحلقة-11
+    // Episode number is the trailing number after the last dash in the URL
+    function epNumFromUrl(url) {
+        const decoded = decodeURIComponent(url);
+        const match = decoded.match(/[^\d](\d+)\s*$/);  // last number in the URL
+        return match ? parseInt(match[1]) : 1;
+    }
+
+    // Extract episode number from a Stremio video_id
+    // Format: seriesId:episodeNumber:encodedEpisodeUrl
+    // The episode number is the segment immediately before the encoded URL (starts with http)
+    function epNumFromVideoId(videoId) {
+        if (!videoId) return null;
+        const parts = videoId.split(':');
+        for (let i = parts.length - 1; i >= 1; i--) {
+            const decoded = decodeURIComponent(parts[i]);
+            if (decoded.startsWith('http')) {
+                // The segment before this is the episode number
+                return parseInt(parts[i - 1]) || null;
+            }
+        }
+        return null;
+    }
+
+    // Build video_id matching ArabCity addon format:
+    // seriesId:episodeNumber:encodedEpisodeUrl
+    function stremioVideoId(seriesId, episodeNumber, episodeUrl) {
+        // episodeUrl may already be encoded — decode first to avoid double-encoding
+        const decoded = decodeURIComponent(episodeUrl);
+        const encodedUrl = encodeURIComponent(decoded);
+        return seriesId + ':' + episodeNumber + ':' + encodedUrl;
+    }
+    // stremioWatched: not constructed — always preserved from existing library item
+
+    // Get or create Stremio imdbId for current aksv series link
+    async function stremioGetImdbId(seriesLink, seriesTitle) {
+        if (stremio.seriesCache[seriesLink]) return stremio.seriesCache[seriesLink];
+        const match = stremioMatchByTitle(seriesTitle);
+        if (!match) return null;
+        const imdbId = match._id;
+        stremio.seriesCache[seriesLink] = imdbId;
+        // Persist mapping
+        if (state.user) {
+            const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
+                user_id: state.user.id,
+                aksv_link: seriesLink,
+                imdb_id: imdbId,
+                series_title: seriesTitle
+            }, { onConflict: 'user_id, aksv_link' });
+            if (mapErr) console.error('[Stremio] Auto-mapping save failed:', mapErr.message, mapErr.code);
+            else console.log('[Stremio] Auto-mapping saved:', seriesTitle, '→', imdbId);
+        }
+        return imdbId;
+    }
+
+    // Get progress from Stremio for a specific episode
+    // video_id format: seriesId:episodeNumber:encodedEpisodeUrl
+    // We match by comparing the encoded episode URL segment inside the stored video_id
+    function stremioGetProgress(imdbId, videoId) {
+        const item = stremio.library.find(i => i._id === imdbId);
+        if (!item || !item.state) return null;
+        const storedVid = item.state.video_id || '';
+
+        // Exact match
+        if (storedVid === videoId) {
+            console.log('[Stremio] Progress exact match:', storedVid);
+            // timeOffset from Stremio is ms — convert to seconds for our video player
+            return { timeOffset: Math.floor((item.state.timeOffset || 0) / 1000), lastWatched: item.state.lastWatched || 0 };
+        }
+
+        // Match by episode URL: extract the encoded URL part from both and compare
+        // Format: seriesId:epNum:encodedUrl  — the encodedUrl starts after the 2nd colon after seriesId
+        // Since seriesId itself contains colons, we extract the last two segments
+        const extractEpUrl = vid => {
+            // Split from end: last segment is encodedUrl, second-to-last is epNum
+            const parts = vid.split(':');
+            // Find the encoded URL part — it starts with 'http' when decoded
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const decoded = decodeURIComponent(parts[i]);
+                if (decoded.startsWith('http')) return parts[i];
+            }
+            return '';
+        };
+
+        const storedEpUrl = extractEpUrl(storedVid);
+        const requestedEpUrl = extractEpUrl(videoId);
+
+        if (storedEpUrl && requestedEpUrl && storedEpUrl === requestedEpUrl) {
+            console.log('[Stremio] Progress URL match:', decodeURIComponent(storedEpUrl));
+            // timeOffset from Stremio is ms — convert to seconds for our video player
+            return { timeOffset: Math.floor((item.state.timeOffset || 0) / 1000), lastWatched: item.state.lastWatched || 0 };
+        }
+
+        console.log('[Stremio] No progress match — stored:', storedVid, '| requested:', videoId);
+        return null;
+    }
+
+    // ── Full bidirectional sync for all episodes of a series ──────────────────
+    // Called once when a series is opened.
+    // For each episode:
+    //   • If Stremio has newer time → push to Supabase
+    //   • If Supabase has newer time → push to Stremio
+    async function stremioSyncAllEpisodes(seriesId, eps) {
+        if (!stremio.connected || !state.user || !seriesId) return;
+        strToast('⏳ مزامنة الحلقات...');
+
+        // Step 1: fetch per-episode progress from Stremio using video_id list
+        const videoIds = eps.map(ep => {
+            const episode = epNumFromUrl(ep.link);
+            return stremioVideoId(seriesId, episode, ep.link);
+        });
+
+        let stremioEpMap = {}; // videoId → { timeOffset (ms), lastWatched (ISO) }
+        try {
+            const json = await strAPI('/api/datastoreGet', {
+                authKey:    stremio.authKey,
+                collection: 'videosState',
+                ids:        videoIds
+            });
+            const results = json.result || [];
+            results.forEach(r => {
+                if (r && r._id && r.state) {
+                    stremioEpMap[r._id] = {
+                        timeOffsetMs:   r.state.timeOffset     || 0,
+                        lastWatched:    r.state.lastWatched    || 0,
+                        durationMs:     r.state.duration       || 0,
+                        flaggedWatched: r.state.flaggedWatched || false
+                    };
+                }
+            });
+            console.log('[Stremio] videosState fetched:', Object.keys(stremioEpMap).length, 'episodes');
+        } catch(e) {
+            console.warn('[Stremio] videosState fetch failed:', e.message);
+            // Fall back to library item only (last watched episode)
+        }
+
+        // Step 2: compare each episode and sync in the winning direction
+        const sbUpserts = []; // episodes to update/insert in Supabase
+        const strPushes = []; // episodes to push to Stremio
+        const libItem  = stremio.library.find(i => i._id === seriesId);
+        const libState = libItem?.state || {};
+
+        for (const ep of eps) {
+            const episode = epNumFromUrl(ep.link);
+            const videoId = stremioVideoId(seriesId, episode, ep.link);
+
+            // ── Supabase record ──
+            const sbRec     = state.history.find(h => h.episode_link === ep.link);
+            const sbTimeSec = sbRec?.last_position || 0;
+            const sbMs      = sbRec?.updated_at ? new Date(sbRec.updated_at).getTime() : 0;
+            const sbWatched = sbRec?.watched || false;
+            const sbDurSec  = sbRec?.duration || 0;
+            const sbInDB    = !!sbRec; // whether this episode has any record in Supabase at all
+
+            // ── Stremio record — videosState first, fallback to library item ──
+            let strTimeSec = 0, strMs = 0, strDurMs = 0, strFlagged = false;
+
+            const epData = stremioEpMap[videoId];
+            if (epData) {
+                strTimeSec = Math.floor((epData.timeOffsetMs || 0) / 1000);
+                strMs      = typeof epData.lastWatched === 'string'
+                    ? new Date(epData.lastWatched).getTime()
+                    : (epData.lastWatched || 0);
+                strDurMs   = epData.durationMs || 0;
+                strFlagged = epData.flaggedWatched || false;
+            } else {
+                const libProgress = stremioGetProgress(seriesId, videoId);
+                if (libProgress) {
+                    strTimeSec = libProgress.timeOffset; // already in seconds
+                    strMs      = typeof libProgress.lastWatched === 'string'
+                        ? new Date(libProgress.lastWatched).getTime()
+                        : (libProgress.lastWatched || 0);
+                    const libEpNum = epNumFromVideoId(libState.video_id || '');
+                    strDurMs   = (libEpNum !== null && libEpNum === episode)
+                        ? (libState.duration || 0) : 0;
+                    strFlagged = !!(libState.flaggedWatched);
+                }
+            }
+
+            // Duration: Stremio libState (episode-accurate) > videosState > Supabase player-recorded
+            const resolvedDurSec = Math.floor(strDurMs / 1000) || sbDurSec || 0;
+
+            // ── Determine what each side has ──
+            const strHasTime    = strTimeSec >= 5;
+            const strHasData    = strHasTime || strFlagged;
+            const sbHasTime     = sbTimeSec  >= 5;
+            const sbHasData     = sbHasTime  || sbWatched;
+            const neitherHasData = !strHasData && !sbHasData;
+
+            // Skip only if truly nothing on either side
+            if (neitherHasData) continue;
+
+            // ── Winner decision ──
+            // Rule 1: only one side has data → that side wins
+            // Rule 2: both have data → bigger timeOffset wins
+            // Rule 3: same timeOffset → newer timestamp wins
+            // Rule 4: watched flag breaks remaining ties
+            let winner = null;
+
+            if (strHasData && !sbHasData) {
+                winner = 'stremio';                        // Stremio only → add to Supabase
+            } else if (sbHasData && !strHasData) {
+                winner = 'supabase';                       // Supabase only → push to Stremio
+            } else if (strTimeSec > sbTimeSec) {
+                winner = 'stremio';
+            } else if (sbTimeSec > strTimeSec) {
+                winner = 'supabase';
+            } else if (strTimeSec === sbTimeSec && strTimeSec > 0) {
+                winner = strMs >= sbMs ? 'stremio' : 'supabase';
+            } else if (strFlagged && !sbWatched) {
+                winner = 'stremio';
+            } else if (sbWatched && !strFlagged) {
+                winner = 'supabase';
+            }
+
+            if (!winner) continue;
+
+            const strWatched = strFlagged ||
+                (resolvedDurSec > 0 && strTimeSec >= resolvedDurSec - 30);
+
+            if (winner === 'stremio') {
+                // ── Stremio → Supabase ──
+                // Covers: new episodes not in DB, and existing ones where Stremio is ahead
+                console.log(`[Sync] Stremio→SB ep${episode}: ${fmtTime(strTimeSec)}s dur:${fmtTime(resolvedDurSec)} watched:${strWatched} newRecord:${!sbInDB}`);
+                sbUpserts.push({
+                    user_id:       state.user.id,
+                    episode_link:  ep.link,
+                    last_position: strTimeSec,
+                    duration:      resolvedDurSec,
+                    watched:       strWatched,
+                    updated_at:    new Date(strMs || Date.now()).toISOString()
+                });
+                const hi = state.history.find(h => h.episode_link === ep.link);
+                if (hi) {
+                    hi.last_position = strTimeSec;
+                    hi.duration      = resolvedDurSec;
+                    hi.watched       = strWatched;
+                    hi.updated_at    = new Date(strMs || Date.now()).toISOString();
+                } else {
+                    state.history.push({
+                        episode_link:  ep.link,
+                        last_position: strTimeSec,
+                        duration:      resolvedDurSec,
+                        watched:       strWatched,
+                        updated_at:    new Date(strMs || Date.now()).toISOString()
+                    });
+                }
+
+            } else {
+                // ── Supabase → Stremio ──
+                // Push even if episode has no Stremio record yet (strHasData=false)
+                console.log(`[Sync] SB→Stremio ep${episode}: ${fmtTime(sbTimeSec)}s watched:${sbWatched} newToStremio:${!strHasData}`);
+                strPushes.push({ videoId, timeOffset: sbTimeSec, watched: sbWatched });
+
+                // If Stremio gave us a better duration, update Supabase regardless of winner
+                if (resolvedDurSec > 0 && resolvedDurSec !== sbDurSec) {
+                    console.log(`[Sync] Duration→SB ep${episode}: ${fmtTime(resolvedDurSec)}`);
+                    // Update the same upsert record or add a duration-only one
+                    sbUpserts.push({
+                        user_id:       state.user.id,
+                        episode_link:  ep.link,
+                        last_position: sbTimeSec,
+                        duration:      resolvedDurSec,
+                        watched:       sbWatched,
+                        updated_at:    new Date(sbMs || Date.now()).toISOString()
+                    });
+                    const hi = state.history.find(h => h.episode_link === ep.link);
+                    if (hi) hi.duration = resolvedDurSec;
+                }
+            }
+        }
+
+        // Batch upsert to Supabase
+        if (sbUpserts.length > 0) {
+            const { error } = await db.from('watch_history')
+                .upsert(sbUpserts, { onConflict: 'user_id, episode_link' });
+            if (error) console.error('[Sync] Supabase batch upsert failed:', error.message);
+            else console.log('[Sync] Supabase updated:', sbUpserts.length, 'episodes');
+        }
+
+        // Push to Stremio sequentially (avoid rate limits)
+        for (const { videoId, timeOffset, watched } of strPushes) {
+            await stremioPushProgress(seriesId, videoId, timeOffset, watched);
+        }
+
+        const total = sbUpserts.length + strPushes.length;
+        if (total > 0) {
+            strToast(`✓ تمت المزامنة: ${sbUpserts.length} من Stremio، ${strPushes.length} إلى Stremio`);
+        } else {
+            strToast('✓ كل شيء محدّث');
+        }
+    }
+
+    // Push progress update to Stremio
+    async function stremioPushProgress(imdbId, videoId, timeOffset, forceWatched) {
+        if (!stremio.authKey || !stremio.connected) return;
+        const existing = stremio.library.find(i => i._id === imdbId);
+
+        // CRITICAL: log the raw item so we can see exact types Stremio uses
+        console.log('[Stremio] Raw library item:', JSON.stringify(existing, null, 2));
+
+        if (!existing) {
+            console.warn('[Stremio] Item not in library, cannot push:', imdbId);
+            strToast('المسلسل غير موجود في مكتبة Stremio', true);
+            return;
+        }
+
+        // Deep clone original — preserve all fields exactly as Stremio sent them
+        const updatedItem = JSON.parse(JSON.stringify(existing));
+
+        const nowISO = new Date().toISOString();
+
+        // timeOffset in Stremio is milliseconds (1 second = 1000)
+        const timeOffsetMs = timeOffset * 1000;
+
+        // _mtime: always ISO string
+        updatedItem._mtime = nowISO;
+
+        // type: preserve original addon type — do NOT override to 'series'
+        // behaviorHints: required field, preserve from existing or use defaults
+        if (!updatedItem.behaviorHints) {
+            updatedItem.behaviorHints = {
+                defaultVideoId:      null,
+                featuredVideoId:     null,
+                hasScheduledVideos:  false
+            };
+        }
+
+        // Remove empty string fields that are not in the real payload
+        ['background', 'logo', 'year'].forEach(k => {
+            if (updatedItem[k] === '') delete updatedItem[k];
+        });
+
+        const st = existing.state || {};
+        // Determine if this episode should be marked as watched
+        // (timeOffset in ms >= duration in ms - 30s, or duration is 0 and we have big offset)
+        const durMs = st.duration || 0;
+        // forceWatched passed from sync (Supabase record), otherwise calculate from timeOffset
+        const isWatchedPush = forceWatched !== undefined
+            ? !!forceWatched
+            : (durMs > 0 && (timeOffset * 1000) >= durMs - 30000);
+        updatedItem.state = Object.assign({}, st, {
+            video_id:           videoId,
+            // watched: preserved from st.watched — never reconstructed (contains base64 hash)
+            timeOffset:         timeOffsetMs,
+            lastWatched:        nowISO,
+            timeWatched:        (st.timeWatched        || 0) + 10,
+            overallTimeWatched: (st.overallTimeWatched || 0) + 10,
+            timesWatched:       (st.timesWatched       || 0),
+            flaggedWatched:     typeof st.flaggedWatched === 'number'
+                                    ? (isWatchedPush ? 1 : 0)
+                                    : isWatchedPush,
+            duration:           (st.duration           || 0)
+        });
+
+        console.log('[Stremio] Sending updatedItem:', JSON.stringify(updatedItem, null, 2));
+
+        // Update local cache immediately
+        const idx = stremio.library.findIndex(i => i._id === imdbId);
+        if (idx >= 0) stremio.library[idx] = updatedItem;
+        else stremio.library.push(updatedItem);
+
+        try {
+            const pushPayload = {
+                authKey:    stremio.authKey,
+                collection: 'libraryItem',
+                changes:    [updatedItem]
+            };
+            console.log('[Stremio] Sending payload:', JSON.stringify(pushPayload, null, 2));
+            const r = await fetch(STR_API + '/api/datastorePut', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(pushPayload)
+            });
+            if (!r.ok) {
+                const errBody = await r.text();
+                console.error('[Stremio] Push HTTP', r.status, errBody);
+                strToast('فشل الإرسال إلى Stremio (' + r.status + ')', true);
+                return;
+            }
+            const json = await r.json();
+            if (json.error) {
+                console.error('[Stremio] Push API error:', JSON.stringify(json.error));
+                strToast('فشل الإرسال: ' + (json.error.message || json.error), true);
+                return;
+            }
+            console.log('[Stremio] Pushed OK', videoId, fmtTime(timeOffset));
+        } catch(e) {
+            console.warn('[Stremio] Push failed:', e.message);
+            strToast('فشل الإرسال إلى Stremio', true);
+        }
+    }
+
+    // Compare Supabase vs Stremio progress — winner = whichever has MORE time
+    async function stremioResolveProgress(episodeLink, stremioImdbId, stremioVideoId) {
+        if (!stremio.connected || !stremioImdbId) return null;
+        const strProg = stremioGetProgress(stremioImdbId, stremioVideoId);
+        if (!strProg || strProg.timeOffset < 5) return null;
+
+        const sbProg = state.history.find(h => h.episode_link === episodeLink);
+        const sbTime = sbProg?.last_position || 0;
+        const sbMs   = sbProg?.updated_at ? new Date(sbProg.updated_at).getTime() : 0;
+        const strTime = strProg.timeOffset;
+        const strMs   = strProg.lastWatched || 0;
+
+        // Stremio wins if: it has more progress OR it's newer
+        if (strTime > sbTime || strMs > sbMs) {
+            console.log(`[Stremio] Pull win — Str:${fmtTime(strTime)} vs SB:${fmtTime(sbTime)}`);
+            if (state.user) {
+                const strLibItem = stremio.library.find(i => i._id === stremioImdbId);
+                const strDurMs   = strLibItem?.state?.duration || 0;
+                const strDurSec  = Math.floor(strDurMs / 1000);
+                const strWatched = !!(strLibItem?.state?.flaggedWatched) ||
+                    (strDurMs > 0 && (strTime * 1000) >= strDurMs - 30000);
+                await db.from('watch_history').upsert({
+                    user_id:       state.user.id,
+                    episode_link:  episodeLink,
+                    last_position: strTime,
+                    duration:      strDurSec,
+                    watched:       strWatched,
+                    updated_at:    new Date(strMs || Date.now())
+                }, { onConflict: 'user_id, episode_link' });
+                const hi = state.history.find(h => h.episode_link === episodeLink);
+                if (hi) { hi.last_position = strTime; hi.duration = strDurSec; hi.watched = strWatched; hi.updated_at = new Date(strMs || Date.now()).toISOString(); }
+                else state.history.push({ episode_link: episodeLink, last_position: strTime, duration: strDurSec, watched: strWatched, updated_at: new Date(strMs || Date.now()).toISOString() });
+            }
+            strToast(`استُعيد من Stremio: ${fmtTime(strTime)}`);
+            return strTime;
+        }
+        return null;
+    }
+
+    // ── Stremio UI ───────────────────────────────────────────
+    function updateStremioUI() {
+        const btn = document.getElementById('stremio-btn');
+        const badge = document.getElementById('stremio-badge');
+        if (stremio.connected) {
+            btn.classList.add('connected');
+            badge.classList.add('show');
+            document.getElementById('str-email-display').innerText = stremio.email || '';
+            document.getElementById('str-info').style.display = 'block';
+            document.getElementById('str-email').style.display = 'none';
+            document.getElementById('str-pass').style.display = 'none';
+        } else {
+            btn.classList.remove('connected');
+            badge.classList.remove('show');
+            document.getElementById('str-info').style.display = 'none';
+            document.getElementById('str-email').style.display = 'block';
+            document.getElementById('str-pass').style.display = 'block';
+        }
+    }
+
+    function openStremioModal() {
+        updateStremioUI();
+        document.getElementById('stremio-modal').classList.add('open');
+    }
+    function closeStremioModal() {
+        document.getElementById('stremio-modal').classList.remove('open');
+        document.getElementById('str-status').innerText = '';
+    }
+
+    async function stremioSaveLogin() {
+        const email = document.getElementById('str-email').value.trim();
+        const pass  = document.getElementById('str-pass').value;
+        const st    = document.getElementById('str-status');
+        if (!email || !pass) { st.className='str-status err'; st.innerText='أدخل البريد وكلمة المرور'; return; }
+        st.className='str-status'; st.innerText='جارٍ الاتصال...';
+        try {
+            const json = await strAPI('/api/login', { type:'Auth', email, password: pass });
+            if (!json.result?.authKey) throw new Error(json.error || 'Login failed');
+            stremio.authKey = json.result.authKey;
+            stremio.email   = email;
+            localStorage.setItem('str_auth',  stremio.authKey);
+            localStorage.setItem('str_email', stremio.email);
+            await stremioLoadLibrary();
+            stremio.connected = true;
+            updateStremioUI();
+            st.className='str-status ok';
+            st.innerText = `✓ متصل — ${stremio.library.length} مسلسل`;
+        } catch(e) {
+            st.className='str-status err';
+            st.innerText = 'فشل الاتصال: ' + e.message;
+        }
+    }
+
+    async function stremioForcSync() {
+        const btn = document.getElementById('stremio-btn');
+        btn.classList.add('syncing');
+        try {
+            await stremioLoadLibrary();
+            document.getElementById('str-status').className='str-status ok';
+            document.getElementById('str-status').innerText='✓ تمت المزامنة';
+        } catch(e) {}
+        btn.classList.remove('syncing');
+    }
+
+    async function stremioShowDebug() {
+        const el = document.getElementById('str-debug');
+        if (!state.currentSeries) { el.innerHTML = '<span style="color:#555">لا يوجد مسلسل محدد حالياً</span>'; return; }
+        el.innerHTML = `عنوان المسلسل: <span style="color:#aaa">${state.currentSeries.title}</span><br>`;
+        const cached = stremio.seriesCache[state.currentSeries.link];
+        if (cached) {
+            const libItem = stremio.library.find(i => i._id === cached);
+            el.innerHTML += `IMDB: <span style="color:#7c5cbf">${cached}</span> — <span style="color:#4caf50">${libItem?.name || 'مربوط'}</span><br>`;
+        } else {
+            const match = stremioMatchByTitle(state.currentSeries.title);
+            if (match) {
+                el.innerHTML += `IMDB: <span style="color:#4caf50">${match._id}</span> — ${match.name}<br>`;
+            } else {
+                el.innerHTML += `<span style="color:#e50914">❌ لم يُعثر على تطابق تلقائي</span><br>`;
+                el.innerHTML += `<span style="color:#555; font-size:0.65rem;">استخدم "عرض المكتبة" لربطه يدوياً ↑</span>`;
+            }
+        }
+        if (state.currentLink && !state.currentLink.includes('/movie/')) {
+            const epTitle = document.getElementById('v-title').innerText;
+            const { season, episode } = parseEpNumbers(epTitle);
+            el.innerHTML += `<br>الحلقة المحللة: موسم ${season}، حلقة ${episode}`;
+        }
+    }
+
+    function stremioToggleLibrary() {
+        const panel = document.getElementById('str-lib-panel');
+        const btn   = document.getElementById('str-lib-toggle');
+        const open  = panel.style.display === 'none';
+        panel.style.display = open ? 'block' : 'none';
+        btn.style.color     = open ? '#7c5cbf' : '#555';
+        btn.style.borderColor = open ? '#7c5cbf' : '#222';
+        if (open) stremioRenderLibraryList('');
+    }
+
+    function stremioRenderLibraryList(filter) {
+        const list = document.getElementById('str-lib-list');
+        const fl   = filter.toLowerCase();
+        const all  = stremio.allItems || [];
+
+        const items = all.filter(i => {
+            if (!fl) return true;
+            return (i.name || '').toLowerCase().includes(fl) ||
+                   (i._id  || '').toLowerCase().includes(fl) ||
+                   (i.type || '').toLowerCase().includes(fl);
+        }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        if (!items.length) {
+            list.innerHTML = '<div style="color:#444; font-size:0.68rem; padding:6px;">لا توجد نتائج</div>';
+            return;
+        }
+
+        const currentImdb = state.currentSeries ? stremio.seriesCache[state.currentSeries.link] : null;
+
+        // Group by type
+        const groups = {};
+        items.forEach(i => {
+            const t = i.type || 'other';
+            if (!groups[t]) groups[t] = [];
+            groups[t].push(i);
+        });
+
+        const typeColors = { series: '#7c5cbf', movie: '#e50914', channel: '#2196f3', tv: '#4caf50', other: '#888' };
+
+        // Store items in a safe lookup map — avoids ALL quoting issues with special chars in names
+        stremio._libMap = stremio._libMap || {};
+        items.forEach(i => { stremio._libMap[i._id] = i.name || i._id; });
+
+        list.innerHTML = Object.entries(groups).map(([type, arr]) => {
+            const color = typeColors[type] || typeColors.other;
+            const rows = arr.map(i => {
+                const isMapped = i._id === currentImdb;
+                const lastW = i.state?.lastWatched ? new Date(i.state.lastWatched).toLocaleDateString('ar') : '';
+                // Use data-libid instead of inline onclick args — safe for any name with quotes/apostrophes
+                const safeId = i._id.replace(/"/g, '&quot;');
+                return `<div data-libid="${safeId}"
+                    style="padding:5px 8px; background:${isMapped ? '#1a0e2e' : '#0a0a0a'}; border:1px solid ${isMapped ? '#7c5cbf' : '#161616'};
+                           border-radius:3px; cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:4px; align-items:center;"
+                    onmouseover="this.style.borderColor='${color}44'" onmouseout="this.style.borderColor='${isMapped ? '#7c5cbf' : '#161616'}'">
+                    <span style="color:${isMapped ? '#b39ddb' : '#bbb'}; font-size:0.72rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i.name || '(بلا اسم)'}</span>
+                    <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
+                        ${lastW ? `<span style="color:#333; font-size:0.6rem;">${lastW}</span>` : ''}
+                        <span style="color:#555; font-size:0.6rem; font-family:monospace;">${i._id}</span>
+
+                        ${isMapped ? '<span style="color:#7c5cbf; font-size:0.65rem;">✓</span>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div style="margin-bottom:6px;">
+                <div style="color:${color}; font-size:0.65rem; font-weight:bold; padding:3px 0; letter-spacing:0.05em; text-transform:uppercase; border-bottom:1px solid ${color}22; margin-bottom:4px;">${type} <span style="color:#333; font-weight:normal;">(${arr.length})</span></div>
+                ${rows}
+            </div>`;
         }).join('');
-        document.getElementById('row-search').classList.add('visible');
+    }
+
+    function stremioFilterLibrary(val) {
+        stremioRenderLibraryList(val);
+    }
+
+    async function stremioManualMap(imdbId, imdbName) {
+        if (!state.currentSeries) {
+            strToast('افتح مسلسلاً أولاً', true);
+            return;
+        }
+        // Allow any addon ID format (tt, kitsu, tmdb, youtube, etc.)
+        // Save mapping
+        stremio.seriesCache[state.currentSeries.link] = imdbId;
+        // Ensure this item is in stremio.library for sync (even if filtered out before)
+        const inLib = stremio.library.find(i => i._id === imdbId);
+        if (!inLib) {
+            const raw = (stremio.allItems || []).find(i => i._id === imdbId);
+            if (raw) stremio.library.push(raw);
+        }
+        if (state.user) {
+            const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
+                user_id: state.user.id,
+                aksv_link: state.currentSeries.link,
+                imdb_id: imdbId,
+                series_title: state.currentSeries.title
+            }, { onConflict: 'user_id, aksv_link' });
+            if (mapErr) {
+                console.error('[Stremio] Mapping save failed:', mapErr);
+                strToast(`❌ فشل الحفظ: ${mapErr.message}`, true);
+                return;
+            }
+            console.log('[Stremio] Mapping saved OK →', imdbId);
+        } else {
+            strToast('⚠ سجّل دخولك لحفظ الربط', true);
+            return;
+        }
+        strToast(`✓ تم الربط: ${state.currentSeries.title} ← ${imdbName}`);
+        stremioShowDebug();
+        stremioRenderLibraryList(document.getElementById('str-lib-search').value);
+
+        // ── Immediately check Stremio progress for the current episode ──
+        if (state.currentLink && !state.currentLink.includes('/movie/')) {
+            const episode = epNumFromUrl(state.currentLink);
+            const videoId = stremioVideoId(imdbId, episode, state.currentLink);
+            const strTime = await stremioResolveProgress(state.currentLink, imdbId, videoId);
+            if (strTime && strTime > 15) {
+                state.savedPos = strTime;
+                document.getElementById('meta-pos').innerText = fmtTime(strTime);
+                document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(strTime)} (Stremio)`;
+                document.getElementById('resume-ui').style.display = 'flex';
+                strToast(`📍 تقدم Stremio: ${fmtTime(strTime)}`);
+            }
+        }
+    }
+
+    function stremioDisconnect() {
+        stremio.authKey = null; stremio.email = null;
+        stremio.connected = false; stremio.library = [];
+        localStorage.removeItem('str_auth'); localStorage.removeItem('str_email');
+        updateStremioUI();
+        document.getElementById('str-status').className='str-status';
+        document.getElementById('str-status').innerText='';
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('stremio-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeStremioModal();
+    });
+
+    // Delegated click for library list — safe for any name with quotes/apostrophes/Arabic
+    document.getElementById('str-lib-list').addEventListener('click', function(e) {
+        const row = e.target.closest('[data-libid]');
+        if (!row) return;
+        const imdbId = row.getAttribute('data-libid');
+        const imdbName = (stremio._libMap || {})[imdbId] || imdbId;
+        stremioManualMap(imdbId, imdbName);
+    });
+
+
+
+    // تصحيح كائن الحالة (State)
+    var state = { 
+        user: null, 
+        currentSeries: null, 
+        currentLink: null, 
+        savedPos: 0, 
+        favs: [], 
+        history: [], 
+        searchQuery: "", 
+        searchPage: 1 
+    };
+
+    var video = document.getElementById('main-video');
+
+    function fmtTime(s) { if(!s || isNaN(s)) return "00:00"; var m = Math.floor(s/60), sec = Math.floor(s%60); return (m<10?"0"+m:m)+":"+(sec<10?"0"+sec:sec); }
+
+    function ensureTopVisible() {
+        const top = document.getElementById('top-cont');
+        if (top.classList.contains('hidden')) toggleTopPanel();
+    }
+
+    function toggleTopPanel() {
+        const top = document.getElementById('top-cont');
+        const btn = document.getElementById('manual-toggle-btn');
+        const isHidden = top.classList.toggle('hidden');
+        btn.innerHTML = isHidden ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    }
+
+    function updateScrollState() {
+        var el = document.getElementById('discovery');
+        var btnL = document.getElementById('scroll-l'), btnR = document.getElementById('scroll-r');
+        if(!el || !btnL || !btnR) return;
+        var canScroll = el.scrollWidth > el.clientWidth;
+        btnL.classList.toggle('active', canScroll);
+        btnR.classList.toggle('active', canScroll);
+        btnL.classList.toggle('can-scroll', el.scrollLeft < -5);
+        btnR.classList.toggle('can-scroll', Math.abs(el.scrollLeft) + el.clientWidth < el.scrollWidth - 5);
+    }
+    function scrollXElem(v) { document.getElementById('discovery').scrollBy({left: v, behavior: 'smooth'}); }
+
+    function toggleEpisodeList() {
+        const wrapper = document.getElementById('ep-wrapper');
+        const icon = document.getElementById('list-plus-icon');
+        const isMin = wrapper.classList.toggle('minimized');
+        icon.innerHTML = isMin ? '<i class="fas fa-plus"></i>' : '<i class="fas fa-minus"></i>';
+    }
+
+    async function checkUser() {
+        const { data: { session } } = await db.auth.getSession();
+        if(session?.user) {
+            state.user = session.user;
+            document.getElementById('login-btn').style.display = 'none';
+            document.getElementById('logout-btn').style.display = 'block';
+            await loadUserHistory();
+            await refreshTop();
+            setInterval(syncProgressToDB, 10000);
+            // Init Stremio sync
+            await stremioInit();
+        }
+    }
+
+    async function loadUserHistory() {
+        if(!state.user) return;
+        const { data } = await db.from('watch_history').select('episode_link, last_position, duration, watched, updated_at').eq('user_id', state.user.id);
+        state.history = data || [];
+    }
+
+    async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
+    async function handleLogout() { await db.auth.signOut(); location.reload(); }
+
+    async function startSearch(q, append = false) {
+        if(!q) return;
+        ensureTopVisible();
+
+        if(!append) { 
+            state.searchQuery = q; 
+            state.searchPage = 1;
+            document.getElementById('content-search').innerHTML = "";
+            document.getElementById('group-favs').style.display = 'none';
+            document.getElementById('btn-fav').classList.remove('active');
+        }
+
+        try {
+            var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
+            var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+            var unique = new Map();
+            var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
+
+            items.forEach(a => {
+                var img = a.querySelector('img');
+                if(img) {
+                    var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                    if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
+                }
+            });
+
+            var plus = document.getElementById('plus-btn');
+            if(plus) plus.remove();
+
+            var container = document.getElementById('content-search');
+            var html = Array.from(unique.values()).map(i => `
+                <div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+                    <img src="${i.img}">
+                    <div class="card-label">${i.title}</div>
+                </div>
+            `).join('');
+
+            container.innerHTML += html;
+
+            if(items.length > 0) {
+                container.innerHTML += `
+                    <div id="plus-btn" class="load-more-card" onclick="loadNextPage()">
+                        <i class="fas fa-plus"></i>
+                    </div>`;
+            }
+
+            document.getElementById('group-search').style.display = 'inline-flex';
+            setTimeout(updateScrollState, 350); 
+        } catch(e) { console.error("Search Error:", e); }
+    }
+
+    async function handleAction(i) {
+        state.currentSeries = i;
+        if(i.link.includes('/movie/')) {
+            document.getElementById('side-panel').classList.add('has-content');
+            document.getElementById('episode-list').innerHTML = "";
+            document.getElementById('series-title').innerText = i.title;
+            document.getElementById('fav-btn').style.display = 'block';
+            updateFavBtnUI();
+            fetchAndPlay(i);
+        } else { 
+            loadEpisodes(i); 
+        }
+        if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     async function loadEpisodes(item) {
         state.currentSeries = item;
-        document.getElementById('row-episodes').classList.add('visible');
-        document.getElementById('episodes-label').innerText = item.title;
-        document.getElementById('fav-toggle-btn').style.display = 'block';
+        document.getElementById('series-title').innerText = item.title;
+        document.getElementById('fav-btn').style.display = 'block';
         updateFavBtnUI();
+
+        // ── Auto-link to Stremio when series is opened ──
+        if (stremio.connected && !stremio.seriesCache[item.link]) {
+            const match = stremioMatchByTitle(item.title);
+            if (match) {
+                stremio.seriesCache[item.link] = match._id;
+                strToast(`🔗 ربط تلقائي: ${item.title} ← ${match.name}`);
+                if (state.user) {
+                    const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
+                        user_id: state.user.id,
+                        aksv_link: item.link,
+                        imdb_id: match._id,
+                        series_title: item.title
+                    }, { onConflict: 'user_id, aksv_link' });
+                    if (mapErr) console.error('[Stremio] Auto-link save failed:', mapErr.message);
+                    else console.log('[Stremio] Auto-link saved:', item.title, '→', match._id);
+                }
+            } else {
+                console.log('[Stremio] No auto-match for:', item.title);
+            }
+        }
+
         var res = await fetch(PROXY(item.link));
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        var uniqueEps = new Map();
-        doc.querySelectorAll('a[href*="/episode/"]').forEach(function(a) {
-            var link = a.href.indexOf('http') !== -1 ? a.href : BASE + a.getAttribute('href');
-            if(!uniqueEps.has(link)) uniqueEps.set(link, { title: a.innerText.trim(), link: link, img: item.img });
+        var eps = [];
+        doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
+            var l = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+            if(!eps.find(e => e.link === l)) eps.push({link: l, title: a.innerText.trim()});
         });
-        document.getElementById('grid-episodes').innerHTML = Array.from(uniqueEps.values()).map(function(ep) {
-            return '<div class="card" tabindex="0" onclick="fetchAndPlay(\''+ep.link+'\', \''+ep.title+'\')"><img src="'+ep.img+'"><div class="card-label">'+ep.title+'</div></div>';
+        if(eps.length > 0) {
+            document.getElementById('side-panel').classList.add('has-content');
+            document.getElementById('ep-wrapper').classList.remove('minimized');
+            document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
+            renderEpisodeList(eps, item.img);
+
+            // ── Bidirectional sync for all episodes ──
+            const seriesId = stremio.seriesCache[item.link];
+            if (stremio.connected && seriesId) {
+                stremioSyncAllEpisodes(seriesId, eps).then(() => {
+                    // Re-render episode list with updated times from sync
+                    renderEpisodeList(eps, item.img);
+                });
+            }
+        }
+    }
+
+    function renderEpisodeList(eps, img) {
+        document.getElementById('episode-list').innerHTML = eps.map(e => {
+            const hist = state.history.find(h => h.episode_link === e.link);
+            const isWatched = hist?.watched;
+            const timeStr = isWatched
+                ? '<span style="color:#4caf50; font-size:0.75rem;">✓ شوهد</span>'
+                : (hist?.last_position > 0 ? fmtTime(hist.last_position) : "");
+            const activeClass = state.currentLink === e.link ? 'active-ep' : '';
+            const watchedStyle = isWatched ? 'opacity:0.55;' : '';
+            return `<div class="ep-item ${activeClass}" style="${watchedStyle}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'>
+                    <span>${e.title}</span><span class="ep-progress">${timeStr}</span></div>`;
         }).join('');
     }
 
-    // --- Playback Logic (Resume Wait) ---
-    async function fetchAndPlay(l, t) {
-        state.currentLink = l;
-        document.getElementById('player-container').style.display = 'block';
-        document.getElementById('active-title').innerText = "جاري جلب السيرفر...";
-        document.getElementById('resume-ui').style.display = 'none';
-        video.pause();
+    async function fetchAndPlay(item) {
+        const top = document.getElementById('top-cont');
+        if (!top.classList.contains('hidden')) {
+            top.classList.add('hidden');
+            document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
+        }
+
+        state.currentLink = item.link; 
+        document.getElementById('v-title').innerText = item.title;
+        document.getElementById('resume-ui').style.display = 'none'; 
+        video.pause(); video.src = ""; 
+
+        // ── Check Stremio progress (series only) ──────────────
+        let stremioTime = null;
+        if (stremio.connected && state.currentSeries && !item.link.includes('/movie/')) {
+            const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+            if (imdbId) {
+                const episode = epNumFromUrl(item.link);
+                const videoId = stremioVideoId(imdbId, episode, item.link);
+                console.log('[Stremio] Episode from URL:', episode, '| videoId:', videoId);
+                stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
+            }
+        }
+
+        // ── Resume logic (Stremio takes precedence if newer) ──
+        const hist = state.history.find(h => h.episode_link === item.link);
+        const resumePos = stremioTime !== null ? stremioTime : (hist?.last_position || 0);
+        const resumeSource = stremioTime !== null ? '(Stremio)' : '';
+
+        if(resumePos > 15) {
+            state.savedPos = resumePos;
+            document.getElementById('meta-pos').innerText = fmtTime(resumePos);
+            document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(resumePos)} ${resumeSource}`;
+            document.getElementById('resume-ui').style.display = 'flex';
+        }
 
         try {
-            var html = await (await fetch(PROXY(l))).text();
-            var m = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
-            var dl = await (await fetch(PROXY(l.replace('/episode/', '/download/'+m[1]+'/')))).text();
-            var mp4 = new DOMParser().parseFromString(dl, 'text/html').querySelector('a[href*=".mp4"]');
-            
-            if(mp4) {
-                video.src = mp4.href;
-                document.getElementById('active-title').innerText = t;
-                
-                var h = getHist();
-                if(h[l] && h[l] > 10) {
-                    state.savedPos = h[l];
-                    document.getElementById('resume-msg').innerText = "تم العثور على تقدم: " + Math.floor(h[l]/60) + " دقيقة";
-                    document.getElementById('resume-ui').style.display = 'block';
-                    document.getElementById('resume-ui').querySelector('button').focus();
-                } else {
-                    video.play();
-                    video.focus();
+            const response = await fetch(PROXY(item.link));
+            const html = await response.text();
+            const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
+
+            if(idMatch) {
+                const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
+                const downloadPageUrl = BASE + "/download/" + idMatch[1] + "/" + pathSuffix;
+                const dlRes = await fetch(PROXY(downloadPageUrl));
+                const dlHtml = await dlRes.text();
+                const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
+
+                if(mp4Match) {
+                    video.src = mp4Match[1].startsWith('/') ? BASE + mp4Match[1] : mp4Match[1];
+                    if(resumePos <= 15) video.play().catch(e => {});
+                    if(state.currentSeries && !item.link.includes('/movie/')) {
+                        await loadUserHistory();
+                        loadEpisodes(state.currentSeries);
+                    }
                 }
             }
-        } catch(e) { debugLog("Play Error"); }
+        } catch (err) {}
     }
 
-    function confirmResume(yes) {
-        document.getElementById('resume-ui').style.display = 'none';
-        if(yes) video.currentTime = state.savedPos;
-        video.play();
-        video.focus();
+    async function syncProgressToDB() {
+        if(state.user && state.currentLink && !video.paused) {
+            const pos = Math.floor(video.currentTime);
+            if(pos > 5) {
+                const dur = Math.floor(video.duration) || 0;
+                // Mark as watched if within 30s of end or timeOffset >= duration
+                const isWatched = dur > 0 && (pos >= dur - 30);
+                await db.from('watch_history').upsert({ 
+                    user_id: state.user.id, 
+                    episode_link: state.currentLink, 
+                    last_position: pos,
+                    duration: dur,
+                    watched: isWatched,
+                    updated_at: new Date() 
+                }, { onConflict: 'user_id, episode_link' });
+                // Update local cache
+                const hi = state.history.find(h => h.episode_link === state.currentLink);
+                if (hi) { hi.last_position = pos; hi.duration = dur; hi.watched = isWatched; }
+                else state.history.push({ episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date().toISOString() });
+                document.getElementById('meta-pos').innerText = fmtTime(pos);
+
+                // Stremio sync: push progress if this series is mapped
+                if (stremio.connected && state.currentSeries && !state.currentLink.includes('/movie/')) {
+                    const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+                    if (imdbId) {
+                        const epTitle = document.getElementById('v-title').innerText;
+                        const episode = epNumFromUrl(state.currentLink);
+                        const videoId = stremioVideoId(imdbId, episode, state.currentLink);
+                        console.log('[Stremio] Pushing progress:', videoId, fmtTime(pos));
+                        await stremioPushProgress(imdbId, videoId, pos);
+                    } else {
+                        console.log('[Stremio] No IMDB match for:', state.currentSeries.title);
+                    }
+                }
+            }
+        }
     }
 
-    function handleAction(i) { if(i.isSeries) loadEpisodes(i); else fetchAndPlay(i.link, i.title); }
-    document.getElementById('search-input').onkeydown = function(e) { if(e.key==='Enter') startSearch(this.value); };
-    
-    // Auto-load favorites on page start
-    window.onload = renderFavs;
+    async function refreshTop() {
+        if(!state.user) return;
+        const { data: fvs } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
+        state.favs = fvs ? fvs.map(f => f.series_data) : [];
+        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
+        setTimeout(updateScrollState, 500);
+    }
+
+    async function handleFavoriteAction() {
+        if(!state.user) return alert("سجل دخولك أولاً");
+        const isF = state.favs.some(f => f.link === state.currentSeries.link);
+        if(isF) { await db.from('favorites').delete().eq('user_id', state.user.id).filter('series_data->>link', 'eq', state.currentSeries.link); }
+        else { await db.from('favorites').insert([{ user_id: state.user.id, series_data: state.currentSeries }]); }
+        await refreshTop(); updateFavBtnUI();
+    }
+
+    function updateFavBtnUI() { 
+        if(!state.currentSeries) return;
+        var isF = state.favs.some(f => f.link === state.currentSeries.link); 
+        var b = document.getElementById('fav-btn');
+        b.innerText = isF ? "إزالة من المفضلة" : "أضف للمفضلة"; 
+        b.style.background = isF ? "#444" : "#e50914"; 
+    }
+
+    function confirmResume(y) { document.getElementById('resume-ui').style.display = 'none'; if(y) video.currentTime = state.savedPos; video.play(); }
+    function toggleRowManual(id, btnId) { var el = document.getElementById(id); el.style.display = (el.style.display === 'none') ? 'inline-flex' : 'none'; document.getElementById(btnId).classList.toggle('active'); setTimeout(updateScrollState, 100); }
+
+    function loadNextPage() {
+        state.searchPage++;
+        startSearch(state.searchQuery, true);
+    }
+
+    document.getElementById('discovery').onscroll = updateScrollState;
+    document.getElementById('search-input').onkeydown = e => { if(e.key==='Enter') startSearch(e.target.value); };
+    window.onload = checkUser;
+    window.onresize = updateScrollState;
 </script>
 </body>
 </html>
