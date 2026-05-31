@@ -1091,7 +1091,7 @@
         }
 
         try {
-            var res = await fetch(PROXY(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`));
+            var res = await proxyFetch(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`);
             var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
             var unique = new Map();
             var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
@@ -1171,7 +1171,7 @@
             }
         }
 
-        var res = await fetch(PROXY(item.link));
+        var res = await proxyFetch(item.link);
         var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
         var eps = [];
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
@@ -1247,14 +1247,14 @@
         }
 
         try {
-            const response = await fetch(PROXY(item.link));
+            const response = await proxyFetch(item.link);
             const html = await response.text();
             const idMatch = html.match(/go\.ak\.sv\/link\/([a-zA-Z0-9]+)/);
 
             if(idMatch) {
                 const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
                 const downloadPageUrl = BASE + "/download/" + idMatch[1] + "/" + pathSuffix;
-                const dlRes = await fetch(PROXY(downloadPageUrl));
+                const dlRes = await proxyFetch(downloadPageUrl);
                 const dlHtml = await dlRes.text();
                 const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
 
