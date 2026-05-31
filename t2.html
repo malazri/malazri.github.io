@@ -519,25 +519,27 @@
 
             // ── Winner decision ──
             // Rule 1: only one side has data → that side wins
-            // Rule 2: both have data → bigger timeOffset wins
-            // Rule 3: same timeOffset → newer timestamp wins
-            // Rule 4: watched flag breaks remaining ties
+            // Rule 2: watched beats unwatched — regardless of timeOffset
+            //         (a fully-watched episode overrides a partially-watched one)
+            // Rule 3: both watched or both unwatched → bigger timeOffset wins
+            // Rule 4: same timeOffset → newer timestamp wins
             let winner = null;
 
             if (strHasData && !sbHasData) {
                 winner = 'stremio';                        // Stremio only → add to Supabase
             } else if (sbHasData && !strHasData) {
                 winner = 'supabase';                       // Supabase only → push to Stremio
+            } else if (strFlagged && !sbWatched) {
+                winner = 'stremio';                        // Stremio watched, Supabase not → Stremio wins
+            } else if (sbWatched && !strFlagged) {
+                winner = 'supabase';                       // Supabase watched, Stremio not → Supabase wins
             } else if (strTimeSec > sbTimeSec) {
                 winner = 'stremio';
             } else if (sbTimeSec > strTimeSec) {
                 winner = 'supabase';
             } else if (strTimeSec === sbTimeSec && strTimeSec > 0) {
+                // Same progress — newer timestamp wins
                 winner = strMs >= sbMs ? 'stremio' : 'supabase';
-            } else if (strFlagged && !sbWatched) {
-                winner = 'stremio';
-            } else if (sbWatched && !strFlagged) {
-                winner = 'supabase';
             }
 
             if (!winner) continue;
