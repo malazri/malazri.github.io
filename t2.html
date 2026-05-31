@@ -455,10 +455,15 @@
                     };
                 }
             });
-            console.log('[Stremio] videosState fetched:', Object.keys(stremioEpMap).length, 'episodes');
+            console.log('[Stremio] videosState fetched:', Object.keys(stremioEpMap).length, '/', videoIds.length, 'episodes');
+            if (Object.keys(stremioEpMap).length === 0) {
+                console.warn('[Stremio] videosState returned 0 results — addon may not use this collection');
+                console.log('[Stremio] Library item video_id:', libState.video_id || 'none');
+            } else {
+                console.log('[Stremio] videosState keys:', Object.keys(stremioEpMap));
+            }
         } catch(e) {
             console.warn('[Stremio] videosState fetch failed:', e.message);
-            // Fall back to library item only (last watched episode)
         }
 
         // Step 2: compare each episode and sync in the winning direction
@@ -490,10 +495,12 @@
                     : (epData.lastWatched || 0);
                 strDurMs   = epData.durationMs || 0;
                 strFlagged = epData.flaggedWatched || false;
+                console.log(`[Sync] ep${episode} videosState: ${fmtTime(strTimeSec)}s flagged:${strFlagged}`);
             } else {
+                // Fallback: check library item — works for last-watched episode only
                 const libProgress = stremioGetProgress(seriesId, videoId);
                 if (libProgress) {
-                    strTimeSec = libProgress.timeOffset; // already in seconds
+                    strTimeSec = libProgress.timeOffset;
                     strMs      = typeof libProgress.lastWatched === 'string'
                         ? new Date(libProgress.lastWatched).getTime()
                         : (libProgress.lastWatched || 0);
@@ -501,6 +508,9 @@
                     strDurMs   = (libEpNum !== null && libEpNum === episode)
                         ? (libState.duration || 0) : 0;
                     strFlagged = !!(libState.flaggedWatched);
+                    console.log(`[Sync] ep${episode} libFallback: ${fmtTime(strTimeSec)}s flagged:${strFlagged}`);
+                } else {
+                    console.log(`[Sync] ep${episode} noStremioData | SB: ${fmtTime(sbTimeSec)}s watched:${sbWatched} inDB:${sbInDB}`);
                 }
             }
 
@@ -612,6 +622,7 @@
             await stremioPushProgress(seriesId, videoId, timeOffset, watched);
         }
 
+        console.log(`[Sync] Summary: ${sbUpserts.length} →Supabase, ${strPushes.length} →Stremio, total eps: ${eps.length}`);
         const total = sbUpserts.length + strPushes.length;
         if (total > 0) {
             strToast(`✓ تمت المزامنة: ${sbUpserts.length} من Stremio، ${strPushes.length} إلى Stremio`);
@@ -1165,6 +1176,7 @@
         var eps = [];
         doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
             var l = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+            l = normalizeUrl(l); // normalize domain so it matches stored history links
             if(!eps.find(e => e.link === l)) eps.push({link: l, title: a.innerText.trim()});
         });
         if(eps.length > 0) {
