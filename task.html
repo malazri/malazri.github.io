@@ -215,8 +215,9 @@
                                     task.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
                 const isActive = activeTaskId === task.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200';
                 
+                // FIX: Added single quotes around '${task.id}' in the onclick handler below
                 return `
-                    <div onclick="selectTask(${task.id})" class="p-4 mb-2 bg-white border ${isActive} rounded shadow-sm cursor-pointer hover:border-blue-500 transition">
+                    <div onclick="selectTask('${task.id}')" class="p-4 mb-2 bg-white border ${isActive} rounded shadow-sm cursor-pointer hover:border-blue-500 transition">
                         <div class="flex justify-between items-start mb-2">
                             <h3 class="font-bold text-gray-800">${task.title}</h3>
                             <span class="text-xs font-bold px-2 py-1 rounded ${statusColor} shrink-0 ml-2">${task.status}</span>
