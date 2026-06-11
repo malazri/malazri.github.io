@@ -87,11 +87,10 @@
     </div>
 
     <script>
-       // --- 1. Supabase Initialization ---
-        const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; // <-- Paste your URL here
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; // <-- Paste your Key here
+        // --- 1. Supabase Initialization ---
+        const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; 
         
-        // FIX: We rename our connection to 'supabaseClient' to avoid conflicts
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
         
         let activeTaskId = null;
@@ -124,8 +123,6 @@
         // --- 4. Load & Render Tasks ---
         async function loadTasks() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            
-            // FIX: Changed supabase to supabaseClient
             const { data: tasks, error } = await supabaseClient.from('tasks').select('*').order('created_at', { ascending: false });
         
             if (error) {
@@ -176,7 +173,6 @@
             const description = document.getElementById('taskDescription').value;
             const requirements = document.getElementById('taskRequirements').value;
         
-            // FIX: Changed supabase to supabaseClient
             const { data, error } = await supabaseClient.from('tasks').insert([{
                 title, location, description, requirements, status: 'Open'
             }]);
@@ -189,25 +185,42 @@
             }
         }
         
-        // --- 6. Task Details View ---
+        // --- 6. Task Details View (FIXED RESPONSIVENESS) ---
         async function selectTask(task) {
             activeTaskId = task.id;
             
-            document.getElementById('listView').classList.add('hidden');
-            document.getElementById('detailView').classList.remove('hidden');
-            document.getElementById('detailView').classList.add('flex');
+            // FIX: Only hide the left task menu if the user is on a mobile screen
+            if (window.innerWidth < 768) {
+                document.getElementById('listView').classList.add('hidden');
+            }
+            
+            // Make sure the details panel is visible
+            const detailView = document.getElementById('detailView');
+            detailView.classList.remove('hidden');
+            detailView.classList.add('flex');
+            
             document.getElementById('updateFormContainer').classList.remove('hidden');
         
             renderTaskDetails(task);
             await loadUpdates(task.id);
-            loadTasks();
+            loadTasks(); // Updates highlights on the cards
         }
         
         function closeDetailView() {
             activeTaskId = null;
-            document.getElementById('detailView').classList.add('hidden');
-            document.getElementById('detailView').classList.remove('flex');
-            document.getElementById('listView').classList.remove('hidden');
+            
+            // FIX: Only toggle visibility states back if on a mobile view
+            if (window.innerWidth < 768) {
+                document.getElementById('detailView').classList.add('hidden');
+                document.getElementById('detailView').classList.remove('flex');
+                document.getElementById('listView').classList.remove('hidden');
+            } else {
+                // On desktop, reset the detail canvas back to an empty selection note
+                document.getElementById('detailContent').innerHTML = `
+                    <div class="text-center text-gray-500 mt-20">Select a task from the list to view details.</div>
+                `;
+            }
+            
             document.getElementById('updateFormContainer').classList.add('hidden');
             loadTasks();
         }
@@ -252,7 +265,6 @@
         
         // --- 7. Timeline Progress Logs ---
         async function loadUpdates(taskId) {
-            // FIX: Changed supabase to supabaseClient
             const { data: updates, error } = await supabaseClient
                 .from('task_updates')
                 .select('*')
@@ -287,7 +299,6 @@
         
             if (!text) { alert("Please enter an update message."); return; }
         
-            // FIX: Changed supabase to supabaseClient
             const { error: updateError } = await supabaseClient
                 .from('task_updates')
                 .insert([{ 
@@ -302,13 +313,11 @@
             const updatePayload = { status: newStatus };
             if (closeCheck.checked) updatePayload.closed_at = new Date().toISOString();
         
-            // FIX: Changed supabase to supabaseClient
             await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
         
             textInput.value = '';
             closeCheck.checked = false;
             
-            // FIX: Changed supabase to supabaseClient
             const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', activeTaskId).single();
             renderTaskDetails(taskData);
             await loadUpdates(activeTaskId);
