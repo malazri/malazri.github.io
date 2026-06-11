@@ -38,20 +38,17 @@
 
     <div id="app-container" class="max-w-md mx-auto bg-stadium min-h-screen shadow-2xl relative flex flex-col">
         
-        <!-- Web App Header -->
         <header id="main-header" class="flex items-center justify-between p-4">
             <h1 class="text-xl font-bold tracking-wider">WORLD CUP</h1>
             <span id="sync-indicator" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-1 rounded">Syncing...</span>
         </header>
 
-        <!-- Android Widget Header (Hidden by default) -->
         <header id="widget-header" class="hidden px-4 pt-3 pb-1 flex items-center justify-between">
             <h1 class="text-sm font-bold tracking-wider">WORLD CUP LIVE</h1>
         </header>
 
         <main class="flex-1 overflow-y-auto px-4 pb-20 space-y-4">
             
-            <!-- Dynamic Countdown Component -->
             <section id="countdown-section" class="card-bg rounded-xl border border-gray-700 p-4 text-center">
                 <h2 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-widest">Tournament Countdown</h2>
                 <div class="flex justify-center gap-4 text-center">
@@ -65,18 +62,12 @@
                 </div>
             </section>
 
-            <!-- Dynamic Live Match Component -->
             <section id="live-match-container" class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
-                <!-- Injected via JavaScript -->
                 <div class="text-center text-sm text-gray-400 py-4">Checking for live matches...</div>
             </section>
 
-            <!-- Widget Specific Elements -->
-            <div id="widget-preview-matches" class="hidden space-y-2">
-                <!-- Injected via JS only when in widget mode -->
-            </div>
+            <div id="widget-preview-matches" class="hidden space-y-2"></div>
 
-            <!-- Web App Schedule Component -->
             <section id="schedule-section" class="card-bg rounded-xl border border-gray-700 p-4">
                 <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Match Schedule</h2>
                 <div id="schedule-list" class="space-y-3">
@@ -85,7 +76,6 @@
             </section>
         </main>
 
-        <!-- Web App Navigation -->
         <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3">
             <button class="flex flex-col items-center text-green-400">
                 <span class="text-xs font-bold">Home</span>
@@ -99,26 +89,21 @@
     <script>
         // CONFIGURATION: Insert your football-data.org API token here
         const API_TOKEN = '5c236d2d03c044f0a17c02d29117df74'; 
-        // Competition code for World Cup is 'WC'
-        //const BASE_URL = 'https://api.football-data.org/v4/competitions/WC/matches';
-        // Wrap the URL in a CORS proxy to bypass browser restrictions on GitHub Pages
-        const BASE_URL = 'https://corsproxy.io/?https://api.football-data.org/v4/competitions/WC/matches';
+        
+        // Using cors-anywhere proxy. Remember to unlock it at https://cors-anywhere.herokuapp.com/corsdemo
+        const TARGET_API = 'https://api.football-data.org/v4/competitions/WC/matches';
+        const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
 
-        // Set target tournament start date (Example: Next World Cup opener alignment)
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const isWidget = urlParams.get('view') === 'widget';
-            
-            if (isWidget) {
+            if (urlParams.get('view') === 'widget') {
                 document.body.classList.add('widget-mode');
             }
 
             initCountdown();
             fetchData();
-
-            // Auto refresh live scores every 60 seconds if matches are active
             setInterval(fetchData, 60000);
         });
 
@@ -126,12 +111,10 @@
             const indicator = document.getElementById('sync-indicator');
             if(indicator) indicator.innerText = "Syncing...";
 
-            // Simple LocalStorage cache configuration to avoid api spamming (limit 10 calls/min on free tiers)
             const cachedData = localStorage.getItem('wc_matches_data');
             const cachedTime = localStorage.getItem('wc_data_timestamp');
             const now = new Date().getTime();
 
-            // Use cache if it's less than 2 minutes old
             if (cachedData && cachedTime && (now - cachedTime < 120000)) {
                 renderUI(JSON.parse(cachedData));
                 if(indicator) indicator.innerText = "Cached";
@@ -139,7 +122,7 @@
             }
 
             if (!API_TOKEN || API_TOKEN === 'YOUR_FOOTBALL_DATA_API_KEY') {
-                showError("Please provide a valid API_TOKEN in the script tag.");
+                showError("Please insert your API_TOKEN in the code.");
                 return;
             }
 
@@ -147,36 +130,37 @@
                 const response = await fetch(BASE_URL, {
                     headers: { 'X-Auth-Token': API_TOKEN }
                 });
-                if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - Proxy might need unlocking.`);
+                }
                 
                 const data = await response.json();
                 
-                // Cache the fresh results
                 localStorage.setItem('wc_matches_data', JSON.stringify(data));
                 localStorage.setItem('wc_data_timestamp', now.toString());
                 
                 renderUI(data);
-                if(indicator) indicator.innerText = "Live Connected";
+                if(indicator) indicator.innerText = "Live";
+
             } catch (error) {
-                console.error("API Fetch Error:", error);
+                console.error("Fetch Error:", error);
                 if (cachedData) {
                     renderUI(JSON.parse(cachedData));
-                    if(indicator) indicator.innerText = "Offline Mode";
+                    if(indicator) indicator.innerText = "Offline Cache";
                 } else {
-                    showError("Failed to fetch live match data.");
+                    showError(`Failed to fetch. If using cors-anywhere, <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="text-blue-400 underline">click here to unlock the proxy</a>, then refresh.`);
                 }
             }
         }
 
         function renderUI(data) {
             const matches = data.matches || [];
-            
-            // Filter categories
             const liveMatches = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
             const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
             
-            renderLiveMatch(liveMatches[0] || null); // Show primary live match
-            renderSchedule(matches.slice(0, 15));   // Render next 15 tournament matches
+            renderLiveMatch(liveMatches[0] || null); 
+            renderSchedule(matches.slice(0, 15));   
             
             if (document.body.classList.contains('widget-mode')) {
                 renderWidgetView(liveMatches[0], upcomingMatches[0]);
@@ -193,7 +177,7 @@
                         <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Live Match</h2>
                         <span class="text-[10px] text-gray-500">None Active</span>
                     </div>
-                    <div class="text-center text-xs text-gray-400 py-2">No matches are currently live. Check the schedule below!</div>
+                    <div class="text-center text-xs text-gray-400 py-2">No matches are currently live.</div>
                 `;
                 return;
             }
@@ -234,11 +218,7 @@
             container.innerHTML = matches.map(match => {
                 const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const localDate = new Date(match.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' });
-                
-                let scoreDisplay = `${localTime}`;
-                if (match.status === 'FINISHED') {
-                    scoreDisplay = `${match.score.fullTime.home} - ${match.score.fullTime.away}`;
-                }
+                let scoreDisplay = match.status === 'FINISHED' ? `${match.score.fullTime.home} - ${match.score.fullTime.away}` : localTime;
 
                 return `
                     <div class="flex items-center justify-between border-b border-gray-800 pb-2 text-xs">
