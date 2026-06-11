@@ -87,60 +87,64 @@
     </div>
 
     <script>
+       // --- 1. Supabase Initialization ---
+        const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; // <-- Paste your URL here
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; // <-- Paste your Key here
         
-
+        // FIX: We rename our connection to 'supabaseClient' to avoid conflicts
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        
         let activeTaskId = null;
-
+        
         // --- 2. Team Directory Array ---
-        // Change or add names here directly to update your user list dropdown
         const teamMembers = ["Ahmed", "Marwan", "Saeed", "John", "Ali", "Alex"];
-
+        
         function initializeUserDropdown() {
             const selectEl = document.getElementById('globalUserSelect');
             selectEl.innerHTML = teamMembers.map(name => `<option value="${name}">${name}</option>`).join('');
             
-            // Try loading the last selected user from browser memory for convenience
             const savedUser = localStorage.getItem('lastSelectedUser');
             if (savedUser && teamMembers.includes(savedUser)) {
                 selectEl.value = savedUser;
             }
-
-            // Save choice when updated
+        
             selectEl.addEventListener('change', (e) => {
                 localStorage.setItem('lastSelectedUser', e.target.value);
             });
         }
-
+        
         function getActiveUser() {
             return document.getElementById('globalUserSelect').value;
         }
-
+        
         // --- 3. Modal Management ---
         function openNewTaskModal() { document.getElementById('newTaskModal').classList.remove('hidden'); }
         function closeNewTaskModal() { document.getElementById('newTaskModal').classList.add('hidden'); document.getElementById('newTaskForm').reset(); }
-
+        
         // --- 4. Load & Render Tasks ---
         async function loadTasks() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const { data: tasks, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
-
+            
+            // FIX: Changed supabase to supabaseClient
+            const { data: tasks, error } = await supabaseClient.from('tasks').select('*').order('created_at', { ascending: false });
+        
             if (error) {
                 console.error("Error fetching tasks:", error); return;
             }
-
+        
             const listContainer = document.getElementById('taskList');
             listContainer.innerHTML = '';
-
+        
             const filteredTasks = tasks.filter(t => 
                 t.title.toLowerCase().includes(searchTerm) || 
                 t.location.toLowerCase().includes(searchTerm)
             );
-
+        
             if (filteredTasks.length === 0) {
                 listContainer.innerHTML = '<li class="text-center text-gray-500 mt-10">No tasks found.</li>';
                 return;
             }
-
+        
             filteredTasks.forEach(task => {
                 const statusColor = task.status === 'Closed' ? 'bg-gray-200 text-gray-700' : 
                                     task.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
@@ -162,7 +166,7 @@
                 listContainer.appendChild(card);
             });
         }
-
+        
         // --- 5. Submit New Task ---
         async function submitNewTask(e) {
             e.preventDefault();
@@ -171,11 +175,12 @@
             const location = document.getElementById('taskLocation').value;
             const description = document.getElementById('taskDescription').value;
             const requirements = document.getElementById('taskRequirements').value;
-
-            const { data, error } = await supabase.from('tasks').insert([{
+        
+            // FIX: Changed supabase to supabaseClient
+            const { data, error } = await supabaseClient.from('tasks').insert([{
                 title, location, description, requirements, status: 'Open'
             }]);
-
+        
             if (error) {
                 alert("Error creating task: " + error.message);
             } else {
@@ -183,7 +188,7 @@
                 loadTasks();
             }
         }
-
+        
         // --- 6. Task Details View ---
         async function selectTask(task) {
             activeTaskId = task.id;
@@ -192,12 +197,12 @@
             document.getElementById('detailView').classList.remove('hidden');
             document.getElementById('detailView').classList.add('flex');
             document.getElementById('updateFormContainer').classList.remove('hidden');
-
+        
             renderTaskDetails(task);
             await loadUpdates(task.id);
-            loadTasks(); // Highlights current card
+            loadTasks();
         }
-
+        
         function closeDetailView() {
             activeTaskId = null;
             document.getElementById('detailView').classList.add('hidden');
@@ -206,7 +211,7 @@
             document.getElementById('updateFormContainer').classList.add('hidden');
             loadTasks();
         }
-
+        
         function renderTaskDetails(task) {
             const container = document.getElementById('detailContent');
             container.innerHTML = `
@@ -244,22 +249,23 @@
                 updateForm.classList.remove('opacity-50', 'pointer-events-none');
             }
         }
-
+        
         // --- 7. Timeline Progress Logs ---
         async function loadUpdates(taskId) {
-            const { data: updates, error } = await supabase
+            // FIX: Changed supabase to supabaseClient
+            const { data: updates, error } = await supabaseClient
                 .from('task_updates')
                 .select('*')
                 .eq('task_id', taskId)
                 .order('created_at', { ascending: true });
-
+        
             const timeline = document.getElementById('updatesTimeline');
             if (error) { timeline.innerHTML = '<div class="text-red-500">Error loading updates.</div>'; return; }
-
+        
             if (updates.length === 0) {
                 timeline.innerHTML = '<div class="text-gray-500 italic">No updates yet.</div>'; return;
             }
-
+        
             timeline.innerHTML = updates.map(u => `
                 <div class="bg-white p-4 rounded border shadow-sm">
                     <div class="flex justify-between items-center mb-2">
@@ -270,45 +276,45 @@
                 </div>
             `).join('');
         }
-
+        
         async function submitUpdate() {
             if (!activeTaskId) return;
-
+        
             const textInput = document.getElementById('newUpdateText');
             const closeCheck = document.getElementById('closeTaskCheck');
             const text = textInput.value.trim();
             const selectedUser = getActiveUser();
-
+        
             if (!text) { alert("Please enter an update message."); return; }
-
-            // Insert update into table tracking text name directly
-            const { error: updateError } = await supabase
+        
+            // FIX: Changed supabase to supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from('task_updates')
                 .insert([{ 
                     task_id: activeTaskId, 
                     update_text: text, 
                     created_by: selectedUser
                 }]);
-
+        
             if (updateError) { console.error("Error posting update:", updateError); return; }
-
-            // Alter main task status flag based on checkbox
+        
             const newStatus = closeCheck.checked ? 'Closed' : 'In Progress';
             const updatePayload = { status: newStatus };
             if (closeCheck.checked) updatePayload.closed_at = new Date().toISOString();
-
-            await supabase.from('tasks').update(updatePayload).eq('id', activeTaskId);
-
+        
+            // FIX: Changed supabase to supabaseClient
+            await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
+        
             textInput.value = '';
             closeCheck.checked = false;
             
-            // Re-render components
-            const { data: taskData } = await supabase.from('tasks').select('*').eq('id', activeTaskId).single();
+            // FIX: Changed supabase to supabaseClient
+            const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', activeTaskId).single();
             renderTaskDetails(taskData);
             await loadUpdates(activeTaskId);
             await loadTasks();
         }
-
+        
         // --- 8. App Startup Execution ---
         initializeUserDropdown();
         loadTasks();
