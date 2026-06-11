@@ -107,10 +107,20 @@
     </div>
 
     <script>
-        // --- 1. Supabase Initialization ---
+        // --- 1. Supabase Initialization (FIXED HEADERS) ---
         const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; 
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; 
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        // .trim() removes any invisible spaces or newlines that break the API key
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'.trim(); 
+        
+        // Forcefully inject the API key into every single network request
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
+            global: {
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`
+                }
+            }
+        });
         
         let activeTaskId = null;
         let activeFilters = new Set(['All']);
@@ -314,9 +324,8 @@
                 </div>
             `;
             
-            // NEW LOGIC: Dynamic form rendering based on task status
             const updateForm = document.getElementById('updateFormContainer');
-            updateForm.classList.remove('opacity-50', 'pointer-events-none'); // Always unlock it now
+            updateForm.classList.remove('opacity-50', 'pointer-events-none'); 
         
             if(task.status === 'Closed') {
                 updateForm.innerHTML = `
@@ -382,13 +391,21 @@
                 .from('task_updates')
                 .insert([{ task_id: activeTaskId, update_text: text, created_by: selectedUser }]);
         
-            if (updateError) { console.error("Error posting update:", updateError); return; }
+            if (updateError) { 
+                alert("Error posting update text: " + updateError.message); 
+                return; 
+            }
         
             const newStatus = closeCheck.checked ? 'Closed' : 'In Progress';
             const updatePayload = { status: newStatus, updated_at: new Date().toISOString() };
             if (closeCheck.checked) updatePayload.closed_at = new Date().toISOString();
         
-            await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
+            const { error: statusError } = await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
+            
+            if (statusError) {
+                alert("Error changing task status: " + statusError.message);
+                return;
+            }
         
             textInput.value = '';
             closeCheck.checked = false;
@@ -399,13 +416,13 @@
             await loadTasks();
         }
         
-        // --- 9. Reopen Task Function ---
+        // --- 9. Reopen Task Function (WITH ADDED ERROR HANDLING) ---
         async function reopenTask() {
             if (!activeTaskId) return;
             const selectedUser = getActiveUser();
         
             // 1. Post a system update saying who reopened it
-            await supabaseClient
+            const { error: logError } = await supabaseClient
                 .from('task_updates')
                 .insert([{ 
                     task_id: activeTaskId, 
@@ -413,11 +430,21 @@
                     created_by: selectedUser 
                 }]);
         
+            if (logError) {
+                alert("Error saving reopen log: " + logError.message);
+                return;
+            }
+        
             // 2. Change the database status back to 'In Progress'
-            await supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from('tasks')
                 .update({ status: 'In Progress', updated_at: new Date().toISOString() })
                 .eq('id', activeTaskId);
+        
+            if (updateError) {
+                alert("Error modifying task status in database: " + updateError.message);
+                return;
+            }
         
             // 3. Refresh the UI
             const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', activeTaskId).single();
