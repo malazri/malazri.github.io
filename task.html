@@ -6,19 +6,24 @@
     <title>Task Follow-Up Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Small animation for the accordion arrow */
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
 </head>
 <body class="bg-gray-50 h-screen overflow-hidden flex flex-col font-sans relative">
 
     <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
-        <h1 class="text-xl font-bold">📋 Task Follow-Up Tracker</h1>
+        <h1 class="text-xl font-bold hidden md:block">📋 Task Follow-Up Tracker</h1>
+        <h1 class="text-xl font-bold md:hidden">📋 Tasks</h1>
         
-        <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2">
-                <label for="globalUserSelect" class="text-xs text-blue-200 uppercase font-bold hidden sm:inline">Active User:</label>
-                <select id="globalUserSelect" class="bg-blue-800 text-white p-2 rounded border border-blue-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm">
+        <div class="flex items-center gap-2 sm:gap-4">
+            <div class="flex items-center gap-2 bg-blue-800 px-3 py-1.5 rounded border border-blue-700">
+                <label for="globalUserSelect" class="text-xs text-blue-200 uppercase font-bold">User:</label>
+                <select id="globalUserSelect" class="bg-transparent text-white font-bold focus:outline-none text-sm md:text-base cursor-pointer">
                     </select>
             </div>
-            <button onclick="openNewTaskModal()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold text-sm transition shadow">
+            <button onclick="openNewTaskModal()" class="bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded font-bold text-sm transition shadow whitespace-nowrap">
                 + New Task
             </button>
         </div>
@@ -27,12 +32,27 @@
     <div class="flex flex-1 overflow-hidden relative">
 
         <div id="listView" class="w-full md:w-1/3 bg-white border-r border-gray-200 flex flex-col h-full">
-            <div class="p-4 border-b border-gray-200 bg-gray-50">
+            
+            <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3 shrink-0">
                 <input type="text" id="searchInput" placeholder="Search tasks or locations..." class="w-full p-2 border rounded focus:outline-blue-500" oninput="loadTasks()">
+                
+                <div class="flex flex-wrap gap-2 text-sm font-semibold" id="statusFilters">
+                    <button onclick="toggleFilter('All')" id="btn-All" class="bg-blue-600 text-white px-3 py-1 rounded transition shadow-sm">All</button>
+                    <button onclick="toggleFilter('Open')" id="btn-Open" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">Open</button>
+                    <button onclick="toggleFilter('In Progress')" id="btn-In Progress" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">In Progress</button>
+                    <button onclick="toggleFilter('Closed')" id="btn-Closed" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">Closed</button>
+                </div>
+
+                <select id="sortSelect" class="p-2 border rounded text-sm w-full focus:outline-blue-500 font-medium text-gray-700 bg-white" onchange="loadTasks()">
+                    <option value="newest_post">Sort by: Date of Post (Newest First)</option>
+                    <option value="oldest_post">Sort by: Date of Post (Oldest First)</option>
+                    <option value="newest_update">Sort by: Last Update Date</option>
+                </select>
             </div>
-            <ul id="taskList" class="flex-1 overflow-y-auto p-2 space-y-2">
-                <li class="text-center text-gray-500 mt-10">Loading tasks...</li>
-            </ul>
+
+            <div id="taskList" class="flex-1 overflow-y-auto p-2">
+                <div class="text-center text-gray-500 mt-10">Loading tasks...</div>
+            </div>
         </div>
 
         <div id="detailView" class="hidden md:flex w-full md:w-2/3 flex-col bg-gray-50 h-full absolute md:relative z-20 top-0 left-0">
@@ -79,7 +99,7 @@
                     <textarea id="taskRequirements" class="w-full p-2 border rounded focus:outline-blue-500" rows="2" placeholder="Parts needed, actions to take..."></textarea>
                 </div>
                 <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" onclick="closeNewTaskModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                    <button type="button" onclick="closeNewTaskModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-bold">Cancel</button>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold">Create Task</button>
                 </div>
             </form>
@@ -90,14 +110,14 @@
         // --- 1. Supabase Initialization ---
         const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; 
-        
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-        
+
         let activeTaskId = null;
-        
+        let activeFilters = new Set(['All']); // Keeps track of multi-select states
+
         // --- 2. Team Directory Array ---
         const teamMembers = ["Ahmed", "Marwan", "Saeed", "John", "Ali", "Alex"];
-        
+
         function initializeUserDropdown() {
             const selectEl = document.getElementById('globalUserSelect');
             selectEl.innerHTML = teamMembers.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -106,65 +126,132 @@
             if (savedUser && teamMembers.includes(savedUser)) {
                 selectEl.value = savedUser;
             }
-        
+
             selectEl.addEventListener('change', (e) => {
                 localStorage.setItem('lastSelectedUser', e.target.value);
             });
         }
-        
-        function getActiveUser() {
-            return document.getElementById('globalUserSelect').value;
+
+        function getActiveUser() { return document.getElementById('globalUserSelect').value; }
+
+        // --- 3. Filter Management ---
+        function toggleFilter(status) {
+            if (status === 'All') {
+                activeFilters.clear();
+                activeFilters.add('All');
+            } else {
+                activeFilters.delete('All');
+                if (activeFilters.has(status)) {
+                    activeFilters.delete(status);
+                } else {
+                    activeFilters.add(status);
+                }
+                if (activeFilters.size === 0) activeFilters.add('All'); // Fallback if everything is unchecked
+            }
+
+            // Update button styles
+            ['All', 'Open', 'In Progress', 'Closed'].forEach(btnStatus => {
+                const btn = document.getElementById(`btn-${btnStatus}`);
+                if (activeFilters.has(btnStatus)) {
+                    btn.className = "bg-blue-600 text-white px-3 py-1 rounded transition shadow-sm font-bold";
+                } else {
+                    btn.className = "bg-gray-200 text-gray-700 px-3 py-1 rounded transition hover:bg-gray-300";
+                }
+            });
+
+            loadTasks();
         }
-        
-        // --- 3. Modal Management ---
+
+        // --- 4. Modal Management ---
         function openNewTaskModal() { document.getElementById('newTaskModal').classList.remove('hidden'); }
         function closeNewTaskModal() { document.getElementById('newTaskModal').classList.add('hidden'); document.getElementById('newTaskForm').reset(); }
-        
-        // --- 4. Load & Render Tasks ---
+
+        // --- 5. Load & Render Tasks ---
         async function loadTasks() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const { data: tasks, error } = await supabaseClient.from('tasks').select('*').order('created_at', { ascending: false });
-        
-            if (error) {
-                console.error("Error fetching tasks:", error); return;
-            }
-        
+            const sortMode = document.getElementById('sortSelect').value;
+
+            // Fetch tasks without ordering here; we sort them powerfully in JS based on dropdown choice
+            const { data: tasks, error } = await supabaseClient.from('tasks').select('*');
+
+            if (error) { console.error("Error fetching tasks:", error); return; }
+
             const listContainer = document.getElementById('taskList');
             listContainer.innerHTML = '';
-        
-            const filteredTasks = tasks.filter(t => 
-                t.title.toLowerCase().includes(searchTerm) || 
-                t.location.toLowerCase().includes(searchTerm)
-            );
-        
+
+            // 1. Apply Search and Multi-Select Filters
+            let filteredTasks = tasks.filter(t => {
+                const searchMatch = t.title.toLowerCase().includes(searchTerm) || t.location.toLowerCase().includes(searchTerm);
+                const statusMatch = activeFilters.has('All') || activeFilters.has(t.status);
+                return searchMatch && statusMatch;
+            });
+
             if (filteredTasks.length === 0) {
-                listContainer.innerHTML = '<li class="text-center text-gray-500 mt-10">No tasks found.</li>';
+                listContainer.innerHTML = '<div class="text-center text-gray-500 mt-10">No tasks found.</div>';
                 return;
             }
-        
-            filteredTasks.forEach(task => {
+
+            // 2. Apply Sorting Logic
+            filteredTasks.sort((a, b) => {
+                const datePostA = new Date(a.created_at).getTime();
+                const datePostB = new Date(b.created_at).getTime();
+                
+                // Fallback to creation date if updated_at is missing from the table
+                const dateUpdateA = new Date(a.updated_at || a.created_at).getTime();
+                const dateUpdateB = new Date(b.updated_at || b.created_at).getTime();
+
+                if (sortMode === 'newest_post') return datePostB - datePostA;
+                if (sortMode === 'oldest_post') return datePostA - datePostB;
+                if (sortMode === 'newest_update') return dateUpdateB - dateUpdateA;
+            });
+
+            // 3. Separate Active Tasks and Closed Tasks
+            const activeTasks = filteredTasks.filter(t => t.status !== 'Closed');
+            const closedTasks = filteredTasks.filter(t => t.status === 'Closed');
+
+            // 4. Render Card Function
+            const createCardHTML = (task) => {
                 const statusColor = task.status === 'Closed' ? 'bg-gray-200 text-gray-700' : 
                                     task.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
-                
-                const card = document.createElement('li');
                 const isActive = activeTaskId === task.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200';
-                card.className = `p-4 bg-white border ${isActive} rounded shadow-sm cursor-pointer hover:border-blue-500 transition`;
-                card.onclick = () => selectTask(task);
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-gray-800">${task.title}</h3>
-                        <span class="text-xs font-bold px-2 py-1 rounded ${statusColor}">${task.status}</span>
-                    </div>
-                    <div class="text-sm text-gray-600 flex justify-between">
-                        <span>📍 ${task.location}</span>
-                        <span>📅 ${new Date(task.created_at).toLocaleDateString()}</span>
+                
+                return `
+                    <div onclick="selectTask(${task.id})" class="p-4 mb-2 bg-white border ${isActive} rounded shadow-sm cursor-pointer hover:border-blue-500 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-gray-800">${task.title}</h3>
+                            <span class="text-xs font-bold px-2 py-1 rounded ${statusColor} shrink-0 ml-2">${task.status}</span>
+                        </div>
+                        <div class="text-sm text-gray-600 flex justify-between">
+                            <span>📍 ${task.location}</span>
+                            <span>📅 ${new Date(task.updated_at || task.created_at).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 `;
-                listContainer.appendChild(card);
-            });
+            };
+
+            // 5. Build the UI
+            activeTasks.forEach(task => { listContainer.innerHTML += createCardHTML(task); });
+
+            // 6. Append Closed Tasks in an Accordion at the bottom (if any exist in the filter)
+            if (closedTasks.length > 0) {
+                // If the user explicitly filtered ONLY for Closed, open the accordion automatically
+                const shouldBeOpen = activeFilters.has('Closed') && activeFilters.size === 1 ? 'open' : '';
+
+                let closedHTML = `
+                    <details class="group mt-6" ${shouldBeOpen}>
+                        <summary class="cursor-pointer font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition p-3 rounded mb-2 flex justify-between items-center select-none shadow-sm">
+                            <span>📁 Archived / Closed Tasks (${closedTasks.length})</span>
+                            <span class="transform group-open:rotate-180 transition-transform duration-200">▼</span>
+                        </summary>
+                        <div class="pl-2 border-l-2 border-gray-300 mt-2 space-y-2">
+                `;
+                closedTasks.forEach(task => { closedHTML += createCardHTML(task); });
+                closedHTML += `</div></details>`;
+                listContainer.innerHTML += closedHTML;
+            }
         }
-        
-        // --- 5. Submit New Task ---
+
+        // --- 6. Submit New Task ---
         async function submitNewTask(e) {
             e.preventDefault();
             
@@ -172,59 +259,45 @@
             const location = document.getElementById('taskLocation').value;
             const description = document.getElementById('taskDescription').value;
             const requirements = document.getElementById('taskRequirements').value;
-        
+
             const { data, error } = await supabaseClient.from('tasks').insert([{
-                title, location, description, requirements, status: 'Open'
+                title, location, description, requirements, status: 'Open', updated_at: new Date().toISOString()
             }]);
-        
-            if (error) {
-                alert("Error creating task: " + error.message);
-            } else {
-                closeNewTaskModal();
-                loadTasks();
-            }
+
+            if (error) { alert("Error creating task: " + error.message); } 
+            else { closeNewTaskModal(); loadTasks(); }
         }
-        
-        // --- 6. Task Details View (FIXED RESPONSIVENESS) ---
-        async function selectTask(task) {
-            activeTaskId = task.id;
+
+        // --- 7. Task Details View ---
+        async function selectTask(taskId) {
+            activeTaskId = taskId;
+            if (window.innerWidth < 768) { document.getElementById('listView').classList.add('hidden'); }
             
-            // FIX: Only hide the left task menu if the user is on a mobile screen
-            if (window.innerWidth < 768) {
-                document.getElementById('listView').classList.add('hidden');
-            }
-            
-            // Make sure the details panel is visible
             const detailView = document.getElementById('detailView');
             detailView.classList.remove('hidden');
             detailView.classList.add('flex');
-            
             document.getElementById('updateFormContainer').classList.remove('hidden');
-        
-            renderTaskDetails(task);
-            await loadUpdates(task.id);
-            loadTasks(); // Updates highlights on the cards
+
+            const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', taskId).single();
+
+            renderTaskDetails(taskData);
+            await loadUpdates(taskId);
+            loadTasks(); 
         }
-        
+
         function closeDetailView() {
             activeTaskId = null;
-            
-            // FIX: Only toggle visibility states back if on a mobile view
             if (window.innerWidth < 768) {
                 document.getElementById('detailView').classList.add('hidden');
                 document.getElementById('detailView').classList.remove('flex');
                 document.getElementById('listView').classList.remove('hidden');
             } else {
-                // On desktop, reset the detail canvas back to an empty selection note
-                document.getElementById('detailContent').innerHTML = `
-                    <div class="text-center text-gray-500 mt-20">Select a task from the list to view details.</div>
-                `;
+                document.getElementById('detailContent').innerHTML = `<div class="text-center text-gray-500 mt-20">Select a task from the list to view details.</div>`;
             }
-            
             document.getElementById('updateFormContainer').classList.add('hidden');
             loadTasks();
         }
-        
+
         function renderTaskDetails(task) {
             const container = document.getElementById('detailContent');
             container.innerHTML = `
@@ -262,22 +335,22 @@
                 updateForm.classList.remove('opacity-50', 'pointer-events-none');
             }
         }
-        
-        // --- 7. Timeline Progress Logs ---
+
+        // --- 8. Timeline Progress Logs ---
         async function loadUpdates(taskId) {
             const { data: updates, error } = await supabaseClient
                 .from('task_updates')
                 .select('*')
                 .eq('task_id', taskId)
                 .order('created_at', { ascending: true });
-        
+
             const timeline = document.getElementById('updatesTimeline');
             if (error) { timeline.innerHTML = '<div class="text-red-500">Error loading updates.</div>'; return; }
-        
+
             if (updates.length === 0) {
                 timeline.innerHTML = '<div class="text-gray-500 italic">No updates yet.</div>'; return;
             }
-        
+
             timeline.innerHTML = updates.map(u => `
                 <div class="bg-white p-4 rounded border shadow-sm">
                     <div class="flex justify-between items-center mb-2">
@@ -288,33 +361,31 @@
                 </div>
             `).join('');
         }
-        
+
         async function submitUpdate() {
             if (!activeTaskId) return;
-        
+
             const textInput = document.getElementById('newUpdateText');
             const closeCheck = document.getElementById('closeTaskCheck');
             const text = textInput.value.trim();
             const selectedUser = getActiveUser();
-        
+
             if (!text) { alert("Please enter an update message."); return; }
-        
+
             const { error: updateError } = await supabaseClient
                 .from('task_updates')
-                .insert([{ 
-                    task_id: activeTaskId, 
-                    update_text: text, 
-                    created_by: selectedUser
-                }]);
-        
+                .insert([{ task_id: activeTaskId, update_text: text, created_by: selectedUser }]);
+
             if (updateError) { console.error("Error posting update:", updateError); return; }
-        
+
             const newStatus = closeCheck.checked ? 'Closed' : 'In Progress';
-            const updatePayload = { status: newStatus };
+            
+            // Note: We inject 'updated_at' here to power the "Sort by Last Update" dropdown 
+            const updatePayload = { status: newStatus, updated_at: new Date().toISOString() };
             if (closeCheck.checked) updatePayload.closed_at = new Date().toISOString();
-        
+
             await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
-        
+
             textInput.value = '';
             closeCheck.checked = false;
             
@@ -323,8 +394,8 @@
             await loadUpdates(activeTaskId);
             await loadTasks();
         }
-        
-        // --- 8. App Startup Execution ---
+
+        // --- 9. App Startup Execution ---
         initializeUserDropdown();
         loadTasks();
     </script>
