@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Follow-Up Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-50 h-screen overflow-hidden flex flex-col font-sans">
+
+    <header class="bg-blue-900 text-white p-4 shadow-md flex justify-between items-center z-10">
+        <h1 class="text-xl font-bold">📋 Task Follow-Up Tracker</h1>
+        <button onclick="openNewTaskModal()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded font-semibold transition">
+            + New Task
+        </button>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+
+        <div id="listView" class="w-full md:w-1/3 bg-white border-r border-gray-200 flex flex-col h-full">
+            <div class="p-4 border-b border-gray-200 bg-gray-50">
+                <input type="text" placeholder="Search tasks..." class="w-full p-2 border rounded mb-2">
+                <div class="flex gap-2">
+                    <select class="w-1/2 p-2 border rounded text-sm"><option>All Statuses</option></select>
+                    <select class="w-1/2 p-2 border rounded text-sm"><option>All Locations</option></select>
+                </div>
+            </div>
+            
+            <ul id="taskList" class="flex-1 overflow-y-auto p-2 space-y-2">
+                <li class="text-center text-gray-500 mt-10">Loading tasks...</li>
+            </ul>
+        </div>
+
+        <div id="detailView" class="hidden md:flex w-full md:w-2/3 flex-col bg-gray-50 h-full absolute md:relative z-20 top-0 left-0">
+            
+            <div class="md:hidden bg-white p-3 border-b flex items-center shadow-sm">
+                <button onclick="closeDetailView()" class="text-blue-600 font-bold px-2 py-1">⬅️ Back to List</button>
+            </div>
+
+            <div id="detailContent" class="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col gap-6">
+                <div class="text-center text-gray-500 mt-20">Select a task from the list to view details.</div>
+            </div>
+
+            <div id="updateFormContainer" class="hidden bg-white p-4 border-t border-gray-200">
+                <textarea id="newUpdateText" class="w-full p-3 border rounded mb-3 focus:outline-blue-500" rows="3" placeholder="Write progress update here..."></textarea>
+                <div class="flex justify-between items-center">
+                    <label class="flex items-center gap-2 text-gray-700 font-medium">
+                        <input type="checkbox" id="closeTaskCheck" class="w-5 h-5 accent-blue-600"> Mark Task as Closed
+                    </label>
+                    <button onclick="submitUpdate()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-bold shadow transition">
+                        Post Update
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Supabase Initialization ---
+        const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let activeTaskId = null;
+
+        // --- 2. Fetch and Render Tasks ---
+        async function loadTasks() {
+            const { data: tasks, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Error fetching tasks:", error);
+                return;
+            }
+
+            const listContainer = document.getElementById('taskList');
+            listContainer.innerHTML = '';
+
+            if (tasks.length === 0) {
+                listContainer.innerHTML = '<li class="text-center text-gray-500 mt-10">No active tasks.</li>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                const statusColor = task.status === 'Closed' ? 'bg-gray-200 text-gray-700' : 
+                                    task.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                
+                const card = document.createElement('li');
+                card.className = `p-4 bg-white border rounded shadow-sm cursor-pointer hover:border-blue-500 transition`;
+                card.onclick = () => selectTask(task);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-bold text-gray-800">${task.title}</h3>
+                        <span class="text-xs font-bold px-2 py-1 rounded ${statusColor}">${task.status}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 flex justify-between">
+                        <span>📍 ${task.location}</span>
+                        <span>📅 ${new Date(task.created_at).toLocaleDateString()}</span>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+        // --- 3. UI State Management (Responsive Toggle) ---
+        async function selectTask(task) {
+            activeTaskId = task.id;
+            
+            // Mobile view toggle
+            document.getElementById('listView').classList.add('hidden');
+            document.getElementById('detailView').classList.remove('hidden');
+            document.getElementById('detailView').classList.add('flex');
+            
+            // Show update form
+            document.getElementById('updateFormContainer').classList.remove('hidden');
+
+            renderTaskDetails(task);
+            await loadUpdates(task.id);
+        }
+
+        function closeDetailView() {
+            activeTaskId = null;
+            document.getElementById('detailView').classList.add('hidden');
+            document.getElementById('detailView').classList.remove('flex');
+            document.getElementById('listView').classList.remove('hidden');
+            document.getElementById('updateFormContainer').classList.add('hidden');
+        }
+
+        // --- 4. Render Task Details & Updates ---
+        function renderTaskDetails(task) {
+            const container = document.getElementById('detailContent');
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded border shadow-sm">
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">${task.title}</h2>
+                        <p class="text-gray-500 mt-1">📍 ${task.location} | 📅 ${new Date(task.created_at).toLocaleString()}</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-bold text-gray-700 border-b pb-1 mb-2">📝 Description</h4>
+                            <p class="text-gray-600 text-sm whitespace-pre-wrap">${task.description || 'No description provided.'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-gray-700 border-b pb-1 mb-2">🔧 Requirements</h4>
+                            <p class="text-gray-600 text-sm whitespace-pre-wrap">${task.requirements || 'No specific requirements.'}</p>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">💬 Progress Timeline</h3>
+                    <div id="updatesTimeline" class="space-y-4">
+                        <div class="text-sm text-gray-500">Loading updates...</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadUpdates(taskId) {
+            const { data: updates, error } = await supabase
+                .from('task_updates')
+                .select('*')
+                .eq('task_id', taskId)
+                .order('created_at', { ascending: true });
+
+            const timeline = document.getElementById('updatesTimeline');
+            if (error) {
+                timeline.innerHTML = '<div class="text-red-500">Error loading updates.</div>';
+                return;
+            }
+
+            if (updates.length === 0) {
+                timeline.innerHTML = '<div class="text-gray-500 italic">No updates yet. Be the first to add one!</div>';
+                return;
+            }
+
+            timeline.innerHTML = updates.map(u => `
+                <div class="bg-white p-4 rounded border shadow-sm relative">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-blue-900">${u.created_by || 'Team Member'}</span>
+                        <span class="text-xs text-gray-500">⏱️ ${new Date(u.created_at).toLocaleString()}</span>
+                    </div>
+                    <p class="text-gray-700">${u.update_text}</p>
+                </div>
+            `).join('');
+        }
+
+        // --- 5. Submit New Update ---
+        async function submitUpdate() {
+            if (!activeTaskId) return;
+
+            const textInput = document.getElementById('newUpdateText');
+            const closeCheck = document.getElementById('closeTaskCheck');
+            const text = textInput.value.trim();
+
+            if (!text) {
+                alert("Please enter an update message.");
+                return;
+            }
+
+            // Insert update
+            const { error: updateError } = await supabase
+                .from('task_updates')
+                .insert([{ 
+                    task_id: activeTaskId, 
+                    update_text: text, 
+                    created_by: 'Engineer' // Placeholder until Auth is hooked up
+                }]);
+
+            if (updateError) {
+                console.error("Error posting update:", updateError);
+                return;
+            }
+
+            // If checked, update Task status
+            if (closeCheck.checked) {
+                await supabase
+                    .from('tasks')
+                    .update({ status: 'Closed', closed_at: new Date().toISOString() })
+                    .eq('id', activeTaskId);
+            } else {
+                // Ensure task is "In Progress" once an update is added
+                await supabase
+                    .from('tasks')
+                    .update({ status: 'In Progress' })
+                    .eq('id', activeTaskId);
+            }
+
+            // Reset form and reload UI
+            textInput.value = '';
+            closeCheck.checked = false;
+            await loadUpdates(activeTaskId);
+            await loadTasks(); // Refresh list to update status badges
+        }
+
+        function openNewTaskModal() {
+            alert("This will open the form to create a new task. (To be built next!)");
+        }
+
+        // Initialize App
+        loadTasks();
+    </script>
+</body>
+</html>
