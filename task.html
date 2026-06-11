@@ -111,13 +111,13 @@
         const supabaseUrl = 'https://brewgyigjfvexdcfxnpc.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyZXdneWlnamZ2ZXhkY2Z4bnBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDk5MDIsImV4cCI6MjA5NTA4NTkwMn0.AX2yIl4FH16C1dvtNcJbps_xpWzVSBrT4TW20x8s6mE'; 
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
+        
         let activeTaskId = null;
-        let activeFilters = new Set(['All']); // Keeps track of multi-select states
-
+        let activeFilters = new Set(['All']);
+        
         // --- 2. Team Directory Array ---
         const teamMembers = ["Ahmed", "Marwan", "Saeed", "John", "Ali", "Alex"];
-
+        
         function initializeUserDropdown() {
             const selectEl = document.getElementById('globalUserSelect');
             selectEl.innerHTML = teamMembers.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -126,14 +126,14 @@
             if (savedUser && teamMembers.includes(savedUser)) {
                 selectEl.value = savedUser;
             }
-
+        
             selectEl.addEventListener('change', (e) => {
                 localStorage.setItem('lastSelectedUser', e.target.value);
             });
         }
-
+        
         function getActiveUser() { return document.getElementById('globalUserSelect').value; }
-
+        
         // --- 3. Filter Management ---
         function toggleFilter(status) {
             if (status === 'All') {
@@ -146,10 +146,9 @@
                 } else {
                     activeFilters.add(status);
                 }
-                if (activeFilters.size === 0) activeFilters.add('All'); // Fallback if everything is unchecked
+                if (activeFilters.size === 0) activeFilters.add('All'); 
             }
-
-            // Update button styles
+        
             ['All', 'Open', 'In Progress', 'Closed'].forEach(btnStatus => {
                 const btn = document.getElementById(`btn-${btnStatus}`);
                 if (activeFilters.has(btnStatus)) {
@@ -158,64 +157,55 @@
                     btn.className = "bg-gray-200 text-gray-700 px-3 py-1 rounded transition hover:bg-gray-300";
                 }
             });
-
+        
             loadTasks();
         }
-
+        
         // --- 4. Modal Management ---
         function openNewTaskModal() { document.getElementById('newTaskModal').classList.remove('hidden'); }
         function closeNewTaskModal() { document.getElementById('newTaskModal').classList.add('hidden'); document.getElementById('newTaskForm').reset(); }
-
+        
         // --- 5. Load & Render Tasks ---
         async function loadTasks() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const sortMode = document.getElementById('sortSelect').value;
-
-            // Fetch tasks without ordering here; we sort them powerfully in JS based on dropdown choice
+        
             const { data: tasks, error } = await supabaseClient.from('tasks').select('*');
-
             if (error) { console.error("Error fetching tasks:", error); return; }
-
+        
             const listContainer = document.getElementById('taskList');
             listContainer.innerHTML = '';
-
-            // 1. Apply Search and Multi-Select Filters
+        
             let filteredTasks = tasks.filter(t => {
                 const searchMatch = t.title.toLowerCase().includes(searchTerm) || t.location.toLowerCase().includes(searchTerm);
                 const statusMatch = activeFilters.has('All') || activeFilters.has(t.status);
                 return searchMatch && statusMatch;
             });
-
+        
             if (filteredTasks.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-gray-500 mt-10">No tasks found.</div>';
                 return;
             }
-
-            // 2. Apply Sorting Logic
+        
             filteredTasks.sort((a, b) => {
                 const datePostA = new Date(a.created_at).getTime();
                 const datePostB = new Date(b.created_at).getTime();
-                
-                // Fallback to creation date if updated_at is missing from the table
                 const dateUpdateA = new Date(a.updated_at || a.created_at).getTime();
                 const dateUpdateB = new Date(b.updated_at || b.created_at).getTime();
-
+        
                 if (sortMode === 'newest_post') return datePostB - datePostA;
                 if (sortMode === 'oldest_post') return datePostA - datePostB;
                 if (sortMode === 'newest_update') return dateUpdateB - dateUpdateA;
             });
-
-            // 3. Separate Active Tasks and Closed Tasks
+        
             const activeTasks = filteredTasks.filter(t => t.status !== 'Closed');
             const closedTasks = filteredTasks.filter(t => t.status === 'Closed');
-
-            // 4. Render Card Function
+        
             const createCardHTML = (task) => {
                 const statusColor = task.status === 'Closed' ? 'bg-gray-200 text-gray-700' : 
                                     task.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
                 const isActive = activeTaskId === task.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200';
                 
-                // FIX: Added single quotes around '${task.id}' in the onclick handler below
                 return `
                     <div onclick="selectTask('${task.id}')" class="p-4 mb-2 bg-white border ${isActive} rounded shadow-sm cursor-pointer hover:border-blue-500 transition">
                         <div class="flex justify-between items-start mb-2">
@@ -229,15 +219,11 @@
                     </div>
                 `;
             };
-
-            // 5. Build the UI
+        
             activeTasks.forEach(task => { listContainer.innerHTML += createCardHTML(task); });
-
-            // 6. Append Closed Tasks in an Accordion at the bottom (if any exist in the filter)
+        
             if (closedTasks.length > 0) {
-                // If the user explicitly filtered ONLY for Closed, open the accordion automatically
                 const shouldBeOpen = activeFilters.has('Closed') && activeFilters.size === 1 ? 'open' : '';
-
                 let closedHTML = `
                     <details class="group mt-6" ${shouldBeOpen}>
                         <summary class="cursor-pointer font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition p-3 rounded mb-2 flex justify-between items-center select-none shadow-sm">
@@ -251,24 +237,23 @@
                 listContainer.innerHTML += closedHTML;
             }
         }
-
+        
         // --- 6. Submit New Task ---
         async function submitNewTask(e) {
             e.preventDefault();
-            
             const title = document.getElementById('taskTitle').value;
             const location = document.getElementById('taskLocation').value;
             const description = document.getElementById('taskDescription').value;
             const requirements = document.getElementById('taskRequirements').value;
-
-            const { data, error } = await supabaseClient.from('tasks').insert([{
+        
+            const { error } = await supabaseClient.from('tasks').insert([{
                 title, location, description, requirements, status: 'Open', updated_at: new Date().toISOString()
             }]);
-
+        
             if (error) { alert("Error creating task: " + error.message); } 
             else { closeNewTaskModal(); loadTasks(); }
         }
-
+        
         // --- 7. Task Details View ---
         async function selectTask(taskId) {
             activeTaskId = taskId;
@@ -278,14 +263,14 @@
             detailView.classList.remove('hidden');
             detailView.classList.add('flex');
             document.getElementById('updateFormContainer').classList.remove('hidden');
-
+        
             const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', taskId).single();
-
+        
             renderTaskDetails(taskData);
             await loadUpdates(taskId);
             loadTasks(); 
         }
-
+        
         function closeDetailView() {
             activeTaskId = null;
             if (window.innerWidth < 768) {
@@ -298,7 +283,7 @@
             document.getElementById('updateFormContainer').classList.add('hidden');
             loadTasks();
         }
-
+        
         function renderTaskDetails(task) {
             const container = document.getElementById('detailContent');
             container.innerHTML = `
@@ -329,14 +314,34 @@
                 </div>
             `;
             
+            // NEW LOGIC: Dynamic form rendering based on task status
             const updateForm = document.getElementById('updateFormContainer');
+            updateForm.classList.remove('opacity-50', 'pointer-events-none'); // Always unlock it now
+        
             if(task.status === 'Closed') {
-                updateForm.classList.add('opacity-50', 'pointer-events-none');
+                updateForm.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-4 bg-gray-100 rounded border border-gray-200">
+                        <p class="text-gray-600 mb-3 font-medium">This task is currently closed.</p>
+                        <button onclick="reopenTask()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded font-bold shadow transition flex items-center gap-2">
+                            🔓 Reopen Task
+                        </button>
+                    </div>
+                `;
             } else {
-                updateForm.classList.remove('opacity-50', 'pointer-events-none');
+                updateForm.innerHTML = `
+                    <textarea id="newUpdateText" class="w-full p-3 border rounded mb-3 focus:outline-blue-500" rows="3" placeholder="Write progress update here..."></textarea>
+                    <div class="flex justify-between items-center">
+                        <label class="flex items-center gap-2 text-gray-700 font-medium cursor-pointer">
+                            <input type="checkbox" id="closeTaskCheck" class="w-5 h-5 accent-blue-600"> Mark Task as Closed
+                        </label>
+                        <button onclick="submitUpdate()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-bold shadow transition">
+                            Post Update
+                        </button>
+                    </div>
+                `;
             }
         }
-
+        
         // --- 8. Timeline Progress Logs ---
         async function loadUpdates(taskId) {
             const { data: updates, error } = await supabaseClient
@@ -344,14 +349,14 @@
                 .select('*')
                 .eq('task_id', taskId)
                 .order('created_at', { ascending: true });
-
+        
             const timeline = document.getElementById('updatesTimeline');
             if (error) { timeline.innerHTML = '<div class="text-red-500">Error loading updates.</div>'; return; }
-
+        
             if (updates.length === 0) {
                 timeline.innerHTML = '<div class="text-gray-500 italic">No updates yet.</div>'; return;
             }
-
+        
             timeline.innerHTML = updates.map(u => `
                 <div class="bg-white p-4 rounded border shadow-sm">
                     <div class="flex justify-between items-center mb-2">
@@ -362,31 +367,29 @@
                 </div>
             `).join('');
         }
-
+        
         async function submitUpdate() {
             if (!activeTaskId) return;
-
+        
             const textInput = document.getElementById('newUpdateText');
             const closeCheck = document.getElementById('closeTaskCheck');
             const text = textInput.value.trim();
             const selectedUser = getActiveUser();
-
+        
             if (!text) { alert("Please enter an update message."); return; }
-
+        
             const { error: updateError } = await supabaseClient
                 .from('task_updates')
                 .insert([{ task_id: activeTaskId, update_text: text, created_by: selectedUser }]);
-
+        
             if (updateError) { console.error("Error posting update:", updateError); return; }
-
+        
             const newStatus = closeCheck.checked ? 'Closed' : 'In Progress';
-            
-            // Note: We inject 'updated_at' here to power the "Sort by Last Update" dropdown 
             const updatePayload = { status: newStatus, updated_at: new Date().toISOString() };
             if (closeCheck.checked) updatePayload.closed_at = new Date().toISOString();
-
+        
             await supabaseClient.from('tasks').update(updatePayload).eq('id', activeTaskId);
-
+        
             textInput.value = '';
             closeCheck.checked = false;
             
@@ -395,8 +398,35 @@
             await loadUpdates(activeTaskId);
             await loadTasks();
         }
-
-        // --- 9. App Startup Execution ---
+        
+        // --- 9. Reopen Task Function ---
+        async function reopenTask() {
+            if (!activeTaskId) return;
+            const selectedUser = getActiveUser();
+        
+            // 1. Post a system update saying who reopened it
+            await supabaseClient
+                .from('task_updates')
+                .insert([{ 
+                    task_id: activeTaskId, 
+                    update_text: "🔓 Task was reopened for further action.", 
+                    created_by: selectedUser 
+                }]);
+        
+            // 2. Change the database status back to 'In Progress'
+            await supabaseClient
+                .from('tasks')
+                .update({ status: 'In Progress', updated_at: new Date().toISOString() })
+                .eq('id', activeTaskId);
+        
+            // 3. Refresh the UI
+            const { data: taskData } = await supabaseClient.from('tasks').select('*').eq('id', activeTaskId).single();
+            renderTaskDetails(taskData);
+            await loadUpdates(activeTaskId);
+            await loadTasks();
+        }
+        
+        // --- 10. App Startup Execution ---
         initializeUserDropdown();
         loadTasks();
     </script>
