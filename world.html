@@ -47,7 +47,7 @@
             height: 100%;
             max-width: none;
             border-radius: 1.5rem;
-            background: rgba(15, 23, 42, 0.85); /* Deeper glass for Android */
+            background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -55,11 +55,10 @@
             display: flex;
             flex-direction: column;
         }
-        /* Hide everything from Web App mode */
+        /* Separation logic between web views and widget views */
         body.widget-mode #web-app-view {
             display: none !important;
         }
-        /* Show Widget App mode */
         #widget-view {
             display: none;
         }
@@ -67,7 +66,6 @@
             display: flex !important;
         }
         
-        /* Custom Scrollbar for widget list */
         ::-webkit-scrollbar {
             width: 4px;
         }
@@ -169,7 +167,6 @@
         const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
-        // Global State Variables
         let currentTab = 'upcoming'; 
         let tabDays = { upcoming: [], played: [] }; 
         let currentDayIndices = { upcoming: 0, played: 0 };
@@ -233,7 +230,7 @@
                     updateSyncStatus("Offline Cache", "bg-gray-500");
                 } else {
                     updateSyncStatus("Error", "bg-red-500");
-                    showError(`Connection blocked.`);
+                    showError(`Connection blocked. <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="text-blue-400 font-bold underline">Unlock temporary access here</a> and refresh.`);
                 }
             }
         }
@@ -245,18 +242,15 @@
             const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED')
                                            .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
             
-            // Render Web App
             renderLiveMatch(liveMatches[0] || null, upcomingMatches[0] || null); 
             processScheduleData(matches);
             renderScheduleView();
             
-            // Render Android Widget
             if (document.body.classList.contains('widget-mode')) {
                 renderWidgetView(liveMatches[0], upcomingMatches);
             }
         }
 
-        // --- WEB APP SCHEDULING LOGIC ---
         function processScheduleData(matches) {
             let upcomingGroups = {};
             let playedGroups = {};
@@ -361,7 +355,6 @@
             }).join('');
         }
 
-        // --- WEB APP LIVE ARENA LOGIC ---
         function renderLiveMatch(match, nextMatch = null) {
             const container = document.getElementById('live-match-container');
             if (!container) return;
@@ -439,7 +432,6 @@
             `;
         }
 
-        // --- ANDROID WIDGET LOGIC ---
         function renderWidgetView(liveMatch, upcomingMatches) {
             const nextMatchBox = document.getElementById('widget-next-match');
             const upcomingList = document.getElementById('widget-upcoming-list');
@@ -447,7 +439,6 @@
 
             const nextMatch = upcomingMatches[0] || null;
             
-            // Build Next Match / Live Card for Widget
             if (liveMatch) {
                 window.nextMatchTimestamp = null;
                 const hName = liveMatch.homeTeam.tla || liveMatch.homeTeam.shortName;
@@ -497,7 +488,6 @@
                 nextMatchBox.innerHTML = `<div class="text-xs text-gray-500 text-center bg-gray-800/40 py-3 rounded-xl border border-white/5">No scheduled matches.</div>`;
             }
 
-            // Build Upcoming List (slice starting from index 1 if index 0 is "Up Next")
             const upcomingListHTML = upcomingMatches.slice(1, 5).map(match => {
                 const day = new Date(match.utcDate).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
                 const time = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -523,12 +513,10 @@
             upcomingList.innerHTML = upcomingListHTML || `<div class="text-[10px] text-gray-600 text-center">No further upcoming matches.</div>`;
         }
 
-        // --- GLOBAL CLOCKS ---
         function initClocks() {
             function updateTick() {
                 const now = new Date().getTime();
                 
-                // Master Tournament Countdown
                 const tournamentDistance = TOURNAMENT_START.getTime() - now;
                 const cdSection = document.getElementById('countdown-section');
                 
@@ -543,7 +531,6 @@
                     }
                 }
 
-                // Dynamic "Next Match" Countdown (updates all instances with class .next-match-timer)
                 if (window.nextMatchTimestamp) {
                     const matchDistance = window.nextMatchTimestamp - now;
                     const timerElements = document.querySelectorAll('.next-match-timer');
@@ -576,7 +563,9 @@
 
         function showError(msg) {
             const list = document.getElementById('schedule-list');
+            const widgetList = document.getElementById('widget-upcoming-list');
             if(list) list.innerHTML = `<div class="text-center text-xs text-red-400 py-4 font-bold">${msg}</div>`;
+            if(widgetList) widgetList.innerHTML = `<div class="text-center text-[10px] text-red-400 py-4 font-bold px-2">${msg}</div>`;
         }
     </script>
 </body>
