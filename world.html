@@ -100,13 +100,25 @@
 
             <div id="widget-preview-matches" class="hidden space-y-3 px-1 pb-2"></div>
 
-            <section id="schedule-section">
-                <div class="flex justify-between items-end mb-4 px-1">
-                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-widest">Matches</h2>
-                    <span class="text-[10px] text-green-400 font-semibold cursor-pointer">View All</span>
+            <section id="schedule-section" class="card-bg rounded-2xl p-3">
+                
+                <div class="flex bg-gray-900/80 rounded-lg p-1 mb-4 border border-white/5 relative">
+                    <button id="tab-upcoming" onclick="switchTab('upcoming')" class="flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/50 shadow border border-gray-600/50">Upcoming</button>
+                    <button id="tab-played" onclick="switchTab('played')" class="flex-1 text-xs font-bold py-2 rounded-md transition-all text-gray-500 hover:text-gray-300">Played</button>
                 </div>
-                <div id="schedule-list" class="card-bg rounded-2xl p-2 space-y-1">
-                    <div class="text-center text-sm text-gray-400 py-6">Loading fixtures...</div>
+
+                <div class="flex justify-between items-center mb-3 px-2">
+                    <button id="btn-prev-day" onclick="prevDay()" class="text-gray-400 hover:text-white p-1 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <span id="schedule-date" class="text-xs font-bold text-green-400 tracking-widest uppercase">Loading...</span>
+                    <button id="btn-next-day" onclick="nextDay()" class="text-gray-400 hover:text-white p-1 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+
+                <div id="schedule-list" class="space-y-1 min-h-[150px]">
+                    <div class="text-center text-sm text-gray-500 py-6">Fetching matches...</div>
                 </div>
             </section>
         </main>
@@ -130,6 +142,11 @@
         const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
+        // Schedule State Management
+        let currentTab = 'upcoming'; 
+        let tabDays = { upcoming: [], played: [] }; 
+        let currentDayIndices = { upcoming: 0, played: 0 };
+
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('view') === 'widget') {
@@ -145,9 +162,7 @@
             const indicator = document.getElementById('sync-indicator');
             const dot = document.getElementById('sync-dot');
             if(indicator) indicator.innerText = status;
-            if(dot) {
-                dot.className = `w-2 h-2 rounded-full ${colorClass}`;
-            }
+            if(dot) dot.className = `w-2 h-2 rounded-full ${colorClass}`;
         }
 
         async function fetchData() {
@@ -197,16 +212,145 @@
 
         function renderUI(data) {
             const matches = data.matches || [];
+            
+            // 1. Render Live Arena
             const liveMatches = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
-            const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
-            
             renderLiveMatch(liveMatches[0] || null); 
-            renderSchedule(matches.slice(0, 10));   
             
+            // 2. Process and Render Paginated Schedule
+            processScheduleData(matches);
+            renderScheduleView();
+            
+            // 3. Render Widget View if active
             if (document.body.classList.contains('widget-mode')) {
+                const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
                 renderWidgetView(liveMatches[0], upcomingMatches[0]);
             }
         }
+
+        // --- NEW PAGINATION LOGIC ---
+
+        function processScheduleData(matches) {
+            let upcomingGroups = {};
+            let playedGroups = {};
+
+            matches.forEach(match => {
+                const matchTime = new Date(match.utcDate);
+                
+                // THE 5 AM RULE: Subtract 5 hours from local time to group late-night matches into the previous logical day.
+                const logicalDate = new Date(matchTime.getTime() - (5 * 60 * 60 * 1000));
+                
+                // Create a string key to group matches by date (e.g. "2026-06-12")
+                const dateKey = logicalDate.toISOString().split('T')[0];
+
+                if (match.status === 'FINISHED') {
+                    if (!playedGroups[dateKey]) playedGroups[dateKey] = { sortDate: logicalDate, matches: [] };
+                    playedGroups[dateKey].matches.push(match);
+                } else {
+                    // Scheduled, Timed, In-Play
+                    if (!upcomingGroups[dateKey]) upcomingGroups[dateKey] = { sortDate: logicalDate, matches: [] };
+                    upcomingGroups[dateKey].matches.push(match);
+                }
+            });
+
+            // Convert map to sorted arrays. 
+            // Upcoming: Closest days first (Chronological)
+            tabDays.upcoming = Object.values(upcomingGroups).sort((a, b) => a.sortDate - b.sortDate);
+            
+            // Played: Most recently finished days first (Reverse Chronological)
+            tabDays.played = Object.values(playedGroups).sort((a, b) => b.sortDate - a.sortDate);
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            renderScheduleView();
+        }
+
+        function prevDay() {
+            if (currentDayIndices[currentTab] > 0) {
+                currentDayIndices[currentTab]--;
+                renderScheduleView();
+            }
+        }
+
+        function nextDay() {
+            if (currentDayIndices[currentTab] < tabDays[currentTab].length - 1) {
+                currentDayIndices[currentTab]++;
+                renderScheduleView();
+            }
+        }
+
+        function renderScheduleView() {
+            const container = document.getElementById('schedule-list');
+            const dateLabel = document.getElementById('schedule-date');
+            const btnPrev = document.getElementById('btn-prev-day');
+            const btnNext = document.getElementById('btn-next-day');
+            const tabUp = document.getElementById('tab-upcoming');
+            const tabPl = document.getElementById('tab-played');
+
+            // Style Active Tab
+            if (currentTab === 'upcoming') {
+                tabUp.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/80 shadow-md border border-gray-500/50";
+                tabPl.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-gray-500 hover:text-gray-300";
+            } else {
+                tabPl.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/80 shadow-md border border-gray-500/50";
+                tabUp.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-gray-500 hover:text-gray-300";
+            }
+
+            const daysData = tabDays[currentTab];
+            const idx = currentDayIndices[currentTab];
+
+            if (!daysData || daysData.length === 0) {
+                dateLabel.innerText = "NO MATCHES";
+                container.innerHTML = `<div class="text-center text-xs text-gray-500 py-8 font-semibold">No ${currentTab} fixtures found.</div>`;
+                btnPrev.style.visibility = 'hidden';
+                btnNext.style.visibility = 'hidden';
+                return;
+            }
+
+            const currentDayGroup = daysData[idx];
+            
+            // Format header: "Friday, Jun 12"
+            dateLabel.innerText = currentDayGroup.sortDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+            
+            // Toggle Navigation Buttons
+            btnPrev.style.visibility = idx > 0 ? 'visible' : 'hidden';
+            btnNext.style.visibility = idx < daysData.length - 1 ? 'visible' : 'hidden';
+
+            // Render Matches for this specific day
+            container.innerHTML = currentDayGroup.matches.map(match => {
+                const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                let timeOrScore = match.status === 'FINISHED' ? 
+                    `<span class="font-extrabold text-white text-sm">${match.score.fullTime.home} - ${match.score.fullTime.away}</span>` : 
+                    `<span class="font-mono font-semibold text-green-400">${localTime}</span>`;
+
+                const hCrest = match.homeTeam.crest ? `<img src="${match.homeTeam.crest}" class="w-6 h-6 object-contain" />` : '';
+                const aCrest = match.awayTeam.crest ? `<img src="${match.awayTeam.crest}" class="w-6 h-6 object-contain" />` : '';
+
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors group cursor-pointer border-b border-white/5 last:border-0">
+                        <div class="flex items-center gap-3 w-[40%] justify-end">
+                            <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.homeTeam.shortName || match.homeTeam.name}</span>
+                            ${hCrest}
+                        </div>
+                        
+                        <div class="flex flex-col items-center justify-center w-[20%]">
+                            <div class="text-xs bg-gray-900/80 px-2 py-1.5 rounded border border-gray-700/50 min-w-[50px] text-center shadow-inner">
+                                ${timeOrScore}
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-3 w-[40%] justify-start">
+                            ${aCrest}
+                            <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.awayTeam.shortName || match.awayTeam.name}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- END PAGINATION LOGIC ---
 
         function renderLiveMatch(match) {
             const container = document.getElementById('live-match-container');
@@ -222,7 +366,6 @@
                 return;
             }
 
-            // Using official crests from the API, falling back to initials if missing
             const homeImage = match.homeTeam.crest ? `<img src="${match.homeTeam.crest}" class="w-12 h-12 object-contain drop-shadow-lg" />` : `<div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center font-bold text-lg">${match.homeTeam.tla}</div>`;
             const awayImage = match.awayTeam.crest ? `<img src="${match.awayTeam.crest}" class="w-12 h-12 object-contain drop-shadow-lg" />` : `<div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center font-bold text-lg">${match.awayTeam.tla}</div>`;
 
@@ -260,50 +403,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        function renderSchedule(matches) {
-            const container = document.getElementById('schedule-list');
-            if (!container) return;
-
-            if (matches.length === 0) {
-                container.innerHTML = '<div class="text-center text-sm text-gray-500 py-4">No scheduled fixtures found.</div>';
-                return;
-            }
-
-            container.innerHTML = matches.map(match => {
-                const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const localDate = new Date(match.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' });
-                
-                let timeOrScore = match.status === 'FINISHED' ? 
-                    `<span class="font-bold text-white">${match.score.fullTime.home} - ${match.score.fullTime.away}</span>` : 
-                    `<span class="font-mono font-semibold text-green-400">${localTime}</span>`;
-
-                const hCrest = match.homeTeam.crest ? `<img src="${match.homeTeam.crest}" class="w-6 h-6 object-contain" />` : '';
-                const aCrest = match.awayTeam.crest ? `<img src="${match.awayTeam.crest}" class="w-6 h-6 object-contain" />` : '';
-
-                return `
-                    <div class="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors group cursor-pointer border-b border-white/5 last:border-0">
-                        
-                        <div class="flex items-center gap-3 w-[40%] justify-end">
-                            <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.homeTeam.shortName || match.homeTeam.name}</span>
-                            ${hCrest}
-                        </div>
-                        
-                        <div class="flex flex-col items-center justify-center w-[20%]">
-                            <div class="text-xs bg-gray-900/80 px-2 py-1 rounded border border-gray-700/50 min-w-[50px] text-center shadow-inner">
-                                ${timeOrScore}
-                            </div>
-                            <span class="text-[8px] text-gray-500 font-bold tracking-wider mt-1 uppercase">${localDate}</span>
-                        </div>
-                        
-                        <div class="flex items-center gap-3 w-[40%] justify-start">
-                            ${aCrest}
-                            <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.awayTeam.shortName || match.awayTeam.name}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
         }
 
         function renderWidgetView(liveMatch, nextMatch) {
