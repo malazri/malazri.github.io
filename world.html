@@ -74,7 +74,7 @@
 
         <main class="flex-1 overflow-y-auto px-5 pb-24 space-y-6">
             
-            <section id="countdown-section" class="card-bg rounded-2xl p-5 text-center">
+            <section id="countdown-section" class="card-bg rounded-2xl p-5 text-center transition-opacity duration-500">
                 <h2 class="text-[10px] font-bold text-green-400 mb-3 uppercase tracking-[0.2em]">Tournament Starts In</h2>
                 <div class="flex justify-center gap-3 text-center">
                     <div class="bg-gray-900/50 rounded-lg p-2 w-16">
@@ -103,7 +103,7 @@
             <section id="schedule-section" class="card-bg rounded-2xl p-3">
                 
                 <div class="flex bg-gray-900/80 rounded-lg p-1 mb-4 border border-white/5 relative">
-                    <button id="tab-upcoming" onclick="switchTab('upcoming')" class="flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/50 shadow border border-gray-600/50">Upcoming</button>
+                    <button id="tab-upcoming" onclick="switchTab('upcoming')" class="flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/80 shadow border border-gray-600/50">Upcoming</button>
                     <button id="tab-played" onclick="switchTab('played')" class="flex-1 text-xs font-bold py-2 rounded-md transition-all text-gray-500 hover:text-gray-300">Played</button>
                 </div>
 
@@ -142,10 +142,11 @@
         const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
-        // Schedule State Management
+        // Global State Variables
         let currentTab = 'upcoming'; 
         let tabDays = { upcoming: [], played: [] }; 
         let currentDayIndices = { upcoming: 0, played: 0 };
+        window.nextMatchTimestamp = null; // Used by the global clock
 
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -153,7 +154,7 @@
                 document.body.classList.add('widget-mode');
             }
 
-            initCountdown();
+            initClocks(); // Handles both tournament and next match countdowns
             fetchData();
             setInterval(fetchData, 60000);
         });
@@ -213,22 +214,24 @@
         function renderUI(data) {
             const matches = data.matches || [];
             
-            // 1. Render Live Arena
             const liveMatches = matches.filter(m => m.status === 'IN_PLAY' || m.status === 'PAUSED');
-            renderLiveMatch(liveMatches[0] || null); 
             
-            // 2. Process and Render Paginated Schedule
+            // Ensure upcoming matches are sorted chronologically to guarantee index 0 is truly next
+            const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED')
+                                           .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate));
+            
+            // Render Live Arena (pass the next match for the countdown feature)
+            renderLiveMatch(liveMatches[0] || null, upcomingMatches[0] || null); 
+            
             processScheduleData(matches);
             renderScheduleView();
             
-            // 3. Render Widget View if active
             if (document.body.classList.contains('widget-mode')) {
-                const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
                 renderWidgetView(liveMatches[0], upcomingMatches[0]);
             }
         }
 
-        // --- NEW PAGINATION LOGIC ---
+        // --- SCHEDULING & PAGINATION LOGIC ---
 
         function processScheduleData(matches) {
             let upcomingGroups = {};
@@ -236,28 +239,19 @@
 
             matches.forEach(match => {
                 const matchTime = new Date(match.utcDate);
-                
-                // THE 5 AM RULE: Subtract 5 hours from local time to group late-night matches into the previous logical day.
                 const logicalDate = new Date(matchTime.getTime() - (5 * 60 * 60 * 1000));
-                
-                // Create a string key to group matches by date (e.g. "2026-06-12")
                 const dateKey = logicalDate.toISOString().split('T')[0];
 
                 if (match.status === 'FINISHED') {
                     if (!playedGroups[dateKey]) playedGroups[dateKey] = { sortDate: logicalDate, matches: [] };
                     playedGroups[dateKey].matches.push(match);
                 } else {
-                    // Scheduled, Timed, In-Play
                     if (!upcomingGroups[dateKey]) upcomingGroups[dateKey] = { sortDate: logicalDate, matches: [] };
                     upcomingGroups[dateKey].matches.push(match);
                 }
             });
 
-            // Convert map to sorted arrays. 
-            // Upcoming: Closest days first (Chronological)
             tabDays.upcoming = Object.values(upcomingGroups).sort((a, b) => a.sortDate - b.sortDate);
-            
-            // Played: Most recently finished days first (Reverse Chronological)
             tabDays.played = Object.values(playedGroups).sort((a, b) => b.sortDate - a.sortDate);
         }
 
@@ -288,7 +282,6 @@
             const tabUp = document.getElementById('tab-upcoming');
             const tabPl = document.getElementById('tab-played');
 
-            // Style Active Tab
             if (currentTab === 'upcoming') {
                 tabUp.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-white bg-gray-700/80 shadow-md border border-gray-500/50";
                 tabPl.className = "flex-1 text-xs font-bold py-2 rounded-md transition-all text-gray-500 hover:text-gray-300";
@@ -309,15 +302,11 @@
             }
 
             const currentDayGroup = daysData[idx];
-            
-            // Format header: "Friday, Jun 12"
             dateLabel.innerText = currentDayGroup.sortDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
             
-            // Toggle Navigation Buttons
             btnPrev.style.visibility = idx > 0 ? 'visible' : 'hidden';
             btnNext.style.visibility = idx < daysData.length - 1 ? 'visible' : 'hidden';
 
-            // Render Matches for this specific day
             container.innerHTML = currentDayGroup.matches.map(match => {
                 const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
@@ -334,13 +323,11 @@
                             <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.homeTeam.shortName || match.homeTeam.name}</span>
                             ${hCrest}
                         </div>
-                        
                         <div class="flex flex-col items-center justify-center w-[20%]">
                             <div class="text-xs bg-gray-900/80 px-2 py-1.5 rounded border border-gray-700/50 min-w-[50px] text-center shadow-inner">
                                 ${timeOrScore}
                             </div>
                         </div>
-                        
                         <div class="flex items-center gap-3 w-[40%] justify-start">
                             ${aCrest}
                             <span class="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate">${match.awayTeam.shortName || match.awayTeam.name}</span>
@@ -350,21 +337,41 @@
             }).join('');
         }
 
-        // --- END PAGINATION LOGIC ---
+        // --- END SCHEDULING LOGIC ---
 
-        function renderLiveMatch(match) {
+        function renderLiveMatch(match, nextMatch = null) {
             const container = document.getElementById('live-match-container');
             if (!container) return;
 
+            // Handle Empty Live State & Next Match Countdown
             if (!match) {
+                // Pass timestamp to global clock
+                window.nextMatchTimestamp = nextMatch ? new Date(nextMatch.utcDate).getTime() : null;
+                
+                let nextMatchCard = '';
+                if (nextMatch) {
+                    const hName = nextMatch.homeTeam.tla || nextMatch.homeTeam.shortName || 'TBD';
+                    const aName = nextMatch.awayTeam.tla || nextMatch.awayTeam.shortName || 'TBD';
+                    nextMatchCard = `
+                        <div class="mt-4 bg-gray-900/60 border border-gray-700/50 rounded-xl px-5 py-3 flex flex-col items-center shadow-inner w-full max-w-[250px]">
+                            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-1">Up Next • ${hName} v ${aName}</span>
+                            <span id="next-match-timer" class="text-[15px] font-mono font-bold text-green-400">Calculating...</span>
+                        </div>
+                    `;
+                }
+
                 container.innerHTML = `
-                    <div class="p-5 flex flex-col items-center justify-center min-h-[120px]">
-                        <div class="w-10 h-10 mb-3 opacity-20"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div>
-                        <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest">No Matches Live</h2>
+                    <div class="p-6 flex flex-col items-center justify-center min-h-[140px]">
+                        <div class="w-8 h-8 mb-3 text-gray-600"><svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg></div>
+                        <h2 class="text-xs font-extrabold text-gray-500 uppercase tracking-widest">No Matches Live</h2>
+                        ${nextMatchCard}
                     </div>
                 `;
                 return;
             }
+
+            // Clear next match timer if a game is currently live
+            window.nextMatchTimestamp = null; 
 
             const homeImage = match.homeTeam.crest ? `<img src="${match.homeTeam.crest}" class="w-12 h-12 object-contain drop-shadow-lg" />` : `<div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center font-bold text-lg">${match.homeTeam.tla}</div>`;
             const awayImage = match.awayTeam.crest ? `<img src="${match.awayTeam.crest}" class="w-12 h-12 object-contain drop-shadow-lg" />` : `<div class="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center font-bold text-lg">${match.awayTeam.tla}</div>`;
@@ -405,6 +412,58 @@
             `;
         }
 
+        // Global Clock for Tournament Countdown & Next Match
+        function initClocks() {
+            function updateTick() {
+                const now = new Date().getTime();
+                
+                // 1. Master Tournament Countdown
+                const tournamentDistance = TOURNAMENT_START.getTime() - now;
+                const cdSection = document.getElementById('countdown-section');
+                
+                if (tournamentDistance < 0) {
+                    if (cdSection) cdSection.style.display = 'none'; // Hides the element completely
+                } else {
+                    if (cdSection) {
+                        cdSection.style.display = 'block';
+                        document.getElementById('cd-days').innerText = Math.floor(tournamentDistance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+                        document.getElementById('cd-hours').innerText = Math.floor((tournamentDistance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+                        document.getElementById('cd-minutes').innerText = Math.floor((tournamentDistance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                    }
+                }
+
+                // 2. Dynamic "Next Match" Countdown
+                if (window.nextMatchTimestamp) {
+                    const matchDistance = window.nextMatchTimestamp - now;
+                    const nextTimerEl = document.getElementById('next-match-timer');
+                    
+                    if (nextTimerEl) {
+                        if (matchDistance > 0) {
+                            const h = Math.floor(matchDistance / (1000 * 60 * 60));
+                            const m = Math.floor((matchDistance % (1000 * 60 * 60)) / (1000 * 60));
+                            const s = Math.floor((matchDistance % (1000 * 60)) / 1000);
+                            
+                            // Format intelligently based on how far away it is
+                            if (h > 24) {
+                                const d = Math.floor(h / 24);
+                                const remH = h % 24;
+                                nextTimerEl.innerText = `Starts in ${d}d ${remH}h`;
+                            } else if (h > 0) {
+                                nextTimerEl.innerText = `Starts in ${h}h ${m}m`;
+                            } else {
+                                // Once under an hour, show seconds to build hype
+                                nextTimerEl.innerText = `Starts in ${m}m ${s}s`;
+                            }
+                        } else {
+                            nextTimerEl.innerText = 'Starting shortly...';
+                        }
+                    }
+                }
+            }
+            setInterval(updateTick, 1000);
+            updateTick();
+        }
+
         function renderWidgetView(liveMatch, nextMatch) {
             const widgetBox = document.getElementById('widget-preview-matches');
             if (!widgetBox) return;
@@ -430,25 +489,6 @@
                 `;
             }
             widgetBox.innerHTML = html;
-        }
-
-        function initCountdown() {
-            function updateClock() {
-                const now = new Date().getTime();
-                const distance = TOURNAMENT_START.getTime() - now;
-
-                if (distance < 0) {
-                    const cdSection = document.getElementById('countdown-section');
-                    if (cdSection) cdSection.innerHTML = '<h2 class="text-lg font-bold text-green-400 uppercase tracking-widest">Tournament Active</h2>';
-                    return;
-                }
-
-                document.getElementById('cd-days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
-                document.getElementById('cd-hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
-                document.getElementById('cd-minutes').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
-            }
-            setInterval(updateClock, 1000);
-            updateClock();
         }
 
         function showError(msg) {
