@@ -55,8 +55,14 @@
             </div>
         </div>
 
-        <div id="resizer" class="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize shrink-0 transition-colors hidden md:block group relative">
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-1 bg-gray-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div id="resizer" class="w-2 bg-gray-50 border-r border-l border-gray-200 hover:bg-blue-50 cursor-col-resize shrink-0 transition-all hidden md:flex flex-col justify-center items-center group relative z-10">
+    
+            <div class="w-4 h-12 bg-white border border-gray-300 shadow-sm rounded-full flex flex-col justify-center items-center gap-[3px] group-hover:border-blue-400 group-hover:shadow-md transition-all absolute">
+                <div class="w-[3px] h-[3px] bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
+                <div class="w-[3px] h-[3px] bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
+                <div class="w-[3px] h-[3px] bg-gray-400 rounded-full group-hover:bg-blue-500 transition-colors"></div>
+            </div>
+        
         </div>
 
         <div id="detailView" class="hidden md:flex w-full md:w-2/3 flex-col bg-gray-50 h-full absolute md:relative z-20 top-0 left-0">
