@@ -31,7 +31,7 @@
 
     <div class="flex flex-1 overflow-hidden relative">
 
-        <div id="listView" class="w-full md:w-1/3 bg-white border-r border-gray-200 flex flex-col h-full">
+        <div id="listView" class="w-full bg-white border-r border-gray-200 flex flex-col h-full" style="width: 350px;">
             
             <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3 shrink-0">
                 <input type="text" id="searchInput" placeholder="Search tasks or locations..." class="w-full p-2 border rounded focus:outline-blue-500" oninput="loadTasks()">
@@ -53,6 +53,10 @@
             <div id="taskList" class="flex-1 overflow-y-auto p-2">
                 <div class="text-center text-gray-500 mt-10">Loading tasks...</div>
             </div>
+        </div>
+
+        <div id="resizer" class="w-1 bg-gray-200 hover:bg-blue-500 cursor-col-resize shrink-0 transition-colors hidden md:block group relative">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-1 bg-gray-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
         </div>
 
         <div id="detailView" class="hidden md:flex w-full md:w-2/3 flex-col bg-gray-50 h-full absolute md:relative z-20 top-0 left-0">
@@ -452,6 +456,45 @@
             await loadUpdates(activeTaskId);
             await loadTasks();
         }
+
+        // --- Resizable Sidebar Logic ---
+        const resizer = document.getElementById('resizer');
+        const sidebar = document.getElementById('listView');
+        let isResizing = false;
+        
+        // When the user clicks down on the resizer bar
+        resizer.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            // Change the cursor for the whole page so it doesn't flicker while dragging
+            document.body.style.cursor = 'col-resize';
+            // Prevent accidental text highlighting while dragging
+            document.body.style.userSelect = 'none';
+        });
+        
+        // When the user moves their mouse
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            
+            // Calculate new width based on mouse horizontal position
+            let newWidth = e.clientX;
+            
+            // Set boundaries so it doesn't get too small or swallow the whole screen
+            if (newWidth < 250) newWidth = 250; // Minimum width
+            if (newWidth > 700) newWidth = 700; // Maximum width
+            
+            // Apply the new width to the sidebar
+            sidebar.style.width = `${newWidth}px`;
+        });
+        
+        // When the user lets go of the mouse button
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                // Reset the cursor and allow text selection again
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            }
+        });
         
         // --- 10. App Startup Execution ---
         initializeUserDropdown();
