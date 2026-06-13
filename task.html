@@ -31,29 +31,52 @@
 
     <div class="flex flex-1 overflow-hidden relative">
 
-        <div id="listView" class="w-full bg-white border-r border-gray-200 flex flex-col h-full" style="width: 350px;">
+        <div id="listView" class="flex flex-col flex-shrink-0 h-full border-r bg-gray-50" style="width: 350px;">
+        
+        <div class="p-4 border-b border-gray-200 bg-white flex flex-col gap-3">
             
-            <div class="p-4 border-b border-gray-200 bg-gray-50 flex flex-col gap-3 shrink-0">
-                <input type="text" id="searchInput" placeholder="Search tasks or locations..." class="w-full p-2 border rounded focus:outline-blue-500" oninput="loadTasks()">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold text-gray-800">Tasks</h1>
                 
-                <div class="flex flex-wrap gap-2 text-sm font-semibold" id="statusFilters">
-                    <button onclick="toggleFilter('All')" id="btn-All" class="bg-blue-600 text-white px-3 py-1 rounded transition shadow-sm">All</button>
-                    <button onclick="toggleFilter('Open')" id="btn-Open" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">Open</button>
-                    <button onclick="toggleFilter('In Progress')" id="btn-In Progress" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">In Progress</button>
-                    <button onclick="toggleFilter('Closed')" id="btn-Closed" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition">Closed</button>
+                <div class="flex items-center gap-1.5 md:gap-2">
+                    <select id="globalUserSelect" class="text-xs md:text-sm border border-gray-300 rounded shadow-sm py-1.5 pl-2 pr-6 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 max-w-[85px] md:max-w-[120px] truncate cursor-pointer">
+                    </select>
+
+                    <button onclick="toggleSearchFilter()" class="p-1.5 md:p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full transition shadow-sm border border-gray-200 flex items-center justify-center" title="Toggle Search & Filters">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                    </button>
+
+                    <button onclick="openNewTaskModal()" class="bg-blue-600 hover:bg-blue-700 text-white p-1.5 md:px-3 md:py-1.5 rounded shadow transition flex items-center justify-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="hidden md:inline text-sm font-bold">New</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="searchFilterArea" class="hidden flex-col gap-3 mt-2 border-t pt-3">
+                <input type="text" id="searchInput" placeholder="Search tasks..." class="w-full p-2 text-sm border rounded shadow-sm focus:outline-blue-500" onkeyup="loadTasks()">
+                
+                <div class="flex flex-wrap gap-2 text-xs md:text-sm">
+                    <button id="btn-All" onclick="toggleFilter('All')" class="bg-blue-600 text-white px-3 py-1 rounded transition shadow-sm font-bold">All</button>
+                    <button id="btn-Open" onclick="toggleFilter('Open')" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition hover:bg-gray-300">Open</button>
+                    <button id="btn-In Progress" onclick="toggleFilter('In Progress')" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition hover:bg-gray-300">In Progress</button>
+                    <button id="btn-Closed" onclick="toggleFilter('Closed')" class="bg-gray-200 text-gray-700 px-3 py-1 rounded transition hover:bg-gray-300">Closed</button>
                 </div>
 
-                <select id="sortSelect" class="p-2 border rounded text-sm w-full focus:outline-blue-500 font-medium text-gray-700 bg-white" onchange="loadTasks()">
-                    <option value="newest_post">Sort by: Date of Post (Newest First)</option>
-                    <option value="oldest_post">Sort by: Date of Post (Oldest First)</option>
-                    <option value="newest_update">Sort by: Last Update Date</option>
+                <select id="sortSelect" class="w-full p-2 text-sm border rounded shadow-sm bg-white" onchange="loadTasks()">
+                    <option value="newest_update">Sort: Recently Updated</option>
+                    <option value="newest_post">Sort: Newest Created</option>
+                    <option value="oldest_post">Sort: Oldest Created</option>
                 </select>
             </div>
-
-            <div id="taskList" class="flex-1 overflow-y-auto p-2">
-                <div class="text-center text-gray-500 mt-10">Loading tasks...</div>
-            </div>
         </div>
+
+        <div id="taskList" class="flex-1 overflow-y-auto p-4 flex flex-col gap-2"></div>
+    </div>
 
         <div id="resizer" class="w-2 bg-gray-50 border-r border-l border-gray-200 hover:bg-blue-50 cursor-col-resize shrink-0 transition-all hidden md:flex flex-col justify-center items-center group relative z-10">
     
@@ -155,6 +178,17 @@
         function getActiveUser() { return document.getElementById('globalUserSelect').value; }
         
         // --- 3. Filter Management ---
+        // --- Search & Filter Drawer Toggle ---
+        function toggleSearchFilter() {
+            const drawer = document.getElementById('searchFilterArea');
+            if (drawer.classList.contains('hidden')) {
+                drawer.classList.remove('hidden');
+                drawer.classList.add('flex'); // Switch to flex layout when visible
+            } else {
+                drawer.classList.add('hidden');
+                drawer.classList.remove('flex');
+            }
+        }
         function toggleFilter(status) {
             if (status === 'All') {
                 activeFilters.clear();
