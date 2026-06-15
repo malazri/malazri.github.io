@@ -6,107 +6,130 @@
     <title>World Cup Live Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .bg-stadium {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 40%, #064e3b 100%);
-        }
-        .card-bg {
-            background: rgba(30, 41, 59, 0.85);
-            backdrop-filter: blur(8px);
-        }
-        body.widget-mode {
-            background: transparent;
-            height: auto;
-            overflow: hidden;
-        }
-        body.widget-mode #app-container {
-            border-radius: 1rem;
-            background: linear-gradient(180deg, #1e293b 0%, #064e3b 100%);
-        }
+        .bg-stadium { background: linear-gradient(180deg, #1e293b 0%, #0f172a 40%, #064e3b 100%); }
+        .card-bg { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(8px); }
+        
+        /* Widget Mode Overrides */
+        body.widget-mode { background: transparent; height: auto; overflow: hidden; }
+        body.widget-mode #app-container { border-radius: 1rem; background: linear-gradient(180deg, #1e293b 0%, #064e3b 100%); }
         body.widget-mode #bottom-nav, 
-        body.widget-mode #schedule-section,
-        body.widget-mode #main-header,
-        body.widget-mode #countdown-section {
-            display: none;
-        }
-        body.widget-mode #widget-header,
-        body.widget-mode #widget-preview-matches {
-            display: block !important;
-        }
+        body.widget-mode .hide-in-widget { display: none !important; }
+        body.widget-mode .show-in-widget { display: block !important; }
+        
+        /* App Navigation Logic */
+        .view-hidden { display: none !important; }
+        .nav-active { color: #4ade80 !important; } /* text-green-400 */
+        .nav-inactive { color: #6b7280 !important; } /* text-gray-500 */
     </style>
 </head>
 <body class="bg-gray-900 text-white font-sans antialiased">
 
     <div id="app-container" class="max-w-md mx-auto bg-stadium min-h-screen shadow-2xl relative flex flex-col">
         
-        <header id="main-header" class="flex items-center justify-between p-4">
+        <header class="flex items-center justify-between p-4 hide-in-widget">
             <h1 class="text-xl font-bold tracking-wider">WORLD CUP</h1>
             <span id="sync-indicator" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-1 rounded">Syncing...</span>
         </header>
 
-        <header id="widget-header" class="hidden px-4 pt-3 pb-1 flex items-center justify-between">
+        <header class="hidden show-in-widget px-4 pt-3 pb-1 flex items-center justify-between">
             <h1 class="text-sm font-bold tracking-wider">WORLD CUP LIVE</h1>
         </header>
 
         <main class="flex-1 overflow-y-auto px-4 pb-20 space-y-4">
             
-            <section id="countdown-section" class="card-bg rounded-xl border border-gray-700 p-4 text-center">
-                <h2 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-widest">Tournament Countdown</h2>
-                <div class="flex justify-center gap-4 text-center">
-                    <div><div id="cd-days" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">DAYS</div></div>
-                    <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div><div id="cd-hours" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">HOURS</div></div>
-                    <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div><div id="cd-minutes" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">MINS</div></div>
-                    <div class="text-3xl font-bold text-gray-600">:</div>
-                    <div><div id="cd-seconds" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">SECS</div></div>
-                </div>
-            </section>
+            <div id="view-home" class="space-y-4">
+                <section id="countdown-section" class="card-bg rounded-xl border border-gray-700 p-4 text-center hide-in-widget">
+                    <h2 class="text-xs font-semibold text-gray-300 mb-2 uppercase tracking-widest">Tournament Countdown</h2>
+                    <div class="flex justify-center gap-4 text-center">
+                        <div><div id="cd-days" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">DAYS</div></div><div class="text-3xl font-bold text-gray-600">:</div>
+                        <div><div id="cd-hours" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">HOURS</div></div><div class="text-3xl font-bold text-gray-600">:</div>
+                        <div><div id="cd-minutes" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">MINS</div></div><div class="text-3xl font-bold text-gray-600">:</div>
+                        <div><div id="cd-seconds" class="text-3xl font-bold">00</div><div class="text-[10px] text-gray-400">SECS</div></div>
+                    </div>
+                </section>
 
-            <section id="live-match-container" class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
-                <div class="text-center text-sm text-gray-400 py-4">Checking for live matches...</div>
-            </section>
+                <section id="live-match-container" class="card-bg rounded-xl border border-gray-700 p-4 relative overflow-hidden">
+                    <div class="text-center text-sm text-gray-400 py-4">Checking for live matches...</div>
+                </section>
 
-            <div id="widget-preview-matches" class="hidden space-y-2"></div>
+                <div id="widget-preview-matches" class="hidden show-in-widget space-y-2"></div>
+                
+                <section class="card-bg rounded-xl border border-gray-700 p-4 hide-in-widget">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xs font-semibold text-gray-300 uppercase tracking-widest">Up Next</h2>
+                        <button onclick="switchView('matches')" class="text-[10px] text-green-400">View All</button>
+                    </div>
+                    <div id="quick-schedule-list" class="space-y-3">
+                        <div class="text-center text-xs text-gray-400 py-2">Loading...</div>
+                    </div>
+                </section>
+            </div>
 
-            <section id="schedule-section" class="card-bg rounded-xl border border-gray-700 p-4">
-                <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Match Schedule</h2>
-                <div id="schedule-list" class="space-y-3">
-                    <div class="text-center text-sm text-gray-400 py-4">Loading fixtures...</div>
-                </div>
-            </section>
+            <div id="view-matches" class="view-hidden space-y-4 hide-in-widget">
+                <section class="card-bg rounded-xl border border-gray-700 p-4">
+                    <h2 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-widest">Full Match Schedule</h2>
+                    <div id="full-schedule-list" class="space-y-3">
+                        <div class="text-center text-sm text-gray-400 py-4">Loading fixtures...</div>
+                    </div>
+                </section>
+            </div>
+
         </main>
 
-        <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3">
-            <button class="flex flex-col items-center text-green-400">
-                <span class="text-xs font-bold">Home</span>
+        <nav id="bottom-nav" class="absolute bottom-0 w-full bg-gray-900 border-t border-gray-800 flex justify-around py-3 hide-in-widget">
+            <button id="nav-btn-home" onclick="switchView('home')" class="flex flex-col items-center nav-active">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <span class="text-[10px] font-bold">Home</span>
             </button>
-            <button onclick="alert('Schedule filter active')" class="flex flex-col items-center text-gray-500 hover:text-gray-300">
-                <span class="text-xs">Matches</span>
+            <button id="nav-btn-matches" onclick="switchView('matches')" class="flex flex-col items-center nav-inactive transition">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <span class="text-[10px] font-bold">Matches</span>
             </button>
         </nav>
     </div>
 
     <script>
-        // CONFIGURATION: Insert your football-data.org API token here
+        // --- 1. CONFIGURATION ---
+        // For Prototype: Keep cors-anywhere URL and your API Token here.
+        // For Production (Phase 2): Change BASE_URL to your Cloudflare Worker URL and make API_TOKEN empty.
         const API_TOKEN = '5c236d2d03c044f0a17c02d29117df74'; 
-        
-        // Using cors-anywhere proxy. Remember to unlock it at https://cors-anywhere.herokuapp.com/corsdemo
         const TARGET_API = 'https://api.football-data.org/v4/competitions/WC/matches';
         const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
-
+        
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
+        // --- 2. INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('view') === 'widget') {
                 document.body.classList.add('widget-mode');
             }
-
             initCountdown();
             fetchData();
             setInterval(fetchData, 60000);
         });
 
+        // --- 3. UI NAVIGATION LOGIC ---
+        function switchView(viewName) {
+            const homeView = document.getElementById('view-home');
+            const matchesView = document.getElementById('view-matches');
+            const btnHome = document.getElementById('nav-btn-home');
+            const btnMatches = document.getElementById('nav-btn-matches');
+
+            if (viewName === 'home') {
+                homeView.classList.remove('view-hidden');
+                matchesView.classList.add('view-hidden');
+                btnHome.classList.replace('nav-inactive', 'nav-active');
+                btnMatches.classList.replace('nav-active', 'nav-inactive');
+            } else if (viewName === 'matches') {
+                homeView.classList.add('view-hidden');
+                matchesView.classList.remove('view-hidden');
+                btnMatches.classList.replace('nav-inactive', 'nav-active');
+                btnHome.classList.replace('nav-active', 'nav-inactive');
+            }
+        }
+
+        // --- 4. DATA FETCHING & RENDERING ---
         async function fetchData() {
             const indicator = document.getElementById('sync-indicator');
             if(indicator) indicator.innerText = "Syncing...";
@@ -121,22 +144,14 @@
                 return;
             }
 
-            if (!API_TOKEN || API_TOKEN === 'YOUR_FOOTBALL_DATA_API_KEY') {
-                showError("Please insert your API_TOKEN in the code.");
-                return;
-            }
-
             try {
-                const response = await fetch(BASE_URL, {
-                    headers: { 'X-Auth-Token': API_TOKEN }
-                });
+                // If using Cloudflare Worker later, you won't need the headers block
+                const fetchOptions = API_TOKEN ? { headers: { 'X-Auth-Token': API_TOKEN } } : {};
+                const response = await fetch(BASE_URL, fetchOptions);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} - Proxy might need unlocking.`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
                 const data = await response.json();
-                
                 localStorage.setItem('wc_matches_data', JSON.stringify(data));
                 localStorage.setItem('wc_data_timestamp', now.toString());
                 
@@ -144,12 +159,9 @@
                 if(indicator) indicator.innerText = "Live";
 
             } catch (error) {
-                console.error("Fetch Error:", error);
                 if (cachedData) {
                     renderUI(JSON.parse(cachedData));
                     if(indicator) indicator.innerText = "Offline Cache";
-                } else {
-                    showError(`Failed to fetch. If using cors-anywhere, <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" class="text-blue-400 underline">click here to unlock the proxy</a>, then refresh.`);
                 }
             }
         }
@@ -160,87 +172,69 @@
             const upcomingMatches = matches.filter(m => m.status === 'TIMED' || m.status === 'SCHEDULED');
             
             renderLiveMatch(liveMatches[0] || null); 
-            renderSchedule(matches.slice(0, 15));   
+            
+            // Render Quick Schedule (Home) - 3 Matches
+            document.getElementById('quick-schedule-list').innerHTML = buildScheduleHTML(upcomingMatches.slice(0, 3));
+            
+            // Render Full Schedule (Matches Tab) - All Matches
+            document.getElementById('full-schedule-list').innerHTML = buildScheduleHTML(matches);
             
             if (document.body.classList.contains('widget-mode')) {
                 renderWidgetView(liveMatches[0], upcomingMatches[0]);
             }
         }
 
-        function renderLiveMatch(match) {
-            const container = document.getElementById('live-match-container');
-            if (!container) return;
-
-            if (!match) {
-                container.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Live Match</h2>
-                        <span class="text-[10px] text-gray-500">None Active</span>
-                    </div>
-                    <div class="text-center text-xs text-gray-400 py-2">No matches are currently live.</div>
-                `;
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-xs font-semibold text-white uppercase tracking-widest">Live Match</h2>
-                    <span class="flex h-2 w-2 relative">
-                      <span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="font-bold text-sm text-center">${match.homeTeam.tla || match.homeTeam.name}</div>
-                    </div>
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="text-3xl font-bold tracking-wider">${match.score.fullTime.home ?? 0} - ${match.score.fullTime.away ?? 0}</div>
-                        <div class="text-[10px] text-red-400 font-bold mt-1 uppercase">${match.status}</div>
-                    </div>
-                    <div class="flex flex-col items-center w-1/3">
-                        <div class="font-bold text-sm text-center">${match.awayTeam.tla || match.awayTeam.name}</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderSchedule(matches) {
-            const container = document.getElementById('schedule-list');
-            if (!container) return;
-
-            if (matches.length === 0) {
-                container.innerHTML = '<div class="text-center text-xs text-gray-500">No scheduled fixtures found.</div>';
-                return;
-            }
-
-            container.innerHTML = matches.map(match => {
+        function buildScheduleHTML(matchesArr) {
+            if (matchesArr.length === 0) return '<div class="text-center text-xs text-gray-500">No scheduled fixtures found.</div>';
+            
+            return matchesArr.map(match => {
                 const localTime = new Date(match.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const localDate = new Date(match.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' });
                 let scoreDisplay = match.status === 'FINISHED' ? `${match.score.fullTime.home} - ${match.score.fullTime.away}` : localTime;
 
                 return `
                     <div class="flex items-center justify-between border-b border-gray-800 pb-2 text-xs">
-                        <div class="flex items-center gap-2 w-1/3 justify-end text-right font-medium">
-                            <span>${match.homeTeam.name}</span>
-                        </div>
+                        <div class="flex items-center w-1/3 justify-end text-right font-medium"><span>${match.homeTeam.name || match.homeTeam.tla || 'TBD'}</span></div>
                         <div class="text-center w-1/3 font-mono bg-gray-800 text-gray-300 rounded px-1 py-0.5 mx-2">
                             <div>${scoreDisplay}</div>
                             <div class="text-[8px] text-gray-500">${localDate}</div>
                         </div>
-                        <div class="flex items-center gap-2 w-1/3 justify-start font-medium">
-                            <span>${match.awayTeam.name}</span>
-                        </div>
+                        <div class="flex items-center w-1/3 justify-start font-medium"><span>${match.awayTeam.name || match.awayTeam.tla || 'TBD'}</span></div>
                     </div>
                 `;
             }).join('');
         }
 
+        function renderLiveMatch(match) {
+            const container = document.getElementById('live-match-container');
+            if (!container) return;
+            if (!match) {
+                container.innerHTML = `
+                    <div class="flex justify-between items-center mb-2"><h2 class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Live Match</h2><span class="text-[10px] text-gray-500">None Active</span></div>
+                    <div class="text-center text-xs text-gray-400 py-2">No matches are currently live.</div>
+                `;
+                return;
+            }
+            container.innerHTML = `
+                <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs font-semibold text-white uppercase tracking-widest">Live Match</h2>
+                    <span class="flex h-2 w-2 relative"><span class="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-red-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="w-1/3 text-center font-bold text-sm">${match.homeTeam.tla || match.homeTeam.name}</div>
+                    <div class="w-1/3 text-center">
+                        <div class="text-3xl font-bold tracking-wider">${match.score.fullTime.home ?? 0} - ${match.score.fullTime.away ?? 0}</div>
+                        <div class="text-[10px] text-red-400 font-bold mt-1 uppercase">${match.status}</div>
+                    </div>
+                    <div class="w-1/3 text-center font-bold text-sm">${match.awayTeam.tla || match.awayTeam.name}</div>
+                </div>
+            `;
+        }
+
         function renderWidgetView(liveMatch, nextMatch) {
             const widgetBox = document.getElementById('widget-preview-matches');
             if (!widgetBox) return;
-
             let html = '';
             if (nextMatch) {
                 const nextTime = new Date(nextMatch.utcDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -261,13 +255,11 @@
             function updateClock() {
                 const now = new Date().getTime();
                 const distance = TOURNAMENT_START.getTime() - now;
-
                 if (distance < 0) {
                     const cdSection = document.getElementById('countdown-section');
                     if (cdSection) cdSection.innerHTML = '<h2 class="text-lg font-bold text-green-400">Tournament Active!</h2>';
                     return;
                 }
-
                 document.getElementById('cd-days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
                 document.getElementById('cd-hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
                 document.getElementById('cd-minutes').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
@@ -275,11 +267,6 @@
             }
             setInterval(updateClock, 1000);
             updateClock();
-        }
-
-        function showError(msg) {
-            const list = document.getElementById('schedule-list');
-            if(list) list.innerHTML = `<div class="text-center text-xs text-red-400 py-2">${msg}</div>`;
         }
     </script>
 </body>
