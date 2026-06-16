@@ -162,9 +162,12 @@
     </div>
 
     <script>
-        const API_TOKEN = '5c236d2d03c044f0a17c02d29117df74'; 
-        const TARGET_API = 'https://api.football-data.org/v4/competitions/WC/matches';
-        const BASE_URL = 'https://cors-anywhere.herokuapp.com/' + TARGET_API;
+        // --- 1. CONFIGURATION ---
+        // Leave this blank now! Your API key is safely hidden inside Cloudflare.
+        const API_TOKEN = ''; 
+        
+        // Paste your new Cloudflare Worker URL here
+        const BASE_URL = 'https://worldcup.3ma-creative.workers.dev/';
         const TOURNAMENT_START = new Date('2026-06-11T16:00:00Z'); 
 
         let currentTab = 'upcoming'; 
