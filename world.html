@@ -206,11 +206,6 @@
                 return;
             }
 
-            if (!API_TOKEN || API_TOKEN === 'YOUR_FOOTBALL_DATA_API_KEY') {
-                showError("Please insert your API_TOKEN in the code.");
-                return;
-            }
-
             try {
                 const response = await fetch(BASE_URL, {
                     headers: { 'X-Auth-Token': API_TOKEN }
