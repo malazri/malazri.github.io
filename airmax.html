@@ -3,32 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two-Step URL & Image Extractor</title>
+    <title>Two-Step URL & Code Extractor</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 750px;
-            margin: 40px auto;
-            padding: 20px;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 15px;
             background-color: #f3f4f6;
         }
         .container {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: row; /* Layout side-by-side by default */
+            gap: 12px;
+            justify-content: space-between;
+            width: 100%;
         }
         button {
             background-color: #10b981;
             color: white;
-            padding: 14px 28px;
+            padding: 14px 16px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            width: 100%;
+            flex: 1; /* Distribute equal space among buttons */
+            min-width: 0; /* Prevents overflow blowout issues */
             transition: background 0.2s;
+            text-align: center;
         }
         button:hover {
             background-color: #059669;
@@ -59,6 +68,15 @@
             word-break: break-all;
             margin-bottom: 20px;
         }
+        .code-box {
+            background: #eff6ff;
+            padding: 14px;
+            border-left: 5px solid #10b981;
+            border-radius: 4px;
+            word-break: break-all;
+            font-weight: bold;
+            margin-top: 10px;
+        }
         a {
             color: #3b82f6;
             text-decoration: none;
@@ -80,19 +98,42 @@
         }
         h2 {
             margin-top: 0;
+            font-size: 22px;
         }
         h4 {
             margin-top: 0;
             color: #1f2937;
+        }
+
+        /* --- MOBILE RESPONSIVENESS BREAKPOINT --- */
+        @media (max-width: 600px) {
+            body {
+                margin: 10px auto;
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            .btn-group {
+                flex-direction: column; /* Stack vertically if phone screen is too narrow */
+            }
+            button {
+                width: 100%;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Get the airmaxTv Code:</h2>
+    <h2>get the airmaxTv Code:</h2>
     
-    <button id="fetchBtn" onclick="runExtractionPipeline()">Get OTT code</button>
+    <div class="btn-group">
+        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/')">Get OTT code</button>
+        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/4-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-airmax-live-2/')">Get AirmaxTV Live Code</button>
+        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/5-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ss-player-2026-2025-2/')">ssiptv code</button>
+    </div>
     
     <div id="status"></div>
 
@@ -102,26 +143,41 @@
             <span id="extractedUrlDisplay"></span>
         </div>
 
-        <h4>Fetched Image (alt="كود التفعيل"):</h4>
-        <div class="image-container">
-            <img id="extractedImageDisplay" class="extracted-img" src="" alt="Loading Image...">
+        <div id="imageResultSection">
+            <h4>Fetched Image (alt="كود التفعيل"):</h4>
+            <div class="image-container">
+                <img id="extractedImageDisplay" class="extracted-img" src="" alt="Loading Image...">
+            </div>
+        </div>
+
+        <div id="linkResultSection" style="display: none;">
+            <h4>Extracted Code/M3U Link:</h4>
+            <div class="code-box">
+                <span id="extractedLinkDisplay"></span>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-async function runExtractionPipeline() {
-    const rootUrl = 'https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/';
+async function runExtractionPipeline(rootUrl) {
     const proxyPrefix = 'https://cors-anywhere.herokuapp.com/';
     
-    const button = document.getElementById('fetchBtn');
+    const buttons = document.querySelectorAll('.fetch-btn');
     const statusDiv = document.getElementById('status');
     const outputCard = document.getElementById('outputCard');
     const urlDisplay = document.getElementById('extractedUrlDisplay');
     const imgDisplay = document.getElementById('extractedImageDisplay');
+    const linkDisplay = document.getElementById('extractedLinkDisplay');
     
-    button.disabled = true;
+    const imageSection = document.getElementById('imageResultSection');
+    const linkSection = document.getElementById('linkResultSection');
+    
+    // Reset layout states
+    buttons.forEach(btn => btn.disabled = true);
     outputCard.style.display = "none";
+    imageSection.style.display = "none";
+    linkSection.style.display = "none";
     statusDiv.style.color = '#4b5563';
     
     try {
@@ -144,45 +200,46 @@ async function runExtractionPipeline() {
         
         const extractedWeeklyUrl = urlMatch[1];
         
-        // --- STEP 2: Fetch the Extracted URL & Find Image with alt="كود التفعيل" ---
-        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure to pinpoint target image asset...";
+        // --- STEP 2: Fetch the Extracted URL ---
+        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure to pinpoint data assets...";
         
         response = await fetch(proxyPrefix + extractedWeeklyUrl);
         if (!response.ok) throw new Error('Secondary page stream failed to return payload content.');
         
         let secondaryHtmlContent = await response.text();
         
-        // Browser DOM Parser approach to cleanly parse the nested HTML structures
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
+        // --- STEP 3: Fallback extraction engine ---
+        const phpRegex = /(https?:\/\/[^\s"'><]+get\.php[^\s"'><]*)/i;
+        const phpMatch = secondaryHtmlContent.match(phpRegex);
         
-        // Search inside the parsed code for an image tag matching alt="كود التفعيل"
-        const targetImgElement = doc.querySelector('img[alt="كود التفعيل"]');
-        
-        if (!targetImgElement || !targetImgElement.getAttribute('src')) {
-            throw new Error('Secondary HTML target processed cleanly, but an <img> element with alt="كود التفعيل" attribute was not visible.');
+        if (phpMatch && phpMatch[1]) {
+            const phpUrl = phpMatch[1];
+            linkDisplay.innerHTML = `<a href="${phpUrl}" target="_blank">${phpUrl}</a>`;
+            linkSection.style.display = "block";
+        } else {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
+            const targetImgElement = doc.querySelector('img[alt="كود التفعيل"]');
+            
+            if (!targetImgElement || !targetImgElement.getAttribute('src')) {
+                throw new Error('Secondary HTML target processed cleanly, but neither a "get.php" reference nor an activation image could be parsed.');
+            }
+            
+            imgDisplay.src = targetImgElement.getAttribute('src');
+            imageSection.style.display = "block";
         }
         
-        const imageSrc = targetImgElement.getAttribute('src');
-        
-        // --- STEP 3: Display results ---
+        // Render general tracking info
         statusDiv.style.color = '#10b981';
         statusDiv.innerText = "Pipeline complete! Successfully resolved paths:";
-        
-        // Update URL card view elements
         urlDisplay.innerHTML = `<a href="${extractedWeeklyUrl}" target="_blank">${extractedWeeklyUrl}</a>`;
-        
-        // Update live image asset references
-        imgDisplay.src = imageSrc;
-        
-        // Unhide the card container
         outputCard.style.display = "block";
 
     } catch (error) {
         statusDiv.style.color = '#ef4444';
         statusDiv.innerText = "Execution broken: " + error.message;
     } finally {
-        button.disabled = false;
+        buttons.forEach(btn => btn.disabled = false);
     }
 }
 </script>
