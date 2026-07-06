@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Step URL & Image Extractor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 750px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #f3f4f6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        button {
+            background-color: #10b981;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #059669;
+        }
+        button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #4b5563;
+            line-height: 1.5;
+        }
+        .output-card {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            display: none;
+        }
+        .url-box {
+            background: #f3f4f6;
+            padding: 12px;
+            border-left: 5px solid #3b82f6;
+            border-radius: 4px;
+            word-break: break-all;
+            margin-bottom: 20px;
+        }
+        a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .image-container {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .extracted-img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        h2 {
+            margin-top: 0;
+        }
+        h4 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Get the airmaxTv Code:</h2>
+    
+    <button id="fetchBtn" onclick="runExtractionPipeline()">Get OTT code</button>
+    
+    <div id="status"></div>
+
+    <div id="outputCard" class="output-card">
+        <h4>Extracted Link:</h4>
+        <div class="url-box">
+            <span id="extractedUrlDisplay"></span>
+        </div>
+
+        <h4>Fetched Image (alt="كود التفعيل"):</h4>
+        <div class="image-container">
+            <img id="extractedImageDisplay" class="extracted-img" src="" alt="Loading Image...">
+        </div>
+    </div>
+</div>
+
+<script>
+async function runExtractionPipeline() {
+    const rootUrl = 'https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/';
+    const proxyPrefix = 'https://cors-anywhere.herokuapp.com/';
+    
+    const button = document.getElementById('fetchBtn');
+    const statusDiv = document.getElementById('status');
+    const outputCard = document.getElementById('outputCard');
+    const urlDisplay = document.getElementById('extractedUrlDisplay');
+    const imgDisplay = document.getElementById('extractedImageDisplay');
+    
+    button.disabled = true;
+    outputCard.style.display = "none";
+    statusDiv.style.color = '#4b5563';
+    
+    try {
+        // --- STEP 1: Fetch Root Page & Find data-weekly-url ---
+        statusDiv.innerText = "[Step 1/2] Connecting to index page to parse target URL...";
+        
+        let response = await fetch(proxyPrefix + rootUrl);
+        if (response.status === 403) {
+            throw new Error("Proxy activation lease expired. Please open https://cors-anywhere.herokuapp.com/ to re-authenticate.");
+        }
+        if (!response.ok) throw new Error('Primary indexing stream failed to return normal data.');
+        
+        let htmlContent = await response.text();
+        const urlRegex = /data-weekly-url=["']([^"']+)["']/;
+        const urlMatch = htmlContent.match(urlRegex);
+
+        if (!urlMatch || !urlMatch[1]) {
+            throw new Error("Could not discover 'data-weekly-url' structural token within root layout.");
+        }
+        
+        const extractedWeeklyUrl = urlMatch[1];
+        
+        // --- STEP 2: Fetch the Extracted URL & Find Image with alt="كود التفعيل" ---
+        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure to pinpoint target image asset...";
+        
+        response = await fetch(proxyPrefix + extractedWeeklyUrl);
+        if (!response.ok) throw new Error('Secondary page stream failed to return payload content.');
+        
+        let secondaryHtmlContent = await response.text();
+        
+        // Browser DOM Parser approach to cleanly parse the nested HTML structures
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
+        
+        // Search inside the parsed code for an image tag matching alt="كود التفعيل"
+        const targetImgElement = doc.querySelector('img[alt="كود التفعيل"]');
+        
+        if (!targetImgElement || !targetImgElement.getAttribute('src')) {
+            throw new Error('Secondary HTML target processed cleanly, but an <img> element with alt="كود التفعيل" attribute was not visible.');
+        }
+        
+        const imageSrc = targetImgElement.getAttribute('src');
+        
+        // --- STEP 3: Display results ---
+        statusDiv.style.color = '#10b981';
+        statusDiv.innerText = "Pipeline complete! Successfully resolved paths:";
+        
+        // Update URL card view elements
+        urlDisplay.innerHTML = `<a href="${extractedWeeklyUrl}" target="_blank">${extractedWeeklyUrl}</a>`;
+        
+        // Update live image asset references
+        imgDisplay.src = imageSrc;
+        
+        // Unhide the card container
+        outputCard.style.display = "block";
+
+    } catch (error) {
+        statusDiv.style.color = '#ef4444';
+        statusDiv.innerText = "Execution broken: " + error.message;
+    } finally {
+        button.disabled = false;
+    }
+}
+</script>
+
+</body>
+</html>
