@@ -5,136 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Two-Step URL & Code Extractor</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 15px;
-            background-color: #f3f4f6;
-        }
-        .container {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        }
-        .btn-group {
-            display: flex;
-            flex-direction: row; /* Layout side-by-side by default */
-            gap: 12px;
-            justify-content: space-between;
-            width: 100%;
-        }
-        button {
-            background-color: #10b981;
-            color: white;
-            padding: 14px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: bold;
-            flex: 1; /* Distribute equal space among buttons */
-            min-width: 0; /* Prevents overflow blowout issues */
-            transition: background 0.2s;
-            text-align: center;
-        }
-        button:hover {
-            background-color: #059669;
-        }
-        button:disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #4b5563;
-            line-height: 1.5;
-        }
-        .output-card {
-            margin-top: 25px;
-            padding: 20px;
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            display: none;
-        }
-        .url-box {
-            background: #f3f4f6;
-            padding: 12px;
-            border-left: 5px solid #3b82f6;
-            border-radius: 4px;
-            word-break: break-all;
-            margin-bottom: 20px;
-        }
-        .code-box {
-            background: #eff6ff;
-            padding: 14px;
-            border-left: 5px solid #10b981;
-            border-radius: 4px;
-            word-break: break-all;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        a {
-            color: #3b82f6;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        .image-container {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .extracted-img {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        h2 {
-            margin-top: 0;
-            font-size: 22px;
-        }
-        h4 {
-            margin-top: 0;
-            color: #1f2937;
-        }
-
-        /* --- MOBILE RESPONSIVENESS BREAKPOINT --- */
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 15px; background-color: #f3f4f6; }
+        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+        .btn-group { display: flex; flex-direction: row; gap: 12px; justify-content: space-between; width: 100%; }
+        button { background-color: #10b981; color: white; padding: 14px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 15px; font-weight: bold; flex: 1; min-width: 0; transition: background 0.2s; text-align: center; }
+        button:hover { background-color: #059669; }
+        button:disabled { background-color: #9ca3af; cursor: not-allowed; }
+        #status { margin-top: 20px; font-weight: bold; color: #4b5563; line-height: 1.5; }
+        .output-card { margin-top: 25px; padding: 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; display: none; }
+        .url-box { background: #f3f4f6; padding: 12px; border-left: 5px solid #3b82f6; border-radius: 4px; word-break: break-all; margin-bottom: 20px; }
+        .code-box { background: #eff6ff; padding: 14px; border-left: 5px solid #10b981; border-radius: 4px; word-break: break-all; font-weight: bold; margin-top: 10px; }
+        a { color: #3b82f6; text-decoration: none; font-weight: bold; }
+        a:hover { text-decoration: underline; }
+        .image-container { text-align: center; margin-top: 15px; }
+        .extracted-img { max-width: 100%; height: auto; border: 1px solid #d1d5db; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; font-size: 22px; }
+        h4 { margin-top: 0; color: #1f2937; }
         @media (max-width: 600px) {
-            body {
-                margin: 10px auto;
-                padding: 10px;
-            }
-            .container {
-                padding: 15px;
-            }
-            .btn-group {
-                flex-direction: column; /* Stack vertically if phone screen is too narrow */
-            }
-            button {
-                width: 100%;
-                font-size: 16px;
-            }
+            body { margin: 10px auto; padding: 10px; }
+            .container { padding: 15px; }
+            .btn-group { flex-direction: column; }
+            button { width: 100%; font-size: 16px; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>get the airmaxTv Code:</h2>
-    
+    <h2>Get the AirmaxTV Code:</h2>
+
     <div class="btn-group">
-        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/')">Get OTT code</button>
-        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/4-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-airmax-live-2/')">Get AirmaxTV Live Code</button>
-        <button class="fetch-btn" onclick="runExtractionPipeline('https://www.vviruslove.com/5-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ss-player-2026-2025-2/')">ssiptv code</button>
+        <!-- Added event to explicitly prevent page refresh -->
+        <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/')">Get OTT code</button>
+        <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/4-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-airmax-live-2/')">Get AirmaxTV Live Code</button>
+        <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/5-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ss-player-2026-2025-2/')">ssiptv code</button>
     </div>
-    
+
     <div id="status"></div>
 
     <div id="outputCard" class="output-card">
@@ -160,58 +66,59 @@
 </div>
 
 <script>
-async function runExtractionPipeline(rootUrl) {
-    const proxyPrefix = 'https://cors-anywhere.herokuapp.com/';
-    
+async function runExtractionPipeline(event, rootUrl) {
+    // 1. Prevent the default browser action (no refreshing!)
+    event.preventDefault();
+
+    // 2. PASTE YOUR CLOUDFLARE WORKER URL HERE (Make sure it ends in ?url= )
+    const workerProxyUrl = 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev/?url=';
+
     const buttons = document.querySelectorAll('.fetch-btn');
     const statusDiv = document.getElementById('status');
     const outputCard = document.getElementById('outputCard');
     const urlDisplay = document.getElementById('extractedUrlDisplay');
     const imgDisplay = document.getElementById('extractedImageDisplay');
     const linkDisplay = document.getElementById('extractedLinkDisplay');
-    
     const imageSection = document.getElementById('imageResultSection');
     const linkSection = document.getElementById('linkResultSection');
-    
+
     // Reset layout states
     buttons.forEach(btn => btn.disabled = true);
     outputCard.style.display = "none";
     imageSection.style.display = "none";
     linkSection.style.display = "none";
     statusDiv.style.color = '#4b5563';
-    
+
     try {
-        // --- STEP 1: Fetch Root Page & Find data-weekly-url ---
-        statusDiv.innerText = "[Step 1/2] Connecting to index page to parse target URL...";
-        
-        let response = await fetch(proxyPrefix + rootUrl);
-        if (response.status === 403) {
-            throw new Error("Proxy activation lease expired. Please open https://cors-anywhere.herokuapp.com/ to re-authenticate.");
-        }
-        if (!response.ok) throw new Error('Primary indexing stream failed to return normal data.');
-        
+        // --- STEP 1: Fetch Root Page ---
+        statusDiv.innerText = "[Step 1/2] Connecting to index page via Worker...";
+
+        let response = await fetch(workerProxyUrl + encodeURIComponent(rootUrl));
+        if (!response.ok) throw new Error('Primary stream failed. Check Worker URL.');
+
         let htmlContent = await response.text();
         const urlRegex = /data-weekly-url=["']([^"']+)["']/;
         const urlMatch = htmlContent.match(urlRegex);
 
         if (!urlMatch || !urlMatch[1]) {
-            throw new Error("Could not discover 'data-weekly-url' structural token within root layout.");
+            throw new Error("Could not discover 'data-weekly-url' structural token.");
         }
-        
+
         const extractedWeeklyUrl = urlMatch[1];
-        
+
         // --- STEP 2: Fetch the Extracted URL ---
-        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure to pinpoint data assets...";
-        
-        response = await fetch(proxyPrefix + extractedWeeklyUrl);
-        if (!response.ok) throw new Error('Secondary page stream failed to return payload content.');
-        
+        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure...";
+
+        // Uses the exact same worker for the second hop
+        response = await fetch(workerProxyUrl + encodeURIComponent(extractedWeeklyUrl));
+        if (!response.ok) throw new Error('Secondary page stream failed.');
+
         let secondaryHtmlContent = await response.text();
-        
+
         // --- STEP 3: Fallback extraction engine ---
         const phpRegex = /(https?:\/\/[^\s"'><]+get\.php[^\s"'><]*)/i;
         const phpMatch = secondaryHtmlContent.match(phpRegex);
-        
+
         if (phpMatch && phpMatch[1]) {
             const phpUrl = phpMatch[1];
             linkDisplay.innerHTML = `<a href="${phpUrl}" target="_blank">${phpUrl}</a>`;
@@ -220,16 +127,16 @@ async function runExtractionPipeline(rootUrl) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
             const targetImgElement = doc.querySelector('img[alt="كود التفعيل"]');
-            
+
             if (!targetImgElement || !targetImgElement.getAttribute('src')) {
-                throw new Error('Secondary HTML target processed cleanly, but neither a "get.php" reference nor an activation image could be parsed.');
+                throw new Error('Image activation code could not be found.');
             }
-            
+
             imgDisplay.src = targetImgElement.getAttribute('src');
             imageSection.style.display = "block";
         }
-        
-        // Render general tracking info
+
+        // Render success
         statusDiv.style.color = '#10b981';
         statusDiv.innerText = "Pipeline complete! Successfully resolved paths:";
         urlDisplay.innerHTML = `<a href="${extractedWeeklyUrl}" target="_blank">${extractedWeeklyUrl}</a>`;
