@@ -1,3 +1,12 @@
+To pull those specific Arabic date strings out of the page and display them beautifully above your results, we need to add a small Regular Expression (Regex) parser to the script.
+
+Because HTML can sometimes have hidden `<span>` or `<strong>` tags mixed into the text, the safest way to extract this is to convert the secondary page's HTML into plain text first, and then search for the dates.
+
+Here is the updated, complete HTML code. I added a new styled section (the `.dates-box`) with right-to-left (RTL) formatting specifically designed to make the Arabic text look native and clean.
+
+### The Latest Working Version
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,6 +25,23 @@
         #status { margin-top: 20px; font-weight: bold; color: #4b5563; line-height: 1.5; }
         .output-card { margin-top: 25px; padding: 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; display: none; }
         
+        /* New Dates Box Styles */
+        .dates-box { 
+            background: #fef3c7; 
+            padding: 15px; 
+            border-right: 5px solid #f59e0b; /* Right border for RTL text */
+            border-radius: 4px; 
+            font-weight: bold; 
+            margin-bottom: 20px; 
+            color: #92400e; 
+            direction: rtl; /* Sets Arabic text flow */
+            font-size: 16px;
+            line-height: 1.6;
+            display: none;
+        }
+        .dates-box div { margin-bottom: 5px; }
+        .dates-box div:last-child { margin-bottom: 0; }
+
         .code-box { background: #eff6ff; padding: 14px; border-left: 5px solid #10b981; border-radius: 4px; word-break: break-all; font-weight: bold; margin-top: 10px; }
         a { color: #3b82f6; text-decoration: none; font-weight: bold; }
         a:hover { text-decoration: underline; }
@@ -76,6 +102,11 @@
     <div id="status"></div>
 
     <div id="outputCard" class="output-card">
+        <div id="datesResultSection" class="dates-box">
+            <div id="updateDateDisplay"></div>
+            <div id="nextUpdateDisplay"></div>
+        </div>
+
         <div id="extractedUrlDisplay" style="text-align: center; margin-bottom: 20px;"></div>
 
         <div id="imageResultSection">
@@ -113,18 +144,17 @@ function showDialog(url) {
 function copyFromDialog(event) {
     const input = document.getElementById('dialogUrlInput');
     input.select();
-    input.setSelectionRange(0, 99999); // For mobile devices
+    input.setSelectionRange(0, 99999);
     document.execCommand('copy');
     
-    // Brief visual feedback on the button
     const btn = event.target;
     const originalText = btn.innerText;
     btn.innerText = "Copied!";
-    btn.style.backgroundColor = "#10b981"; // Turn green
+    btn.style.backgroundColor = "#10b981";
     
     setTimeout(() => {
         btn.innerText = originalText;
-        btn.style.backgroundColor = "#3b82f6"; // Revert to blue
+        btn.style.backgroundColor = "#3b82f6";
     }, 1500);
 }
 
@@ -145,12 +175,15 @@ async function runExtractionPipeline(event, rootUrl) {
     const urlDisplay = document.getElementById('extractedUrlDisplay');
     const imgDisplay = document.getElementById('extractedImageDisplay');
     const linkDisplay = document.getElementById('extractedLinkDisplay');
+    
+    const datesSection = document.getElementById('datesResultSection');
     const imageSection = document.getElementById('imageResultSection');
     const linkSection = document.getElementById('linkResultSection');
 
     // Reset layout states
     buttons.forEach(btn => btn.disabled = true);
     outputCard.style.display = "none";
+    datesSection.style.display = "none";
     imageSection.style.display = "none";
     linkSection.style.display = "none";
     statusDiv.style.color = '#4b5563';
@@ -182,6 +215,25 @@ async function runExtractionPipeline(event, rootUrl) {
         let secondaryHtmlContent = await response.text();
 
         // --- STEP 3: Fallback extraction engine ---
+        // Create a DOM Document from the HTML to safely parse text and elements
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
+        
+        // --- EXTRACTION A: DATES ---
+        // .textContent strips all HTML tags, leaving raw text that is much easier to run Regex on
+        const rawText = doc.body.textContent;
+        
+        // Matches the keyword, grabs the YYYY/MM/DD format, and captures up to the day of the week
+        const updateMatch = rawText.match(/تاريخ التحديث[\s\S]*?\d{4}\/\d{2}\/\d{2}[\s\S]*?يوم\s*[\u0600-\u06FF]+/);
+        const nextUpdateMatch = rawText.match(/التحديث القادم[\s\S]*?\d{4}\/\d{2}\/\d{2}[\s\S]*?يوم\s*[\u0600-\u06FF]+/);
+
+        if (updateMatch || nextUpdateMatch) {
+            document.getElementById('updateDateDisplay').innerText = updateMatch ? updateMatch[0].replace(/\s+/g, ' ').trim() : '';
+            document.getElementById('nextUpdateDisplay').innerText = nextUpdateMatch ? nextUpdateMatch[0].replace(/\s+/g, ' ').trim() : '';
+            datesSection.style.display = "block";
+        }
+
+        // --- EXTRACTION B: LINKS OR IMAGES ---
         const phpRegex = /(https?:\/\/[^\s"'><]+get\.php[^\s"'><]*)/i;
         const phpMatch = secondaryHtmlContent.match(phpRegex);
 
@@ -190,8 +242,6 @@ async function runExtractionPipeline(event, rootUrl) {
             linkDisplay.innerHTML = `<a href="${phpUrl}" target="_blank">${phpUrl}</a>`;
             linkSection.style.display = "block";
         } else {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(secondaryHtmlContent, 'text/html');
             const targetImgElement = doc.querySelector('img[alt="كود التفعيل"]');
 
             if (!targetImgElement || !targetImgElement.getAttribute('src')) {
@@ -222,3 +272,5 @@ async function runExtractionPipeline(event, rootUrl) {
 
 </body>
 </html>
+
+```
