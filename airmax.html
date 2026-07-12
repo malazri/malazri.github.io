@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Two-Step URL & Code Extractor</title>
+    <title>Multi-Step URL & Code Extractor</title>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 15px; background-color: #f3f4f6; }
         .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
@@ -16,7 +16,7 @@
         #status { margin-top: 20px; font-weight: bold; color: #4b5563; line-height: 1.5; }
         .output-card { margin-top: 25px; padding: 20px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; display: none; }
         
-        /* Updated Dates Box Styles for One Line / Flex-Wrap */
+        /* Dates Box Styles */
         .dates-box { 
             background: #fef3c7; 
             padding: 15px; 
@@ -32,8 +32,8 @@
         }
         .dates-content {
             display: flex;
-            flex-wrap: wrap; /* Allows wrapping to a second line if it doesn't fit */
-            gap: 30px; /* Space between the update date and next update */
+            flex-wrap: wrap; 
+            gap: 30px; 
         }
 
         .code-box { background: #eff6ff; padding: 14px; border-left: 5px solid #10b981; border-radius: 4px; word-break: break-all; font-weight: bold; margin-top: 10px; }
@@ -56,7 +56,7 @@
             text-align: center;
         }
         dialog::backdrop {
-            background: rgba(0,0,0,0.5); /* Dims the background */
+            background: rgba(0,0,0,0.5);
         }
         #dialogUrlInput {
             width: 100%;
@@ -88,8 +88,13 @@
     <h2>Get the AirmaxTV Code:</h2>
 
     <div class="btn-group">
+        <!-- Standard 2-Step Extraction -->
         <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/3-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ottplayer-2026-2025-2/')">Get OTT code</button>
-        <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/4-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-airmax-live-2/')">Get AirmaxTV Live Code</button>
+        
+        <!-- NEW 3-Step Extraction for Airmax: Passes the permanent URL and the specific anchor text to find -->
+        <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/%d8%aa%d9%81%d8%b9%d9%8a%d9%84-%d9%83%d9%88%d8%af-%d8%aa%d8%b7%d8%a8%d9%8a%d9%82-airmax-live-%d9%84%d9%85%d8%af%d9%89-%d8%a7%d9%84%d8%ad%d9%8a%d8%a7%d9%87-%d9%84%d9%85%d8%b4%d8%a7%d9%87%d8%af%d8%a9/', 'اضغط هنا لزيارة صفحة الأكواد الرسمية للتطبيق')">Get AirmaxTV Live Code</button>
+        
+        <!-- Standard 2-Step Extraction -->
         <button class="fetch-btn" onclick="runExtractionPipeline(event, 'https://www.vviruslove.com/5-%d9%83%d9%88%d8%af-%d8%aa%d9%81%d8%b9%d9%8a%d9%84-code-ss-player-2026-2025-2/')">ssiptv code</button>
     </div>
 
@@ -120,6 +125,7 @@
     </div>
 </div>
 
+<!-- Native HTML Dialog acting as a custom alert -->
 <dialog id="customAlertDialog">
     <h3 style="margin-top: 0; color: #1f2937;">Extracted URL</h3>
     <input type="text" id="dialogUrlInput" readonly>
@@ -159,7 +165,8 @@ function closeDialog() {
 }
 
 // --- Main Extraction Logic ---
-async function runExtractionPipeline(event, rootUrl) {
+// Notice the new targetAnchorText parameter (it defaults to null)
+async function runExtractionPipeline(event, startUrl, targetAnchorText = null) {
     event.preventDefault();
 
     // PASTE YOUR CLOUDFLARE WORKER URL HERE (Make sure it ends in ?url= )
@@ -186,11 +193,41 @@ async function runExtractionPipeline(event, rootUrl) {
     urlDisplay.innerHTML = '';
 
     try {
+        let rootUrl = startUrl;
+        
+        // --- STEP 0: Find Dynamic Root URL (If requested) ---
+        if (targetAnchorText) {
+            statusDiv.innerText = "[Step 0/3] Fetching permanent page to find the latest link...";
+            let preResponse = await fetch(workerProxyUrl + encodeURIComponent(startUrl));
+            if (!preResponse.ok) throw new Error('Failed to load the permanent page. Check Worker URL.');
+            
+            let preHtml = await preResponse.text();
+            
+            const preParser = new DOMParser();
+            const preDoc = preParser.parseFromString(preHtml, 'text/html');
+            const allLinks = preDoc.querySelectorAll('a');
+            
+            let foundLink = null;
+            for (let a of allLinks) {
+                // We use .includes() so it still matches even if emojis render weirdly
+                if (a.textContent.includes(targetAnchorText)) {
+                    foundLink = a.getAttribute('href');
+                    break;
+                }
+            }
+
+            if (!foundLink) {
+                throw new Error("Could not find the link containing the text: " + targetAnchorText);
+            }
+            
+            rootUrl = foundLink; // Update the rootUrl to the newly found dynamic link
+        }
+
         // --- STEP 1: Fetch Root Page ---
-        statusDiv.innerText = "[Step 1/2] Connecting to index page via Worker...";
+        statusDiv.innerText = targetAnchorText ? "[Step 1/3] Connecting to the latest index page..." : "[Step 1/2] Connecting to index page...";
 
         let response = await fetch(workerProxyUrl + encodeURIComponent(rootUrl));
-        if (!response.ok) throw new Error('Primary stream failed. Check Worker URL.');
+        if (!response.ok) throw new Error('Primary stream failed.');
 
         let htmlContent = await response.text();
         const urlRegex = /data-weekly-url=["']([^"']+)["']/;
@@ -203,7 +240,7 @@ async function runExtractionPipeline(event, rootUrl) {
         const extractedWeeklyUrl = urlMatch[1];
 
         // --- STEP 2: Fetch the Extracted URL ---
-        statusDiv.innerText = "[Step 2/2] Target found! Loading secondary page structure...";
+        statusDiv.innerText = targetAnchorText ? "[Step 2/3] Target found! Loading secondary page..." : "[Step 2/2] Target found! Loading secondary page structure...";
 
         response = await fetch(workerProxyUrl + encodeURIComponent(extractedWeeklyUrl));
         if (!response.ok) throw new Error('Secondary page stream failed.');
@@ -248,7 +285,6 @@ async function runExtractionPipeline(event, rootUrl) {
         statusDiv.style.color = '#10b981';
         statusDiv.innerText = "Pipeline complete!";
         
-        // Inject the button to show the alert dialog
         urlDisplay.innerHTML = `<button onclick="showDialog('${extractedWeeklyUrl}')" style="background-color: #3b82f6; width: auto; padding: 12px 24px;">Show & Copy Extracted Link</button>`;
         
         outputCard.style.display = "block";
