@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -42,37 +43,73 @@
             body * { visibility: hidden; }
             #printBracketContainer, #printBracketContainer * { visibility: visible; }
             #printBracketContainer {
-                display: flex !important;
-                flex-direction: column;
-                justify-content: center;
-                min-height: 100vh;
-                position: static; width: 100%;
-                max-width: 260mm; margin: 0 auto;
-                background: #ffffff; color: #0f172a;
-                box-sizing: border-box;
-                font-family: Arial, Helvetica, sans-serif;
-            }
-            .print-header { text-align: center; margin-bottom: 18px; }
-            .print-header h1 { font-size: 22px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
-            .print-header .print-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #64748b; margin-top: 4px; }
+                            display: flex !important;
+                            flex-direction: column;
+                            min-height: 100vh;
+                            position: static; 
+                            width: 100%;
+                            margin: 0 auto;
+                            background: #ffffff; 
+                            color: #0f172a;
+                            box-sizing: border-box;
+                            justify-content: center;
+                        }
 
-            .print-bracket-wrap { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-            .print-side { flex: 1; display: flex; justify-content: space-around; gap: 8px; }
-            .print-left { flex-direction: row; }
-            .print-right { flex-direction: row-reverse; }
-            .print-round { display: flex; flex-direction: column; justify-content: space-around; gap: 10px; min-width: 130px; }
-            .print-round-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #d97706; text-align: center; margin-bottom: 2px; }
+                        .print-header { text-align: center; margin-bottom: 25px; flex-shrink: 0; }
+                        .print-header h1 { font-size: 22px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: 1px; }
+                        .print-header .print-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #64748b; margin-top: 4px; }
 
-            .print-center { width: 150px; text-align: center; font-size: 26px; flex-shrink: 0; }
+                        /* CHANGED: align-items to stretch, added flex: 1 so brackets span full height */
+                        .print-bracket-wrap { display: flex; justify-content: space-between; align-items: stretch; gap: 10px; }
+                        .print-side { flex: 1; display: flex; justify-content: space-around; gap: 8px; }
+                        .print-left { flex-direction: row; }
+                        .print-right { flex-direction: row-reverse; }
+                        
+                        /* CHANGED: Added relative positioning and padding-top to anchor the absolute label */
+                        .print-round { 
+                            position: relative; 
+                            padding-top: 24px; 
+                            display: flex; 
+                            flex-direction: column; 
+                            justify-content: space-around; 
+                            gap: 10px; 
+                            min-width: 130px; 
+                        }
+                        
+                        /* CHANGED: Absolute positioning pins the label to the top, removing it from match gaps */
+                        .print-round-label { 
+                            position: absolute; 
+                            top: 0; 
+                            left: 0; 
+                            width: 100%;
+                            font-size: 9px; 
+                            font-weight: 800; 
+                            text-transform: uppercase; 
+                            letter-spacing: 1px; 
+                            color: #d97706; 
+                            text-align: center; 
+                        }
 
-            .print-match {
-                border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 7px;
-                font-size: 8px; background: #f8fafc; page-break-inside: avoid;
-            }
-            .print-team { font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
-            .print-score { text-align: center; font-size: 9px; font-weight: 900; color: #059669; margin: 2px 0; }
+                        /* CHANGED: Match relative setup from print-round */
+                        .print-center { 
+                            position: relative;
+                            padding-top: 24px;
+                            width: 150px; 
+                            text-align: center; 
+                            flex-shrink: 0; 
+                            display: flex; 
+                            flex-direction: column; 
+                            justify-content: center; 
+                        }
 
-            .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; }
+                        .print-match {
+                            border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 7px;
+                            font-size: 8px; background: #f8fafc; page-break-inside: avoid;
+                        }
+                        .print-team { font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+                        .print-score { text-align: center; font-size: 9px; font-weight: 900; color: #059669; margin: 2px 0; }
+
+                        .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; flex-shrink: 0; }
 
             @page { size: landscape; margin: 10mm; }
         }
