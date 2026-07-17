@@ -42,10 +42,15 @@
             body * { visibility: hidden; }
             #printBracketContainer, #printBracketContainer * { visibility: visible; }
             #printBracketContainer {
-                display: block !important;
-                position: absolute; left: 0; top: 0; width: 100%;
+                display: flex !important;
+                flex-direction: column;
+                justify-content: center;
+                min-height: 100vh;
+                position: static; width: 100%;
+                max-width: 260mm; margin: 0 auto;
                 background: #ffffff; color: #0f172a;
                 padding: 20px;
+                box-sizing: border-box;
                 font-family: Arial, Helvetica, sans-serif;
             }
             .print-header { text-align: center; margin-bottom: 18px; }
@@ -65,7 +70,7 @@
                 border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 7px;
                 font-size: 8px; background: #f8fafc; page-break-inside: avoid;
             }
-            .print-team { font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .print-team { font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
             .print-score { text-align: center; font-size: 9px; font-weight: 900; color: #059669; margin: 2px 0; }
 
             .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; }
