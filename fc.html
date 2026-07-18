@@ -110,6 +110,14 @@
 
                         .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; flex-shrink: 0; }
 
+                        /* ADDED: Qualifiers section (new-player matches + wildcard duels) */
+                        .print-qualifiers-section { margin-top: 22px; padding-top: 14px; border-top: 2px dashed #cbd5e1; flex-shrink: 0; }
+                        .print-qualifiers-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #b45309; text-align: center; margin-bottom: 10px; }
+                        .print-qualifiers-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+                        .print-qualifier-card { border: 1.5px solid #d97706; border-radius: 8px; padding: 8px 10px; background: #fffbeb; min-width: 170px; }
+                        .print-qualifier-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #b45309; text-align: center; margin-bottom: 4px; }
+                        .print-qualifier-note { font-size: 7px; color: #92400e; text-align: center; margin-top: 4px; font-style: italic; }
+
             @page { size: landscape; margin: 10mm; }
         }
     </style>
@@ -1046,6 +1054,42 @@
         // Builds a mirrored (left+right funneling into center Final) bracket,
         // similar in spirit to the reference "Single Nation Tournament" layout.
         // opts: { showTeams: bool, showPlaceholders: bool } - as saved on cloud when both are true.
+        // ADDED: Builds the "Qualifiers" section for print — new-player matches + wildcard duels
+        function printBuildQualifiersHTML(opts) {
+            if (!currentMatchesState.qualifiers || currentMatchesState.qualifiers.length === 0) return '';
+
+            let cards = '';
+            currentMatchesState.qualifiers.forEach(q => {
+                const label = q.stage === 1 ? 'New Match' : 'Wildcard Duel';
+                const score = q.completed ? `${q.scoreH} - ${q.scoreA}` : 'vs';
+                let note = '';
+                if (q.stage === 2 && q.completed) {
+                    const winnerOfDuel = q.scoreH > q.scoreA ? q.home : q.away;
+                    const targetName = Array.isArray(q.away.players) ? q.away.players.join(', ') : 'the active player';
+                    if (winnerOfDuel.id !== q.replaceTargetSquadId) {
+                        const newcomerName = Array.isArray(q.home.players) ? q.home.players.join(', ') : 'The newcomer';
+                        note = `${escapeHtmlForPrint(newcomerName)} replaces ${escapeHtmlForPrint(targetName)} going forward`;
+                    } else {
+                        note = `${escapeHtmlForPrint(targetName)} retained their spot`;
+                    }
+                }
+                cards += `
+                    <div class="print-qualifier-card">
+                        <div class="print-qualifier-label">${escapeHtmlForPrint(label)}</div>
+                        <div class="print-team">${printFormatSquad(q.home, opts) || '&nbsp;'}</div>
+                        <div class="print-score">${score}</div>
+                        <div class="print-team">${printFormatSquad(q.away, opts) || '&nbsp;'}</div>
+                        ${note ? `<div class="print-qualifier-note">${note}</div>` : ''}
+                    </div>`;
+            });
+
+            return `
+                <div class="print-qualifiers-section">
+                    <div class="print-qualifiers-title">🔶 Qualifiers</div>
+                    <div class="print-qualifiers-grid">${cards}</div>
+                </div>`;
+        }
+
         function printBracket(opts) {
             opts = opts || { showTeams: true, showPlaceholders: true };
             if (!currentMatchesState || currentMatchesState.type !== 'knockout') {
@@ -1088,6 +1132,7 @@
                     <div class="print-center">🏆${finalHTML}</div>
                     <div class="print-side print-right">${rightHTML}</div>
                 </div>
+                ${printBuildQualifiersHTML(opts)}
                 <div class="print-footer">Generated ${new Date().toLocaleDateString()} &middot; FC 26 Wizard</div>
             `;
 
