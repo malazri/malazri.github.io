@@ -270,6 +270,10 @@
                         <button id="addQualifierBtn" onclick="openAddQualifierModal()" class="hidden bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-lg uppercase items-center">
                             <i class="fa-solid fa-bolt mr-1.5"></i> + Qualifier
                         </button>
+                        <!-- ADDED: Live View button (Step 5) - opens a self-updating spectator screen in a new tab -->
+                        <button id="liveViewBtn" onclick="openLiveView()" class="hidden bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black px-3 py-1.5 rounded-lg uppercase items-center">
+                            <i class="fa-solid fa-tower-broadcast mr-1.5"></i> Live View
+                        </button>
                     </div>
                 </div>
 
@@ -363,6 +367,30 @@
     <!-- ADDED: Hidden print-only bracket container. Only visible via @media print rules above. -->
     <div id="printBracketContainer"></div>
 
+    <!-- ADDED: Live View screen - standalone, self-updating spectator display. Shown only when the page
+         is opened with ?live=<tournamentId> in the URL; replaces the wizard UI entirely on that load. -->
+    <div id="liveViewScreen" class="hidden fixed inset-0 w-full h-full bg-slate-950 text-slate-100 flex-col p-3 overflow-hidden z-40">
+        <div class="shrink-0 flex justify-between items-center bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 mb-2 gap-2">
+            <div class="flex items-center space-x-2 shrink-0">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                </span>
+                <span class="text-[10px] font-black text-rose-400 uppercase tracking-widest">Live</span>
+            </div>
+            <h1 id="liveViewTitle" class="text-sm md:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 truncate px-2">Tournament</h1>
+            <div id="liveViewUpdatedAt" class="text-[9px] text-slate-500 shrink-0">—</div>
+        </div>
+
+        <div id="liveRoundTabs" class="flex bg-slate-950 border border-slate-800 p-0.5 rounded-lg overflow-x-auto text-[9px] font-bold space-x-1 shrink-0 w-full mb-2"></div>
+
+        <div id="liveQualifiersContainer" class="hidden shrink-0 mb-2"></div>
+
+        <div class="flex-1 overflow-y-auto min-h-0 relative bg-slate-950/50 rounded-xl border border-slate-800/50 p-2">
+            <div id="liveMatchesContainer" class="flex flex-col space-y-2"></div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
         // SUPABASE CONFIGURATION - PASTE YOURS HERE
@@ -389,6 +417,14 @@
             if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
                 try {
                     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                    // ADDED: Live View mode - if the URL has ?live=<tournamentId>, skip the wizard entirely
+                    const liveId = new URLSearchParams(window.location.search).get('live');
+                    if (liveId) {
+                        initLiveView(liveId);
+                        return;
+                    }
+
                     await checkDatabaseRecords();
                 } catch (e) {
                     document.getElementById('dbStatus').innerHTML = "<span class='text-rose-500'>DB Error</span>";
@@ -449,6 +485,7 @@
             } else {
                 icon.className = "fa-solid fa-check mr-1.5"; text.innerText = "Saved";
                 document.getElementById('goToRunBtn').classList.remove('hidden'); // Show Run mode button
+                updateLiveViewButtonVisibility(); // ADDED: show Live View button now the tournament has a cloud ID
                 setTimeout(() => { icon.className = "fa-solid fa-cloud-arrow-up mr-1.5"; text.innerText = "Update"; }, 2000);
             }
         }
@@ -503,6 +540,7 @@
             }
             updatePrintButtonsVisibility(); // ADDED: show Print button only if loaded tournament is a built Knockout
             updateQualifierButtonVisibility(); // ADDED: show Qualifier button only if loaded tournament is a built Knockout
+            updateLiveViewButtonVisibility(); // ADDED: show Live View button since the loaded tournament has a cloud ID
         }
 
         // --- UI FLOW ---
@@ -530,6 +568,7 @@
                 document.getElementById("goToRunBtn").classList.add("hidden");
                 updatePrintButtonsVisibility(); // ADDED: hide Print button on a fresh tournament
                 updateQualifierButtonVisibility(); // ADDED: hide Qualifier button on a fresh tournament
+                updateLiveViewButtonVisibility(); // ADDED: hide Live View button on a fresh tournament (no cloud ID yet)
             }
             currentStep = targetStep; refreshWizardView();
         }
@@ -1384,6 +1423,225 @@
                     }
                 }
             }
+        }
+
+        // ==========================================================
+        // ADDED: LIVE VIEW FEATURE
+        // A standalone, read-only, self-updating screen for spectators.
+        // Opened in a new tab via ?live=<tournamentId> in the URL, which
+        // this same file detects on load and switches into Live View mode
+        // instead of the normal wizard. Polls Supabase every 5 seconds and
+        // only re-renders when the data actually changed (no flicker, no
+        // page reload). Nothing above this block was modified.
+        // ==========================================================
+
+        let liveViewPollTimer = null;
+        let liveViewLastDataHash = null;
+        let liveViewMatches = null;
+        let liveViewSquads = [];
+        let liveViewCurrentTabIdx = 0;
+
+        function updateLiveViewButtonVisibility() {
+            const btn = document.getElementById('liveViewBtn');
+            if (!btn) return;
+            const show = !!currentTournamentDbId;
+            btn.classList.toggle('hidden', !show);
+            btn.classList.toggle('flex', show);
+        }
+
+        function openLiveView() {
+            if (!currentTournamentDbId) {
+                alert("Please save the tournament to the cloud first, so it has a shareable Live View.");
+                return;
+            }
+            const url = window.location.origin + window.location.pathname + '?live=' + currentTournamentDbId;
+            window.open(url, '_blank');
+        }
+
+        function initLiveView(id) {
+            document.getElementById('mainHeader').classList.add('hidden');
+            document.getElementById('mainStage').classList.add('hidden');
+            document.getElementById('mainFooter').classList.add('hidden');
+            document.getElementById('liveViewScreen').classList.remove('hidden');
+            document.getElementById('liveViewScreen').classList.add('flex');
+
+            fetchAndRenderLiveView(id);
+            liveViewPollTimer = setInterval(() => fetchAndRenderLiveView(id), 5000);
+        }
+
+        async function fetchAndRenderLiveView(id) {
+            if (!supabaseClient) return;
+            const { data, error } = await supabaseClient.from('tournaments').select('*').eq('id', id).single();
+            const updatedAtEl = document.getElementById('liveViewUpdatedAt');
+            if (error || !data) {
+                if (updatedAtEl) updatedAtEl.innerText = 'Unable to load tournament';
+                return;
+            }
+            if (updatedAtEl) updatedAtEl.innerText = 'Checked ' + new Date().toLocaleTimeString();
+
+            const dataHash = JSON.stringify(data.matches) + '::' + JSON.stringify(data.squads) + '::' + data.title;
+            if (dataHash === liveViewLastDataHash) return; // nothing changed - skip re-render to avoid flicker
+
+            liveViewLastDataHash = dataHash;
+            liveViewMatches = data.matches;
+            liveViewSquads = data.squads || [];
+            document.getElementById('liveViewTitle').innerText = data.title || 'Tournament';
+            if (liveViewMatches && liveViewMatches.rounds && liveViewCurrentTabIdx !== 'standings' && liveViewCurrentTabIdx >= liveViewMatches.rounds.length) {
+                liveViewCurrentTabIdx = 0;
+            }
+            renderLiveViewUi();
+        }
+
+        function renderLiveViewUi() {
+            if (!liveViewMatches) return;
+            const tabs = document.getElementById('liveRoundTabs');
+            tabs.innerHTML = '';
+
+            if (liveViewMatches.type !== 'knockout') {
+                tabs.innerHTML += `<button onclick="switchLiveTab('standings')" class="px-3 py-1 rounded-lg ${liveViewCurrentTabIdx === 'standings' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition flex items-center"><i class="fa-solid fa-list-ol mr-1.5"></i> Standings</button>`;
+            }
+            liveViewMatches.rounds.forEach((round, rIdx) => {
+                tabs.innerHTML += `<button onclick="switchLiveTab(${rIdx})" class="px-3 py-1 rounded-lg ${rIdx === liveViewCurrentTabIdx ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition">${round.label}</button>`;
+            });
+
+            if (liveViewCurrentTabIdx === 'standings') {
+                drawLiveStandings();
+            } else {
+                drawLiveMatches();
+            }
+            drawLiveQualifiers();
+        }
+
+        function switchLiveTab(idx) {
+            liveViewCurrentTabIdx = idx;
+            renderLiveViewUi();
+        }
+
+        function liveGetDisplay(obj) {
+            if (obj?.isPlaceholder) return `<div class="font-bold text-xs text-amber-500">${obj.teamName}</div>`;
+            if (!obj) return `<div class="text-xs text-slate-600">BYE</div>`;
+            const playerName = Array.isArray(obj.players) ? obj.players.join(', ') : (obj.players || 'Unknown');
+            const teamName = obj.team?.name || 'No Team';
+            return `<div class="flex flex-col"><span class="font-bold text-xs text-slate-200 truncate">${playerName}</span><span class="text-[9px] text-slate-500 truncate">(${teamName})</span></div>`;
+        }
+
+        function drawLiveMatches() {
+            const container = document.getElementById('liveMatchesContainer');
+            container.innerHTML = '';
+            const round = liveViewMatches.rounds[liveViewCurrentTabIdx] || liveViewMatches.rounds[0];
+            if (!round) return;
+
+            round.matches.forEach(m => {
+                let scoreUI = '';
+                if (m.isBye) {
+                    scoreUI = `<div class="text-[10px] text-slate-500 italic bg-slate-900 px-3 py-1 rounded">Advanced</div>`;
+                } else if (m.completed) {
+                    scoreUI = `<div class="flex items-center space-x-2">
+                                <div class="text-lg font-black ${m.scoreH > m.scoreA ? 'text-emerald-400' : 'text-slate-400'}">${m.scoreH}</div>
+                                <div class="text-slate-700">-</div>
+                                <div class="text-lg font-black ${m.scoreA > m.scoreH ? 'text-emerald-400' : 'text-slate-400'}">${m.scoreA}</div>
+                               </div>`;
+                } else {
+                    scoreUI = `<div class="text-[10px] text-slate-600"><i class="fa-solid fa-clock"></i> Pending</div>`;
+                }
+                container.innerHTML += `
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center shadow-md">
+                        <div class="w-[40%] text-left overflow-hidden">${liveGetDisplay(m.home)}</div>
+                        <div class="w-[20%] flex justify-center">${scoreUI}</div>
+                        <div class="w-[40%] text-right overflow-hidden">${liveGetDisplay(m.away)}</div>
+                    </div>`;
+            });
+        }
+
+        function drawLiveStandings() {
+            const container = document.getElementById('liveMatchesContainer');
+            container.innerHTML = '';
+
+            const generateTableHTML = (title, squads) => {
+                let stats = squads.map(sq => ({ sq: sq, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 }));
+                liveViewMatches.rounds.forEach(r => {
+                    r.matches.forEach(m => {
+                        if (m.completed && !m.isBye && m.scoreH !== null && m.scoreA !== null) {
+                            let hStat = stats.find(s => s.sq.id === m.home?.id);
+                            let aStat = stats.find(s => s.sq.id === m.away?.id);
+                            if (hStat && aStat) {
+                                hStat.p++; aStat.p++;
+                                hStat.gf += m.scoreH; hStat.ga += m.scoreA;
+                                aStat.gf += m.scoreA; aStat.ga += m.scoreH;
+                                if (m.scoreH > m.scoreA) { hStat.w++; hStat.pts += 3; aStat.l++; }
+                                else if (m.scoreA > m.scoreH) { aStat.w++; aStat.pts += 3; hStat.l++; }
+                                else { hStat.d++; aStat.d++; hStat.pts += 1; aStat.pts += 1; }
+                                hStat.gd = hStat.gf - hStat.ga; aStat.gd = aStat.gf - aStat.ga;
+                            }
+                        }
+                    });
+                });
+                stats.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+                let rows = stats.map((s, i) => {
+                    const playerName = Array.isArray(s.sq.players) ? s.sq.players.join(', ') : (s.sq.players || 'Unknown');
+                    const teamName = s.sq.team?.name || 'TBD';
+                    return `<tr class="border-b border-slate-800/50 text-center text-[10px] sm:text-xs hover:bg-slate-800/30 transition">
+                        <td class="py-2 text-slate-500">${i + 1}</td>
+                        <td class="py-2 text-left overflow-hidden"><div class="font-bold text-slate-200 truncate">${playerName}</div><div class="text-[8px] text-slate-500 truncate">${teamName}</div></td>
+                        <td class="py-2 text-slate-300 font-mono">${s.p}</td>
+                        <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.w}</td>
+                        <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.d}</td>
+                        <td class="py-2 text-slate-500 font-mono hidden sm:table-cell">${s.l}</td>
+                        <td class="py-2 text-slate-400 font-mono">${s.gd > 0 ? '+' + s.gd : s.gd}</td>
+                        <td class="py-2 text-emerald-400 font-black font-mono">${s.pts}</td>
+                    </tr>`;
+                }).join('');
+                return `<div class="mb-5">
+                    <h3 class="text-[10px] font-bold text-cyan-400 mb-2 uppercase tracking-widest px-1"><i class="fa-solid fa-ranking-star mr-1"></i> ${title}</h3>
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <table class="w-full text-left table-fixed">
+                            <thead class="bg-slate-950 border-b border-slate-800 text-[8px] text-slate-500 uppercase tracking-wider">
+                                <tr><th class="py-2 text-center w-8">#</th><th class="py-2 pl-0 text-left w-auto">Player</th><th class="py-2 text-center w-6 sm:w-8 text-slate-300">P</th><th class="py-2 text-center w-8 hidden sm:table-cell">W</th><th class="py-2 text-center w-8 hidden sm:table-cell">D</th><th class="py-2 text-center w-8 hidden sm:table-cell">L</th><th class="py-2 text-center w-8 sm:w-10">GD</th><th class="py-2 text-center w-8 sm:w-10 text-emerald-400">PTS</th></tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+            };
+
+            if (liveViewMatches.type === 'league') {
+                container.innerHTML = generateTableHTML('League Standings', liveViewSquads);
+            } else if (liveViewMatches.type === 'groups') {
+                const maxTeams = liveViewMatches.groupSize || 4;
+                const numGroups = Math.ceil(liveViewSquads.length / maxTeams);
+                let html = '';
+                for (let i = 0; i < numGroups; i++) {
+                    const letter = String.fromCharCode(65 + i);
+                    const groupSquads = liveViewSquads.slice(i * maxTeams, (i + 1) * maxTeams);
+                    html += generateTableHTML(`Group ${letter}`, groupSquads);
+                }
+                container.innerHTML = html;
+            }
+        }
+
+        function drawLiveQualifiers() {
+            const wrap = document.getElementById('liveQualifiersContainer');
+            if (!wrap) return;
+            if (!liveViewMatches.qualifiers || liveViewMatches.qualifiers.length === 0) {
+                wrap.innerHTML = ''; wrap.classList.add('hidden'); return;
+            }
+            wrap.classList.remove('hidden');
+            let html = `<div class="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1.5 flex items-center"><i class="fa-solid fa-bolt mr-1.5"></i> Qualifiers</div>`;
+            liveViewMatches.qualifiers.forEach(q => {
+                const scoreUI = q.completed
+                    ? `<div class="flex items-center space-x-2"><div class="text-lg font-black ${q.scoreH > q.scoreA ? 'text-emerald-400' : 'text-slate-400'}">${q.scoreH}</div><div class="text-slate-700">-</div><div class="text-lg font-black ${q.scoreA > q.scoreH ? 'text-emerald-400' : 'text-slate-400'}">${q.scoreA}</div></div>`
+                    : `<div class="text-[10px] text-slate-600"><i class="fa-solid fa-clock"></i> Pending</div>`;
+                const label = q.stage === 1 ? 'New Match' : 'Wildcard Duel';
+                html += `<div class="bg-slate-900 border border-amber-600/40 rounded-xl p-3 shadow-md mb-2">
+                    <div class="text-[8px] text-amber-500 font-bold uppercase tracking-widest mb-1.5">${label}</div>
+                    <div class="flex justify-between items-center">
+                        <div class="w-[40%] text-left overflow-hidden">${liveGetDisplay(q.home)}</div>
+                        <div class="w-[20%] flex justify-center">${scoreUI}</div>
+                        <div class="w-[40%] text-right overflow-hidden">${liveGetDisplay(q.away)}</div>
+                    </div>
+                </div>`;
+            });
+            wrap.innerHTML = html;
         }
     </script>
 </body>
