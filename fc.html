@@ -1497,17 +1497,25 @@
             const tabs = document.getElementById('liveRoundTabs');
             tabs.innerHTML = '';
 
-            if (liveViewMatches.type !== 'knockout') {
-                tabs.innerHTML += `<button onclick="switchLiveTab('standings')" class="px-3 py-1 rounded-lg ${liveViewCurrentTabIdx === 'standings' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition flex items-center"><i class="fa-solid fa-list-ol mr-1.5"></i> Standings</button>`;
-            }
-            liveViewMatches.rounds.forEach((round, rIdx) => {
-                tabs.innerHTML += `<button onclick="switchLiveTab(${rIdx})" class="px-3 py-1 rounded-lg ${rIdx === liveViewCurrentTabIdx ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition">${round.label}</button>`;
-            });
-
-            if (liveViewCurrentTabIdx === 'standings') {
-                drawLiveStandings();
+            if (liveViewMatches.type === 'knockout') {
+                // ADDED: Knockout gets the full mirrored bracket view (same style as the print output),
+                // shown all at once - no round tabs needed since the whole tree is visible.
+                tabs.classList.add('hidden');
+                tabs.classList.remove('flex');
+                drawLiveBracket();
             } else {
-                drawLiveMatches();
+                tabs.classList.remove('hidden');
+                tabs.classList.add('flex');
+                tabs.innerHTML += `<button onclick="switchLiveTab('standings')" class="px-3 py-1 rounded-lg ${liveViewCurrentTabIdx === 'standings' ? 'bg-emerald-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition flex items-center"><i class="fa-solid fa-list-ol mr-1.5"></i> Standings</button>`;
+                liveViewMatches.rounds.forEach((round, rIdx) => {
+                    tabs.innerHTML += `<button onclick="switchLiveTab(${rIdx})" class="px-3 py-1 rounded-lg ${rIdx === liveViewCurrentTabIdx ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-slate-400 border border-slate-800'} whitespace-nowrap transition">${round.label}</button>`;
+                });
+
+                if (liveViewCurrentTabIdx === 'standings') {
+                    drawLiveStandings();
+                } else {
+                    drawLiveMatches();
+                }
             }
             drawLiveQualifiers();
         }
@@ -1515,6 +1523,79 @@
         function switchLiveTab(idx) {
             liveViewCurrentTabIdx = idx;
             renderLiveViewUi();
+        }
+
+        // ADDED: Live-view equivalent of the print bracket - mirrored, funnels into a center Final,
+        // colors the winner green / loser grey, and re-renders automatically as scores come in via polling.
+        function liveEscapeHtml(str) {
+            const d = document.createElement('div');
+            d.innerText = str == null ? '' : str;
+            return d.innerHTML;
+        }
+
+        function liveResultClass(m, side) {
+            if (!m || !m.completed || m.isBye || m.scoreH === null || m.scoreA === null || m.scoreH === m.scoreA) return 'text-slate-200';
+            const homeWins = m.scoreH > m.scoreA;
+            if (side === 'home') return homeWins ? 'text-emerald-400' : 'text-slate-500';
+            return homeWins ? 'text-slate-500' : 'text-emerald-400';
+        }
+
+        function liveFormatSquad(sq) {
+            if (!sq) return 'BYE';
+            if (sq.isPlaceholder) return liveEscapeHtml(sq.teamName);
+            const players = Array.isArray(sq.players) ? sq.players.join(', ') : 'Unknown';
+            const team = sq.team?.name || 'TBD';
+            return `${liveEscapeHtml(players)} <span class="text-slate-500 font-normal">(${liveEscapeHtml(team)})</span>`;
+        }
+
+        function liveBuildBracketMatchCard(m) {
+            if (!m) return `<div class="bg-slate-900 border border-slate-800 rounded-lg p-2 min-h-[46px]"></div>`;
+            const homeClass = liveResultClass(m, 'home');
+            const awayClass = liveResultClass(m, 'away');
+            const score = m.isBye ? 'BYE' : (m.completed ? `${m.scoreH} - ${m.scoreA}` : 'vs');
+            return `<div class="bg-slate-900 border border-slate-800 rounded-lg p-2 shadow-sm">
+                <div class="text-[10px] font-bold truncate ${homeClass}">${liveFormatSquad(m.home)}</div>
+                <div class="text-[9px] text-center text-slate-600 font-black my-0.5">${score}</div>
+                <div class="text-[10px] font-bold truncate ${awayClass}">${liveFormatSquad(m.away)}</div>
+            </div>`;
+        }
+
+        function liveBuildBracketColumn(label, matches) {
+            let html = `<div class="flex flex-col justify-around gap-3 min-w-[150px]">
+                <div class="text-[8px] font-bold text-amber-500 uppercase tracking-widest text-center mb-1">${liveEscapeHtml(label)}</div>`;
+            matches.forEach(m => html += liveBuildBracketMatchCard(m));
+            html += `</div>`;
+            return html;
+        }
+
+        function drawLiveBracket() {
+            const container = document.getElementById('liveMatchesContainer');
+            container.innerHTML = '';
+
+            const rounds = liveViewMatches.rounds;
+            if (!rounds || rounds.length === 0) return;
+            const finalRoundIdx = rounds.length - 1;
+
+            let leftHTML = '', rightHTML = '';
+            for (let r = 0; r < finalRoundIdx; r++) {
+                const matches = rounds[r].matches;
+                const half = Math.ceil(matches.length / 2);
+                const leftMatches = matches.slice(0, half);
+                const rightMatches = matches.slice(half);
+                leftHTML += liveBuildBracketColumn(rounds[r].label, leftMatches);
+                rightHTML += liveBuildBracketColumn(rounds[r].label, [...rightMatches].reverse());
+            }
+
+            const finalRound = rounds[finalRoundIdx];
+            const finalMatch = finalRound.matches[0];
+            const finalHTML = `<div class="text-[8px] font-bold text-amber-500 uppercase tracking-widest text-center mb-1">${liveEscapeHtml(finalRound.label)}</div>${liveBuildBracketMatchCard(finalMatch)}`;
+
+            container.innerHTML = `
+                <div class="flex justify-between items-stretch gap-3 overflow-x-auto pb-2 min-w-max">
+                    <div class="flex-1 flex justify-around items-stretch gap-2">${leftHTML}</div>
+                    <div class="w-[150px] shrink-0 flex flex-col justify-center items-center text-3xl">🏆${finalHTML}</div>
+                    <div class="flex-1 flex flex-row-reverse justify-around items-stretch gap-2">${rightHTML}</div>
+                </div>`;
         }
 
         function liveGetDisplay(obj) {
