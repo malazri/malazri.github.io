@@ -106,6 +106,8 @@
                             font-size: 8px; background: #f8fafc; page-break-inside: avoid;
                         }
                         .print-team { font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; font-size: 10px;}
+                        .print-team-winner { color: #059669 !important; font-weight: 900 !important; }
+                        .print-team-loser { color: #94a3b8 !important; font-weight: 500 !important; }
                         .print-score { text-align: center; font-size: 9px; font-weight: 900; color: #059669; margin: 2px 0; }
 
                         .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; flex-shrink: 0; }
@@ -312,6 +314,11 @@
                 <button onclick="closePrintOptionsModal()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="p-4 space-y-3">
+                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                    <div class="text-xs font-bold text-slate-200 mb-1.5">Print title</div>
+                    <input type="text" id="printTitleInput" placeholder="Tournament Name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-emerald-400 font-bold focus:outline-none focus:border-emerald-500">
+                    <div class="text-[9px] text-slate-500 mt-1">Only changes the printed page - not the saved tournament name</div>
+                </div>
                 <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700">
                     <div class="text-xs font-bold text-slate-200">Show team names</div>
                     <input type="checkbox" id="printOptShowTeams" checked class="accent-emerald-500 w-4 h-4">
@@ -319,6 +326,10 @@
                 <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700">
                     <div class="text-xs font-bold text-slate-200 pr-2">Show "Winner of M#" for undecided matches<br><span class="text-[9px] text-slate-500 font-normal">Unchecked = leave those slots blank</span></div>
                     <input type="checkbox" id="printOptShowPlaceholders" checked class="accent-emerald-500 w-4 h-4 shrink-0">
+                </label>
+                <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700">
+                    <div class="text-xs font-bold text-slate-200 pr-2">Show scores<br><span class="text-[9px] text-slate-500 font-normal">Unchecked = just show "vs", winner still shown in green</span></div>
+                    <input type="checkbox" id="printOptShowScores" checked class="accent-emerald-500 w-4 h-4 shrink-0">
                 </label>
             </div>
             <div class="p-4 pt-0 flex space-x-2">
@@ -998,6 +1009,7 @@
                 alert("Please build the fixtures first (Build button) before printing.");
                 return;
             }
+            document.getElementById('printTitleInput').value = document.getElementById('tournamentTitle')?.value || '';
             document.getElementById('printOptionsModal').classList.remove('hidden');
             document.getElementById('printOptionsModal').classList.add('flex');
         }
@@ -1007,8 +1019,10 @@
         }
         function confirmPrintBracket() {
             const opts = {
+                title: document.getElementById('printTitleInput').value.trim(),
                 showTeams: document.getElementById('printOptShowTeams').checked,
-                showPlaceholders: document.getElementById('printOptShowPlaceholders').checked
+                showPlaceholders: document.getElementById('printOptShowPlaceholders').checked,
+                showScores: document.getElementById('printOptShowScores').checked
             };
             closePrintOptionsModal();
             printBracket(opts);
@@ -1033,14 +1047,25 @@
             return `${escapeHtmlForPrint(players)} (${escapeHtmlForPrint(team)})`;
         }
 
+        // ADDED: Determines the print CSS class (winner/loser) for a given side of a decided match
+        function getPrintResultClass(m, side) {
+            if (!m || !m.completed || m.isBye || m.scoreH === null || m.scoreA === null || m.scoreH === m.scoreA) return '';
+            const homeWins = m.scoreH > m.scoreA;
+            if (side === 'home') return homeWins ? 'print-team-winner' : 'print-team-loser';
+            return homeWins ? 'print-team-loser' : 'print-team-winner';
+        }
+
         function printBuildMatchCard(m, opts) {
             if (!m) return `<div class="print-match"><div class="print-team">&nbsp;</div><div class="print-score">vs</div><div class="print-team">&nbsp;</div></div>`;
-            const score = m.completed && !m.isBye ? `${m.scoreH} - ${m.scoreA}` : (m.isBye ? 'BYE' : 'vs');
+            const showScores = opts.showScores !== false;
+            const score = m.isBye ? 'BYE' : (m.completed && showScores ? `${m.scoreH} - ${m.scoreA}` : 'vs');
+            const homeClass = getPrintResultClass(m, 'home');
+            const awayClass = getPrintResultClass(m, 'away');
             return `
                 <div class="print-match">
-                    <div class="print-team">${printFormatSquad(m.home, opts) || '&nbsp;'}</div>
+                    <div class="print-team ${homeClass}">${printFormatSquad(m.home, opts) || '&nbsp;'}</div>
                     <div class="print-score">${score}</div>
-                    <div class="print-team">${printFormatSquad(m.away, opts) || '&nbsp;'}</div>
+                    <div class="print-team ${awayClass}">${printFormatSquad(m.away, opts) || '&nbsp;'}</div>
                 </div>`;
         }
 
@@ -1058,10 +1083,13 @@
         function printBuildQualifiersHTML(opts) {
             if (!currentMatchesState.qualifiers || currentMatchesState.qualifiers.length === 0) return '';
 
+            const showScores = opts.showScores !== false;
             let cards = '';
             currentMatchesState.qualifiers.forEach(q => {
                 const label = q.stage === 1 ? 'New Match' : 'Wildcard Duel';
-                const score = q.completed ? `${q.scoreH} - ${q.scoreA}` : 'vs';
+                const score = q.completed && showScores ? `${q.scoreH} - ${q.scoreA}` : 'vs';
+                const homeClass = getPrintResultClass(q, 'home');
+                const awayClass = getPrintResultClass(q, 'away');
                 let note = '';
                 if (q.stage === 2 && q.completed) {
                     const winnerOfDuel = q.scoreH > q.scoreA ? q.home : q.away;
@@ -1076,9 +1104,9 @@
                 cards += `
                     <div class="print-qualifier-card">
                         <div class="print-qualifier-label">${escapeHtmlForPrint(label)}</div>
-                        <div class="print-team">${printFormatSquad(q.home, opts) || '&nbsp;'}</div>
+                        <div class="print-team ${homeClass}">${printFormatSquad(q.home, opts) || '&nbsp;'}</div>
                         <div class="print-score">${score}</div>
-                        <div class="print-team">${printFormatSquad(q.away, opts) || '&nbsp;'}</div>
+                        <div class="print-team ${awayClass}">${printFormatSquad(q.away, opts) || '&nbsp;'}</div>
                         ${note ? `<div class="print-qualifier-note">${note}</div>` : ''}
                     </div>`;
             });
@@ -1091,7 +1119,7 @@
         }
 
         function printBracket(opts) {
-            opts = opts || { showTeams: true, showPlaceholders: true };
+            opts = opts || { showTeams: true, showPlaceholders: true, showScores: true };
             if (!currentMatchesState || currentMatchesState.type !== 'knockout') {
                 alert("The print/PDF bracket view is available for Knockout format tournaments only.");
                 return;
@@ -1103,7 +1131,7 @@
 
             const rounds = currentMatchesState.rounds;
             const finalRoundIdx = rounds.length - 1;
-            const title = (document.getElementById('tournamentTitle')?.value || '').trim() || 'Tournament';
+            const title = (opts.title || document.getElementById('tournamentTitle')?.value || '').trim() || 'Tournament';
 
             let leftHTML = '', rightHTML = '';
 
