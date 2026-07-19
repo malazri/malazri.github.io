@@ -44,14 +44,12 @@
             #printBracketContainer {
                             display: flex !important;
                             flex-direction: column;
-                            min-height: 100vh;
                             position: static; 
                             width: 100%;
                             margin: 0 auto;
                             background: #ffffff; 
                             color: #0f172a;
                             box-sizing: border-box;
-                            justify-content: center;
                         }
 
                         .print-header { text-align: center; margin-bottom: 25px; flex-shrink: 0; }
@@ -59,7 +57,7 @@
                         .print-header .print-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 3px; color: #64748b; margin-top: 4px; }
 
                         /* CHANGED: align-items to stretch, added flex: 1 so brackets span full height */
-                        .print-bracket-wrap { display: flex; justify-content: space-between; align-items: stretch; gap: 10px; }
+                        .print-bracket-wrap { display: flex; justify-content: space-between; align-items: stretch; gap: 10px; page-break-inside: avoid; }
                         .print-side { flex: 1; display: flex; justify-content: space-around; gap: 8px; }
                         .print-left { flex-direction: row; }
                         .print-right { flex-direction: row-reverse; }
@@ -113,7 +111,7 @@
                         .print-footer { text-align: center; font-size: 8px; color: #94a3b8; margin-top: 20px; flex-shrink: 0; }
 
                         /* ADDED: Qualifiers section (new-player matches + wildcard duels) */
-                        .print-qualifiers-section { margin-top: 22px; padding-top: 14px; border-top: 2px dashed #cbd5e1; flex-shrink: 0; }
+                        .print-qualifiers-section { margin-top: 22px; padding-top: 14px; border-top: 2px dashed #cbd5e1; flex-shrink: 0; page-break-inside: avoid; }
                         .print-qualifiers-title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; color: #b45309; text-align: center; margin-bottom: 10px; }
                         .print-qualifiers-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
                         .print-qualifier-card { border: 1.5px solid #d97706; border-radius: 8px; padding: 8px 10px; background: #fffbeb; min-width: 170px; }
