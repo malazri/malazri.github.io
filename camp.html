@@ -35,17 +35,18 @@
             align-items: center;
             min-height: 100vh;
             color: var(--text-main);
+            overflow: hidden;
         }
 
         [dir="rtl"] * {
             font-family: var(--font-ar);
         }
 
-        /* Automatically flip directional arrows in RTL mode */
         [dir="rtl"] .fa-chevron-right::before {
-            content: "\f053"; /* fa-chevron-left */
+            content: "\f053";
         }
 
+        /* App Shell - Responsive Layout Handler */
         .app-shell {
             width: 100%;
             max-width: 412px;
@@ -60,11 +61,88 @@
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 12px #1e293b;
         }
 
+        /* DESKTOP RECEPTION MODE (Width > 768px) */
+        @media (min-width: 769px) {
+            body {
+                padding: 20px;
+                overflow: auto;
+            }
+            .app-shell {
+                max-width: 1400px;
+                max-height: 96vh;
+                border-radius: 28px;
+                display: grid;
+                grid-template-rows: auto 1fr;
+                grid-template-columns: 1fr;
+            }
+            .main-scroll {
+                display: grid !important;
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: auto auto;
+                gap: 16px;
+                padding: 20px !important;
+                overflow-y: auto !important;
+                align-content: start;
+            }
+            .view {
+                display: block !important;
+                animation: none !important;
+                margin-bottom: 0 !important;
+            }
+            /* Hide Bottom Nav and Mobile Specific Controls in Reception View */
+            .nav-bar {
+                display: none !important;
+            }
+            /* Reorganize desktop grid cards cleanly */
+            #desktop-card-countdown {
+                grid-column: span 1;
+            }
+            #desktop-card-service {
+                grid-column: span 1;
+            }
+            #desktop-card-announcement {
+                grid-column: span 1;
+            }
+            #desktop-card-events {
+                grid-column: span 2;
+            }
+            #desktop-card-shuttle {
+                grid-column: span 1;
+            }
+            #desktop-card-about {
+                grid-column: span 1;
+            }
+            #desktop-card-map {
+                grid-column: span 2;
+            }
+            #desktop-card-dining {
+                grid-column: span 1;
+            }
+            #desktop-card-numbers {
+                grid-column: span 2;
+            }
+            .desktop-badge-reception {
+                display: inline-flex !important;
+            }
+        }
+
+        .desktop-badge-reception {
+            display: none;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
         /* Top Header */
         .top-bar {
             padding: 22px 20px 14px;
             background: linear-gradient(180deg, rgba(20,28,46,0.95) 0%, rgba(11,15,23,0) 100%);
             z-index: 10;
+            flex-shrink: 0;
         }
         .header-top {
             display: flex;
@@ -112,7 +190,6 @@
             transition: 0.2s;
         }
 
-        /* Language Toggle Button Style */
         .lang-btn {
             font-weight: 700;
             font-size: 0.8rem;
@@ -150,8 +227,9 @@
         .main-scroll {
             flex: 1;
             overflow-y: auto;
-            padding: 10px 20px 100px;
+            padding: 10px 20px 110px;
             scrollbar-width: none;
+            position: relative;
         }
         .main-scroll::-webkit-scrollbar { display: none; }
 
@@ -170,6 +248,10 @@
             border-radius: var(--radius-lg);
             padding: 18px;
             margin-bottom: 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .card-header {
             display: flex;
@@ -203,10 +285,49 @@
             font-size: 1.2rem; cursor: pointer; line-height: 1;
         }
 
+        /* COUNTDOWN BANNER STYLING */
+        .countdown-card {
+            background: linear-gradient(135deg, rgba(255, 107, 0, 0.18) 0%, rgba(20, 28, 46, 0.95) 100%);
+            border: 1px solid rgba(255, 107, 0, 0.4);
+            border-left: 4px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+        }
+        [dir="rtl"] .countdown-card {
+            border-left: 1px solid rgba(255, 107, 0, 0.4);
+            border-right: 4px solid var(--primary);
+        }
+        .countdown-timer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            text-align: center;
+        }
+        .time-box {
+            background: rgba(11, 15, 23, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 4px;
+        }
+        .time-val {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1.2;
+        }
+        .time-lbl {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
         /* Map Canvas */
         .map-box {
             width: 100%;
-            height: 220px;
+            height: 160px;
             background: #0f172a;
             border-radius: var(--radius-md);
             position: relative;
@@ -223,10 +344,10 @@
             position: absolute;
             background: var(--primary);
             color: #fff;
-            width: 32px; height: 32px;
+            width: 28px; height: 28px;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             box-shadow: 0 0 15px var(--primary-glow);
             cursor: pointer;
             transition: transform 0.2s;
@@ -237,9 +358,9 @@
             position: absolute;
             background: var(--surface);
             border: 1px solid var(--border);
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 6px;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 600;
             white-space: nowrap;
             transform: translateX(-50%);
@@ -250,23 +371,23 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 14px;
+            padding: 10px 12px;
             background: var(--surface-card);
             border-radius: var(--radius-md);
             border: 1px solid var(--border);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-        .contact-info { display: flex; align-items: center; gap: 12px; }
+        .contact-info { display: flex; align-items: center; gap: 10px; }
         .contact-icon {
-            width: 40px; height: 40px; border-radius: 12px;
+            width: 32px; height: 32px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
         }
         .call-btn {
             background: var(--primary);
             color: #fff; border: none;
-            width: 36px; height: 36px;
-            border-radius: 10px;
+            width: 32px; height: 32px;
+            border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
             text-decoration: none;
             box-shadow: 0 4px 10px var(--primary-glow);
@@ -360,12 +481,12 @@
         }
         .admin-tab.active { background: var(--primary); color: #fff; }
 
-        /* Bottom Floating Nav Bar (5 Icons) */
+        /* Floating Dynamic Bottom Nav Bar (Smart Scroll Hide/Show & Bottom Reveal) */
         .nav-bar {
             position: absolute;
             bottom: 20px;
-            left: 10px;
-            right: 10px;
+            left: 12px;
+            right: 12px;
             background: rgba(20, 28, 46, 0.95);
             backdrop-filter: blur(18px);
             border: 1px solid var(--border);
@@ -374,6 +495,18 @@
             justify-content: space-around;
             padding: 10px 0;
             box-shadow: 0 12px 30px rgba(0,0,0,0.7);
+            z-index: 50;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+        .nav-bar.nav-hidden {
+            transform: translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .nav-bar.nav-visible {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
         }
         .nav-btn {
             display: flex;
@@ -381,13 +514,13 @@
             align-items: center;
             gap: 4px;
             color: var(--text-muted);
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
             flex: 1;
         }
-        .nav-btn i { font-size: 1.1rem; }
+        .nav-btn i { font-size: 1.05rem; }
         .nav-btn.active { color: var(--primary); }
 
     </style>
@@ -414,7 +547,10 @@
                 <i class="fa-solid fa-location-dot"></i> 
                 <span id="header-location-name">Nimr Interior Camp</span>
             </div>
-            <div class="temp-badge"><i class="fa-solid fa-sun" style="color:#f59e0b"></i> <span id="header-temp">38°C</span></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="desktop-badge-reception"><i class="fa-solid fa-desktop" style="margin-right: 4px;"></i> Reception Mode</div>
+                <div class="temp-badge"><i class="fa-solid fa-sun" style="color:#f59e0b"></i> <span id="header-temp">38°C</span></div>
+            </div>
         </div>
         <div class="user-header">
             <div>
@@ -422,7 +558,6 @@
                 <p id="header-subtext" data-i18n="homeSubtitle">Block C • Room C-104</p>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <!-- Language Toggle Button -->
                 <div class="icon-btn lang-btn" onclick="toggleLanguage()">عربي</div>
                 <div class="icon-btn" onclick="triggerToast('Notifications', 'No unread system alerts.')">
                     <i class="fa-regular fa-bell" style="font-size: 1.1rem;"></i>
@@ -431,19 +566,21 @@
         </div>
     </div>
 
-    <!-- Scrollable Content Views -->
-    <div class="main-scroll">
+    <!-- Scrollable Content Area -->
+    <div class="main-scroll" id="main-scroll-container" onscroll="handleScrollBehavior()">
 
         <!-- VIEW 1: HOME DASHBOARD -->
         <div id="view-home" class="view active">
             
-            <div class="card" style="border-left: 4px solid var(--primary);">
-                <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-clock"></i> <span data-i18n="activeService">Active Service</span></span>
-                    <span class="tag" data-i18n="openNow">Open Now</span>
+            <div class="card" id="desktop-card-service" style="border-left: 4px solid var(--primary); margin-bottom: 16px;">
+                <div>
+                    <div class="card-header">
+                        <span class="card-title"><i class="fa-solid fa-clock"></i> <span data-i18n="activeService">Active Service</span></span>
+                        <span class="tag" data-i18n="openNow">Open Now</span>
+                    </div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 4px;" data-i18n="dinnerService">Dinner Service</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="dinnerTime">Main Mess Hall • 17:00 - 21:00</p>
                 </div>
-                <h3 style="font-size: 1.1rem; margin-bottom: 4px;" data-i18n="dinnerService">Dinner Service</h3>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" data-i18n="dinnerTime">Main Mess Hall • 17:00 - 21:00</p>
                 <div style="display: flex; gap: 8px;">
                     <span style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px;" data-i18n="food1">Grilled Chicken</span>
                     <span style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px;" data-i18n="food2">Mutton Biryani</span>
@@ -451,20 +588,22 @@
             </div>
 
             <!-- ANNOUNCEMENT CARD -->
-            <div class="card announcement-card" id="home-announcement">
-                <div class="card-header" style="margin-bottom: 8px;">
-                    <span class="card-title" style="color: var(--accent-blue);"><i class="fa-solid fa-bullhorn" style="color: var(--accent-blue);"></i> <span data-i18n="eventBadge">Camp Announcement</span></span>
-                    <button class="close-btn" onclick="document.getElementById('home-announcement').style.display='none'">&times;</button>
+            <div class="card announcement-card" id="desktop-card-announcement" style="margin-bottom: 16px;">
+                <div>
+                    <div class="card-header" style="margin-bottom: 8px;">
+                        <span class="card-title" style="color: var(--accent-blue);"><i class="fa-solid fa-bullhorn" style="color: var(--accent-blue);"></i> <span data-i18n="eventBadge">Camp Announcement</span></span>
+                        <button class="close-btn" onclick="document.getElementById('desktop-card-announcement').style.display='none'">&times;</button>
+                    </div>
+                    <h3 style="font-size: 1.05rem; margin-bottom: 4px;" data-i18n="eventTitle">RO Plant Maintenance</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;" data-i18n="eventDesc">Water supply may experience brief pressure drops tonight between 23:00 and 01:00 due to scheduled RO membrane flushing.</p>
                 </div>
-                <h3 style="font-size: 1.05rem; margin-bottom: 4px;" data-i18n="eventTitle">RO Plant Maintenance</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;" data-i18n="eventDesc">Water supply may experience brief pressure drops tonight between 23:00 and 01:00 due to scheduled RO membrane flushing.</p>
                 <div style="font-size: 0.75rem; display: flex; gap: 12px; color: var(--text-muted);">
                     <span><i class="fa-regular fa-calendar"></i> <span data-i18n="eventDate">Tonight, 23:00</span></span>
                     <span><i class="fa-solid fa-droplet"></i> <span data-i18n="eventLocation">Utility Dept</span></span>
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="desktop-card-shuttle" style="margin-bottom: 16px;">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-bus"></i> <span data-i18n="siteDeparture">Site Departure</span></span>
                     <span style="font-size: 0.75rem; color: var(--accent-blue); font-weight:600;" data-i18n="departsIn">Departs in 35m</span>
@@ -479,9 +618,72 @@
             </div>
         </div>
 
-        <!-- VIEW 2: MAP & AREA -->
+        <!-- VIEW 2: EVENTS & ACTIVITIES -->
+        <div id="view-events" class="view">
+            <!-- Countdown Banner for Next Event -->
+            <div class="card countdown-card" id="desktop-card-countdown" style="margin-bottom: 16px;">
+                <div>
+                    <div class="card-header" style="margin-bottom: 6px;">
+                        <span class="card-title"><i class="fa-solid fa-hourglass-start"></i> <span data-i18n="nextEventTitle">Next Upcoming Event</span></span>
+                        <span class="tag" style="background: rgba(255,107,0,0.2); color: var(--primary);" id="next-event-tag">Sports Tournament</span>
+                    </div>
+                    <h3 id="next-event-name" style="font-size: 1.05rem; margin-bottom: 2px;">Inter-Block Football Semi-Final</h3>
+                    <p id="next-event-time-desc" style="font-size: 0.75rem; color: var(--text-muted);">Main Sports Ground • Today, 19:30</p>
+                </div>
+                
+                <div class="countdown-timer-grid">
+                    <div class="time-box">
+                        <div class="time-val" id="cd-days">00</div>
+                        <div class="time-lbl" data-i18n="daysLbl">Days</div>
+                    </div>
+                    <div class="time-box">
+                        <div class="time-val" id="cd-hours">00</div>
+                        <div class="time-lbl" data-i18n="hoursLbl">Hours</div>
+                    </div>
+                    <div class="time-box">
+                        <div class="time-val" id="cd-mins">00</div>
+                        <div class="time-lbl" data-i18n="minsLbl">Mins</div>
+                    </div>
+                    <div class="time-box">
+                        <div class="time-val" id="cd-secs">00</div>
+                        <div class="time-lbl" data-i18n="secsLbl">Secs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" id="desktop-card-events" style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 0.95rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-calendar-days" style="color: var(--primary);"></i> <span data-i18n="campSchedule">Camp Schedule & Activities</span>
+                    </h3>
+                </div>
+                <div id="events-container"></div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: ABOUT LOCATION -->
+        <div id="view-about" class="view">
+            <div class="card" id="desktop-card-about" style="border-left: 4px solid var(--primary); margin-bottom: 16px;">
+                <div>
+                    <div class="card-header">
+                        <span class="card-title"><i class="fa-solid fa-circle-info"></i> <span data-i18n="navAbout">Facility Overview</span></span>
+                        <span class="tag" data-i18n="activeBase">Active Base</span>
+                    </div>
+                    <h3 id="about-camp-title" style="font-size:1.1rem; margin-bottom:4px;">Nimr Interior Camp</h3>
+                    <p id="about-camp-region" style="font-size:0.8rem; color:var(--text-muted); margin-bottom: 10px;">South Oman Desert Operations Zone</p>
+                </div>
+                <div>
+                    <strong style="font-size: 0.75rem; display: block; margin-bottom: 4px;" data-i18n="safetyHeader">Safety Protocols:</strong>
+                    <p style="font-size:0.75rem; color:var(--text-muted); line-height:1.4;" data-i18n="safetyDesc">
+                        In case of alarm, report immediately to Muster Station A (Main Sports Ground) or Muster Station B.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 4: MAP & AREA -->
         <div id="view-map" class="view">
-            <div class="card">
+            <div class="card" id="desktop-card-map" style="margin-bottom: 16px;">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-map-marked-alt"></i> <span data-i18n="navMap">Camp Layout</span></span>
                     <span style="font-size: 0.75rem; color: var(--text-muted);" data-i18n="tapPin">Tap pin for details</span>
@@ -490,15 +692,15 @@
                     <div class="map-grid"></div>
                     <div id="map-pins-container"></div>
                 </div>
-                <div id="map-details-box" style="margin-top: 12px; padding: 12px; background: #0f172a; border-radius: 10px; font-size: 0.8rem; color: var(--text-muted); border: 1px solid var(--border);" data-i18n="mapDefaultText">
-                    Tap any map pin above to inspect facility timings and operational details.
+                <div id="map-details-box" style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 10px; font-size: 0.75rem; color: var(--text-muted); border: 1px solid var(--border);" data-i18n="mapDefaultText">
+                    Tap any map pin above to inspect facility timings.
                 </div>
             </div>
         </div>
 
-        <!-- VIEW 3: DINING -->
+        <!-- VIEW 5: DINING -->
         <div id="view-dining" class="view">
-            <div class="card">
+            <div class="card" id="desktop-card-dining" style="margin-bottom: 16px;">
                 <div class="card-header">
                     <span class="card-title"><i class="fa-solid fa-utensils"></i> <span data-i18n="navDining">Dining Menu</span></span>
                 </div>
@@ -506,51 +708,13 @@
             </div>
         </div>
 
-        <!-- VIEW 4: IMPORTANT NUMBERS -->
+        <!-- VIEW 6: IMPORTANT NUMBERS -->
         <div id="view-numbers" class="view">
-            <div id="numbers-container"></div>
-        </div>
-
-        <!-- VIEW 5: ABOUT LOCATION -->
-        <div id="view-about" class="view">
-            <div class="card" style="border-left: 4px solid var(--primary);">
+            <div class="card" id="desktop-card-numbers" style="margin-bottom: 16px;">
                 <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-circle-info"></i> <span data-i18n="navAbout">Facility Overview</span></span>
-                    <span class="tag" data-i18n="activeBase">Active Base</span>
+                    <span class="card-title"><i class="fa-solid fa-phone-flip"></i> <span data-i18n="navNumbers">Emergency & Ops Contacts</span></span>
                 </div>
-                <h3 id="about-camp-title" style="font-size:1.1rem; margin-bottom:4px;">Nimr Interior Camp</h3>
-                <p id="about-camp-region" style="font-size:0.8rem; color:var(--text-muted);">South Oman Desert Operations Zone</p>
-            </div>
-
-            <!-- Utility Infrastructure Status -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-gears"></i> <span data-i18n="utilitiesHeader">Utilities & Infrastructure</span></span>
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.75rem;">
-                    <div style="background:#0f172a; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                        <strong data-i18n="roPlant">RO Water Plant:</strong><br><span style="color:var(--success)">● Operational (120 m³/d)</span>
-                    </div>
-                    <div style="background:#0f172a; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                        <strong data-i18n="stpUnit">STP Unit:</strong><br><span style="color:var(--success)">● Compliant Output</span>
-                    </div>
-                    <div style="background:#0f172a; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                        <strong data-i18n="powerSupply">Power Supply:</strong><br>24/7 Grid & Diesel
-                    </div>
-                    <div style="background:#0f172a; padding:10px; border-radius:10px; border:1px solid var(--border);">
-                        <strong data-i18n="wasteMgt">Waste Management:</strong><br>Daily Yard Haul
-                    </div>
-                </div>
-            </div>
-
-            <!-- Safety & Muster Points -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-shield-halved" style="color:var(--danger)"></i> <span data-i18n="safetyHeader">Safety Protocols</span></span>
-                </div>
-                <p style="font-size:0.8rem; color:var(--text-muted); line-height:1.5; margin-bottom:10px;" data-i18n="safetyDesc">
-                    In case of alarm, report immediately to Muster Station A (Main Sports Ground) or Muster Station B (North Parking).
-                </p>
+                <div id="numbers-container"></div>
             </div>
         </div>
 
@@ -566,25 +730,54 @@
             <div class="admin-nav">
                 <div class="admin-tab active" onclick="switchAdminTab('general', this)">⚙️ General</div>
                 <div class="admin-tab" onclick="switchAdminTab('notify', this)">📢 Notify</div>
+                <div class="admin-tab" onclick="switchAdminTab('events', this)">🏆 Events</div>
                 <div class="admin-tab" onclick="switchAdminTab('places', this)">📍 Places</div>
                 <div class="admin-tab" onclick="switchAdminTab('numbers', this)">📞 Numbers</div>
             </div>
             <div id="admin-tab-general" class="admin-content">
                 <label>Camp Facility Name</label>
                 <input type="text" id="input-camp-name" class="form-control" value="Nimr Interior Camp">
-                <button class="btn-primary" onclick="saveGeneralSettings()">Update</button>
+                <label>Region / Zone</label>
+                <input type="text" id="input-camp-region" class="form-control" value="South Oman Desert Zone">
+                <label>Ambient Temperature</label>
+                <input type="text" id="input-camp-temp" class="form-control" value="38°C">
+                <button class="btn-primary" onclick="saveGeneralSettings()">Update Settings</button>
             </div>
-            <div id="admin-tab-notify" class="admin-content" style="display:none;"></div>
-            <div id="admin-tab-places" class="admin-content" style="display:none;"></div>
-            <div id="admin-tab-numbers" class="admin-content" style="display:none;"></div>
+            <div id="admin-tab-notify" class="admin-content" style="display:none;">
+                <label>Broadcast Title</label>
+                <input type="text" id="input-notif-title" class="form-control" value="RO Plant Maintenance">
+                <label>Broadcast Message</label>
+                <textarea id="input-notif-desc" class="form-control" rows="3">Water supply may experience brief pressure drops tonight between 23:00 and 01:00 due to scheduled RO membrane flushing.</textarea>
+                <button class="btn-primary" onclick="saveNotificationSettings()">Push Announcement</button>
+            </div>
+            <div id="admin-tab-events" class="admin-content" style="display:none;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Manage camp community events, tournaments, and schedules.</p>
+                <div id="admin-events-list"></div>
+            </div>
+            <div id="admin-tab-places" class="admin-content" style="display:none;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Manage map pins and facility coordinates directly from here.</p>
+                <div id="admin-places-list"></div>
+            </div>
+            <div id="admin-tab-numbers" class="admin-content" style="display:none;">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px;">Manage emergency contacts and helpdesk numbers.</p>
+                <div id="admin-numbers-list"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Bottom Navigation Bar -->
-    <div class="nav-bar">
+    <!-- Bottom Navigation Bar (Mobile Scroll Smart Hide/Show) -->
+    <div class="nav-bar nav-visible" id="mobile-nav-bar">
         <div class="nav-btn active" id="nav-home" onclick="switchTab('home')">
             <i class="fa-solid fa-house"></i>
             <span data-i18n="navHome">Home</span>
+        </div>
+        <div class="nav-btn" id="nav-events" onclick="switchTab('events')">
+            <i class="fa-solid fa-calendar-star"></i>
+            <span data-i18n="navEvents">Events</span>
+        </div>
+        <div class="nav-btn" id="nav-about" onclick="switchTab('about')">
+            <i class="fa-solid fa-circle-info"></i>
+            <span data-i18n="navAboutNav">About</span>
         </div>
         <div class="nav-btn" id="nav-map" onclick="switchTab('map')">
             <i class="fa-solid fa-map"></i>
@@ -597,10 +790,6 @@
         <div class="nav-btn" id="nav-numbers" onclick="switchTab('numbers')">
             <i class="fa-solid fa-phone-flip"></i>
             <span data-i18n="navNumbers">Numbers</span>
-        </div>
-        <div class="nav-btn" id="nav-about" onclick="switchTab('about')">
-            <i class="fa-solid fa-circle-info"></i>
-            <span data-i18n="navAboutNav">About</span>
         </div>
     </div>
 
@@ -628,10 +817,17 @@
             shuttleName: "Night Shift Shuttle #3",
             shuttleRoute: "Route: Camp ➔ Production Plant B",
             navHome: "Home",
+            navEvents: "Events",
+            nextEventTitle: "Next Upcoming Event",
+            daysLbl: "Days",
+            hoursLbl: "Hours",
+            minsLbl: "Mins",
+            secsLbl: "Secs",
+            campSchedule: "Camp Schedule & Activities",
             navMap: "Camp Layout",
             navMapNav: "Area",
             tapPin: "Tap pin for details",
-            mapDefaultText: "Tap any map pin above to inspect facility timings and operational details.",
+            mapDefaultText: "Tap any map pin above to inspect facility timings.",
             navDining: "Dining Menu",
             navDiningNav: "Dining",
             diningText: "Daily buffet services available at Main Mess Hall.",
@@ -639,13 +835,8 @@
             navAbout: "Facility Overview",
             navAboutNav: "About",
             activeBase: "Active Base",
-            utilitiesHeader: "Utilities & Infrastructure",
-            roPlant: "RO Water Plant:",
-            stpUnit: "STP Unit:",
-            powerSupply: "Power Supply:",
-            wasteMgt: "Waste Management:",
             safetyHeader: "Safety Protocols",
-            safetyDesc: "In case of alarm, report immediately to Muster Station A (Main Sports Ground) or Muster Station B (North Parking)."
+            safetyDesc: "In case of alarm, report immediately to Muster Station A (Main Sports Ground) or Muster Station B."
         },
         ar: {
             langBtn: "English",
@@ -667,24 +858,26 @@
             shuttleName: "حافلة المناوبة الليلية #٣",
             shuttleRoute: "المسار: المخيم ➔ محطة الإنتاج B",
             navHome: "الرئيسية",
+            navEvents: "الفعاليات",
+            nextEventTitle: "الفعالية القادمة",
+            daysLbl: "أيام",
+            hoursLbl: "ساعات",
+            minsLbl: "دقائق",
+            secsLbl: "ثواني",
+            campSchedule: "جدول وأنشطة المخيم",
             navMap: "خريطة المخيم",
             navMapNav: "الموقع",
             tapPin: "اضغط للتفاصيل",
-            mapDefaultText: "اضغط على أي موقع على الخريطة لعرض أوقات العمل والتفاصيل.",
+            mapDefaultText: "اضغط على أي موقع على الخريطة لعرض أوقات العمل.",
             navDining: "قائمة الطعام",
             navDiningNav: "الطعام",
             diningText: "تتوفر خدمات البوفيه اليومية في قاعة الطعام الرئيسية.",
             navNumbers: "الأرقام",
-            navAbout: "نظرة عامة على المرفق",
+            navAbout: "نظرة عامة",
             navAboutNav: "حول",
             activeBase: "قاعدة نشطة",
-            utilitiesHeader: "المرافق والبنية التحتية",
-            roPlant: "محطة المياه (RO):",
-            stpUnit: "محطة الصرف (STP):",
-            powerSupply: "الطاقة الكهربائية:",
-            wasteMgt: "إدارة النفايات:",
             safetyHeader: "بروتوكولات السلامة",
-            safetyDesc: "في حالة الإنذار، توجه فوراً إلى نقطة التجمع أ (الملعب الرئيسي) أو نقطة التجمع ب (المواقف الشمالية)."
+            safetyDesc: "في حالة الإنذار، توجه فوراً إلى نقطة التجمع أ (الملعب الرئيسي) أو نقطة التجمع ب."
         }
     };
 
@@ -714,31 +907,132 @@
 
     let campData = { name: "Nimr Interior Camp", region: "South Oman Desert Zone", temp: "38°C" };
 
+    let nextEventTimestamp = new Date().getTime() + (18 * 3600 * 1000) + (24 * 60 * 1000);
+
+    let campEvents = [
+        { id: 1, title: 'Inter-Block Football Semi-Final', category: 'Sports', date: 'Today, 19:30', location: 'Main Sports Ground', icon: 'fa-futbol', timeVal: nextEventTimestamp },
+        { id: 2, title: 'Movie Night: Action Feature', category: 'Entertainment', date: 'Tomorrow, 20:00', location: 'Recreation Hall', icon: 'fa-film', timeVal: new Date().getTime() + (42 * 3600 * 1000) },
+        { id: 3, title: 'HSE Safety Quiz & Raffle Draw', category: 'Community', date: 'Thursday, 18:00', location: 'Dining Mess Hall', icon: 'fa-award', timeVal: new Date().getTime() + (90 * 3600 * 1000) }
+    ];
+
     let mapPlaces = [
-        { id: 1, name: 'Main Mess Hall', icon: 'fa-utensils', x: 20, y: 25, bg: '#ff6b00', info: 'Timing: 04:30 - 21:00\nServes Breakfast, Lunch, Dinner, Midnight' },
+        { id: 1, name: 'Main Mess Hall', icon: 'fa-utensils', x: 20, y: 25, bg: '#ff6b00', info: 'Timing: 04:30 - 21:00\nServes Breakfast, Lunch, Dinner' },
         { id: 2, name: 'Camp Clinic', icon: 'fa-kit-medical', x: 70, y: 50, bg: '#ef4444', info: '24/7 Medical Response\nDoctor on duty: Dr. Ahmed' },
-        { id: 3, name: 'Gym & Recreation', icon: 'fa-dumbbell', x: 30, y: 65, bg: '#10b981', info: 'Gym Hours: 05:00 - 23:00\nPool, Gym, Table Tennis' }
+        { id: 3, name: 'Gym & Recreation', icon: 'fa-dumbbell', x: 30, y: 65, bg: '#10b981', info: 'Gym Hours: 05:00 - 23:00' }
     ];
 
     let contactNumbers = [
         { id: 1, title: 'Camp Medical Clinic', phone: '999', sub: 'Emergency Doctor & Ambulance', cat: 'emergency' },
         { id: 2, title: 'HSE & Fire Station', phone: '998', sub: 'Fire & Gas Incident Control', cat: 'emergency' },
         { id: 3, title: 'FM Maintenance Helpdesk', phone: '2400', sub: 'Hard Services & Room Fixes', cat: 'ops' },
-        { id: 4, title: 'Main Gate Security', phone: '2401', sub: 'Visitor & Gate Pass Desk', cat: 'ops' },
-        { id: 5, title: 'Transport Dispatcher', phone: '2402', sub: 'Rig Shuttles & Crew Change', cat: 'ops' }
+        { id: 4, title: 'Main Gate Security', phone: '2401', sub: 'Visitor & Gate Pass Desk', cat: 'ops' }
     ];
 
     window.onload = function() {
         renderMap();
+        renderEvents();
         renderNumbers();
+        renderAdminLists();
         applyLanguage(currentLang);
+        setInterval(updateCountdown, 1000);
+        
+        // Handle initial desktop setup view state
+        checkDesktopMode();
+        window.addEventListener('resize', checkDesktopMode);
     };
 
+    function checkDesktopMode() {
+        if (window.innerWidth > 768) {
+            // Show all views simultaneously for Reception screen layout
+            document.querySelectorAll('.view').forEach(v => v.classList.add('active'));
+        } else {
+            // Re-apply single active view for mobile mode
+            switchTab('home');
+        }
+    }
+
+    let lastScrollTop = 0;
+    function handleScrollBehavior() {
+        if (window.innerWidth > 768) return; // Disabled on desktop view
+
+        const container = document.getElementById('main-scroll-container');
+        const navBar = document.getElementById('mobile-nav-bar');
+        
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        // Check if reached bottom of scroll
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 15;
+
+        if (isAtBottom) {
+            navBar.classList.remove('nav-hidden');
+            navBar.classList.add('nav-visible');
+        } else if (scrollTop > lastScrollTop && scrollTop > 50) {
+            // Scrolling down -> Hide nav bar
+            navBar.classList.remove('nav-visible');
+            navBar.classList.add('nav-hidden');
+        } else if (scrollTop < lastScrollTop) {
+            // Scrolling up -> Show nav bar
+            navBar.classList.remove('nav-hidden');
+            navBar.classList.add('nav-visible');
+        }
+        lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+    }
+
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const distance = nextEventTimestamp - now;
+
+        if (distance < 0) return;
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById('cd-days').innerText = String(days).padStart(2, '0');
+        document.getElementById('cd-hours').innerText = String(hours).padStart(2, '0');
+        document.getElementById('cd-mins').innerText = String(mins).padStart(2, '0');
+        document.getElementById('cd-secs').innerText = String(secs).padStart(2, '0');
+    }
+
+    function renderEvents() {
+        campEvents.sort((a, b) => a.timeVal - b.timeVal);
+        if (campEvents.length > 0) {
+            nextEventTimestamp = campEvents[0].timeVal;
+            document.getElementById('next-event-name').innerText = campEvents[0].title;
+            document.getElementById('next-event-time-desc').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${campEvents[0].location} &bull; <i class="fa-regular fa-clock"></i> ${campEvents[0].date}`;
+            document.getElementById('next-event-tag').innerText = campEvents[0].category;
+        }
+
+        const container = document.getElementById('events-container');
+        let html = '';
+        campEvents.forEach((ev, index) => {
+            let tagColor = index === 0 ? 'var(--primary)' : 'var(--accent-blue)';
+            let tagBg = index === 0 ? 'rgba(255,107,0,0.15)' : 'rgba(59,130,246,0.15)';
+            html += `
+                <div style="background: var(--surface-card); padding: 10px; border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.85rem; font-weight: 600;"><i class="fa-solid ${ev.icon}" style="color:var(--primary); margin-right:4px;"></i> ${ev.title}</span>
+                        <span style="font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background:${tagBg}; color:${tagColor};">${ev.category}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px;">
+                        <span><i class="fa-regular fa-calendar-days"></i> ${ev.date}</span>
+                        <span><i class="fa-solid fa-location-dot"></i> ${ev.location}</span>
+                    </div>
+                </div>`;
+        });
+        container.innerHTML = html;
+    }
+
     function switchTab(tabId) {
+        if (window.innerWidth > 768) return; // Keep all open in desktop mode
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
         document.getElementById('view-' + tabId).classList.add('active');
         document.getElementById('nav-' + tabId).classList.add('active');
+        document.getElementById('main-scroll-container').scrollTop = 0;
     }
 
     let clickCount = 0;
@@ -752,7 +1046,7 @@
             triggerToast('Admin Mode', 'Unlocked Secret Camp Control Panel.');
         } else {
             clickTimer = setTimeout(() => {
-                if (clickCount === 1) switchTab('about');
+                if (clickCount === 1 && window.innerWidth <= 768) switchTab('about');
                 clickCount = 0;
             }, 400);
         }
@@ -783,7 +1077,7 @@
             const label = document.createElement('div');
             label.className = 'map-label';
             label.style.left = p.x + '%';
-            label.style.top = (p.y + 14) + '%';
+            label.style.top = (p.y + 16) + '%';
             label.innerText = p.name;
 
             container.appendChild(pin);
@@ -797,48 +1091,64 @@
 
     function renderNumbers() {
         const container = document.getElementById('numbers-container');
-        const emergencies = contactNumbers.filter(n => n.cat === 'emergency');
-        const ops = contactNumbers.filter(n => n.cat === 'ops');
-
-        let html = `
-            <div class="card" style="border-left: 4px solid var(--danger);">
-                <div class="card-header">
-                    <span class="card-title"><i class="fa-solid fa-phone-volume" style="color:var(--danger)"></i> Emergency Lines</span>
-                    <span class="tag" style="background:rgba(239,68,68,0.15); color:var(--danger);">24/7 Active</span>
-                </div>`;
-        emergencies.forEach(e => {
+        let html = '';
+        contactNumbers.forEach(n => {
+            let isEmerg = n.cat === 'emergency';
             html += `
                 <div class="contact-card">
                     <div class="contact-info">
-                        <div class="contact-icon" style="background:rgba(239,68,68,0.15); color:var(--danger);">
-                            <i class="fa-solid fa-hospital"></i>
+                        <div class="contact-icon" style="background:${isEmerg ? 'rgba(239,68,68,0.15)' : 'rgba(255,107,0,0.15)'}; color:${isEmerg ? 'var(--danger)' : 'var(--primary)'};">
+                            <i class="fa-solid ${isEmerg ? 'fa-hospital' : 'fa-phone'}"></i>
                         </div>
                         <div>
-                            <h4 style="font-size:0.85rem;">${e.title}</h4>
-                            <p style="font-size:0.75rem; color:var(--text-muted);">${e.sub}</p>
+                            <h4 style="font-size:0.8rem;">${n.title}</h4>
+                            <p style="font-size:0.7rem; color:var(--text-muted);">${n.sub}</p>
                         </div>
                     </div>
-                    <a href="tel:${e.phone}" class="call-btn call-btn-danger"><i class="fa-solid fa-phone"></i></a>
+                    <a href="tel:${n.phone}" class="call-btn ${isEmerg ? 'call-btn-danger' : ''}"><i class="fa-solid fa-phone"></i></a>
                 </div>`;
         });
-        html += `</div><div class="card"><div class="card-header"><span class="card-title"><i class="fa-solid fa-headset"></i> Camp Operations & Duty Desk</span></div>`;
-        ops.forEach(o => {
-            html += `
-                <div class="contact-card">
-                    <div class="contact-info">
-                        <div class="contact-icon" style="background:rgba(255,107,0,0.15); color:var(--primary);">
-                            <i class="fa-solid fa-phone"></i>
-                        </div>
-                        <div>
-                            <h4 style="font-size:0.85rem;">${o.title}</h4>
-                            <p style="font-size:0.75rem; color:var(--text-muted);">${o.sub}</p>
-                        </div>
-                    </div>
-                    <a href="tel:${o.phone}" class="call-btn"><i class="fa-solid fa-phone"></i></a>
-                </div>`;
-        });
-        html += `</div>`;
         container.innerHTML = html;
+    }
+
+    function renderAdminLists() {
+        const eventsContainer = document.getElementById('admin-events-list');
+        if (eventsContainer) {
+            let eHtml = '';
+            campEvents.forEach((ev, idx) => {
+                eHtml += `<div style="background:#0f172a; padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid var(--border);">
+                    <label style="font-size:0.65rem;">Event Title</label>
+                    <input type="text" class="form-control" value="${ev.title}" onchange="campEvents[${idx}].title=this.value; renderEvents();" style="margin-bottom:6px;">
+                    <label style="font-size:0.65rem;">Location & Time Note</label>
+                    <input type="text" class="form-control" value="${ev.date}" onchange="campEvents[${idx}].date=this.value; renderEvents();" style="margin-bottom:0; font-size:0.75rem;">
+                </div>`;
+            });
+            eventsContainer.innerHTML = eHtml;
+        }
+
+        const placesContainer = document.getElementById('admin-places-list');
+        if (placesContainer) {
+            let pHtml = '';
+            mapPlaces.forEach((p, idx) => {
+                pHtml += `<div style="background:#0f172a; padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid var(--border);">
+                    <input type="text" class="form-control" value="${p.name}" onchange="mapPlaces[${idx}].name=this.value; renderMap();" style="margin-bottom:6px;">
+                    <input type="text" class="form-control" value="${p.info}" onchange="mapPlaces[${idx}].info=this.value;" style="margin-bottom:0; font-size:0.75rem;">
+                </div>`;
+            });
+            placesContainer.innerHTML = pHtml;
+        }
+
+        const numbersContainer = document.getElementById('admin-numbers-list');
+        if (numbersContainer) {
+            let nHtml = '';
+            contactNumbers.forEach((n, idx) => {
+                nHtml += `<div style="background:#0f172a; padding:10px; border-radius:10px; margin-bottom:8px; border:1px solid var(--border); display:flex; gap:8px;">
+                    <input type="text" class="form-control" value="${n.title}" onchange="contactNumbers[${idx}].title=this.value; renderNumbers();" style="margin-bottom:0; flex:2;">
+                    <input type="text" class="form-control" value="${n.phone}" onchange="contactNumbers[${idx}].phone=this.value; renderNumbers();" style="margin-bottom:0; flex:1;">
+                </div>`;
+            });
+            numbersContainer.innerHTML = nHtml;
+        }
     }
 
     function saveGeneralSettings() {
@@ -851,6 +1161,24 @@
         document.getElementById('about-camp-region').innerText = campData.region;
         closeModal('admin-modal');
         triggerToast('Settings Updated', 'Camp facility name and ambient weather saved.');
+    }
+
+    function saveNotificationSettings() {
+        const title = document.getElementById('input-notif-title').value;
+        const desc = document.getElementById('input-notif-desc').value;
+        
+        translations.en.eventTitle = title;
+        translations.en.eventDesc = desc;
+        translations.ar.eventTitle = title;
+        translations.ar.eventDesc = desc;
+
+        applyLanguage(currentLang);
+
+        const annCard = document.getElementById('desktop-card-announcement');
+        if (annCard) annCard.style.display = 'flex';
+
+        closeModal('admin-modal');
+        triggerToast('Announcement Pushed', 'Camp broadcast updated successfully.');
     }
 
     function triggerToast(title, msg) {
