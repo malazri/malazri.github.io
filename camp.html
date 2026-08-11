@@ -1,2241 +1,1302 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <title>BaseCamp — Lekhwair Camp Companion</title>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-        <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap"
-            rel="stylesheet"
-        />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-        </script>
-        <style>
-            :root {
-                --bg: #0a0d13;
-                --surface: #121826;
-                --surface-2: #19212f;
-                --surface-3: #212a3c;
-                --border: rgba(201, 168, 118, 0.14);
-                --border-soft: rgba(245, 243, 236, 0.06);
-                --sand: #c9a876;
-                --amber: #ff7a1a;
-                --amber-soft: rgba(255, 122, 26, 0.14);
-                --teal: #2dd4bf;
-                --teal-soft: rgba(45, 212, 191, 0.14);
-                --red: #f0453d;
-                --red-soft: rgba(240, 69, 61, 0.14);
-                --text: #f5f3ec;
-                --text-muted: #8d93a6;
-                --text-dim: #5b6274;
-                --r-lg: 18px;
-                --r-md: 12px;
-                --font-display: "Space Grotesk", sans-serif;
-                --font-body: "Inter", sans-serif;
-                --font-mono: "IBM Plex Mono", monospace;
-                --font-ar: "Tajawal", sans-serif;
-            }
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-                -webkit-tap-highlight-color: transparent;
-                font-family: var(--font-body);
-            }
-            [dir="rtl"] * {
-                font-family: var(--font-ar);
-            }
-            [dir="rtl"] .fa-chevron-right::before {
-                content: "\f053";
-            }
-            body {
-                background: #000;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                color: var(--text);
-                overflow: hidden;
-            }
-            .app-shell {
-                width: 100%;
-                max-width: 412px;
-                height: 100vh;
-                max-height: 880px;
-                background: var(--bg);
-                border-radius: 34px;
-                position: relative;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                box-shadow:
-                    0 30px 70px rgba(0, 0, 0, 0.85),
-                    0 0 0 10px #0d1420;
-                background-image: radial-gradient(circle at 8% 0%, rgba(255, 122, 26, 0.05), transparent 45%),
-                    radial-gradient(circle at 100% 30%, rgba(45, 212, 191, 0.04), transparent 40%);
-            }
-            @media (min-width: 769px) {
-                body {
-                    padding: 24px;
-                    overflow: auto;
-                    background: #050709;
-                }
-                .app-shell {
-                    max-width: 1200px;
-                    max-height: 96vh;
-                    border-radius: 24px;
-                    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.7);
-                }
-                .main-scroll {
-                    display: grid !important;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 16px;
-                    padding: 22px !important;
-                    overflow-y: auto !important;
-                    align-content: start;
-                }
-                .view {
-                    display: block !important;
-                    animation: none !important;
-                    margin-bottom: 0 !important;
-                }
-                .nav-bar {
-                    display: none !important;
-                }
-                #card-prayer {
-                    grid-column: span 1;
-                }
-                #card-quickactions {
-                    grid-column: span 2;
-                }
-                #card-announcement {
-                    grid-column: span 3;
-                }
-                #card-about-overview {
-                    grid-column: span 1;
-                }
-                #card-about-stats {
-                    grid-column: span 2;
-                }
-                #card-about-history {
-                    grid-column: span 1;
-                }
-                #card-about-companies {
-                    grid-column: span 2;
-                }
-                #card-countdown {
-                    grid-column: span 1;
-                }
-                #card-events {
-                    grid-column: span 2;
-                }
-                #card-facility {
-                    grid-column: span 3;
-                }
-                .reception-tag {
-                    display: inline-flex !important;
-                }
-            }
-            .reception-tag {
-                display: none;
-                align-items: center;
-                gap: 6px;
-                background: var(--teal-soft);
-                border: 1px solid rgba(45, 212, 191, 0.35);
-                color: var(--teal);
-                padding: 5px 11px;
-                border-radius: 20px;
-                font-size: 0.68rem;
-                font-weight: 700;
-                letter-spacing: 0.03em;
-                text-transform: uppercase;
-            }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BaseCamp — Lekhwair Camp Companion</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous" id="fa-primary-link">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#0a0d13; --surface:#121826; --surface-2:#19212f; --surface-3:#212a3c;
+  --border:rgba(201,168,118,0.14); --border-soft:rgba(245,243,236,0.06);
+  --sand:#c9a876; --amber:#ff7a1a; --amber-soft:rgba(255,122,26,0.14);
+  --teal:#2dd4bf; --teal-soft:rgba(45,212,191,0.14);
+  --red:#f0453d; --red-soft:rgba(240,69,61,0.14);
+  --text:#f5f3ec; --text-muted:#8d93a6; --text-dim:#5b6274;
+  --r-lg:18px; --r-md:12px;
+  --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace; --font-ar:'Tajawal',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:var(--font-body);}
+[dir="rtl"] *{font-family:var(--font-ar);}
+[dir="rtl"] .fa-chevron-right::before{content:"\f053";}
+body{background:#000;display:flex;justify-content:center;align-items:center;height:calc(var(--vh, 1vh) * 100);color:var(--text);overflow:hidden;}
+.app-shell{
+  width:100%;max-width:412px;height:calc(var(--vh, 1vh) * 100);max-height:880px;background:var(--bg);
+  border-radius:34px;position:relative;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 70px rgba(0,0,0,0.85),0 0 0 10px #0d1420;
+  background-image:radial-gradient(circle at 8% 0%, rgba(255,122,26,0.05), transparent 45%),radial-gradient(circle at 100% 30%, rgba(45,212,191,0.04), transparent 40%);
+}
+@media (min-width:769px){
+  body{padding:24px;overflow:auto;background:#050709;height:auto;min-height:calc(var(--vh, 1vh) * 100);}
+  .app-shell{max-width:1200px;height:auto;max-height:96vh;border-radius:24px;box-shadow:0 40px 100px rgba(0,0,0,0.7);}
+  .main-scroll{display:grid !important;grid-template-columns:repeat(3,1fr);gap:16px;padding:22px !important;overflow-y:auto !important;align-content:start;}
+  .view{display:block !important;animation:none !important;margin-bottom:0 !important;}
+  .nav-bar{display:none !important;}
+  #card-prayer{grid-column:span 1;}
+  #card-quickactions{grid-column:span 2;}
+  #card-announcement{grid-column:span 3;}
+  #card-about-overview{grid-column:span 1;}
+  #card-about-stats{grid-column:span 2;}
+  #card-about-history{grid-column:span 1;}
+  #card-about-companies{grid-column:span 2;}
+  #card-countdown{grid-column:span 1;}
+  #card-events{grid-column:span 2;}
+  #card-facility{grid-column:span 3;}
+  .reception-tag{display:inline-flex !important;}
+}
+.reception-tag{display:none;align-items:center;gap:6px;background:var(--teal-soft);border:1px solid rgba(45,212,191,0.35);color:var(--teal);padding:5px 11px;border-radius:20px;font-size:0.68rem;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;}
 
-            /* ===== HEADER — persistent on every tab ===== */
-            .top-bar {
-                padding: 20px 18px 12px;
-                z-index: 10;
-                flex-shrink: 0;
-            }
-            .header-row {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 14px;
-            }
-            .location-pill {
-                display: inline-flex;
-                align-items: center;
-                gap: 7px;
-                background: var(--surface-2);
-                border: 1px solid var(--border);
-                color: var(--sand);
-                padding: 7px 13px;
-                border-radius: 20px;
-                font-size: 0.72rem;
-                font-weight: 700;
-                letter-spacing: 0.02em;
-                cursor: pointer;
-                user-select: none;
-                transition: 0.15s;
-            }
-            .location-pill i {
-                color: var(--amber);
-                font-size: 0.75rem;
-            }
-            .location-pill:active {
-                transform: scale(0.96);
-                border-color: var(--amber);
-            }
-            [dir="rtl"] .location-pill {
-                flex-direction: row-reverse;
-            }
-            .header-actions {
-                display: flex;
-                gap: 8px;
-                align-items: center;
-            }
-            .icon-btn {
-                width: 38px;
-                height: 38px;
-                background: var(--surface-2);
-                border-radius: 11px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border: 1px solid var(--border-soft);
-                color: var(--text);
-                cursor: pointer;
-            }
-            .lang-btn {
-                font-family: var(--font-mono);
-                font-weight: 600;
-                font-size: 0.68rem;
-                color: var(--sand);
-                width: auto;
-                padding: 0 10px;
-                border-color: var(--border);
-            }
-            .identity-row {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .identity-row h1 {
-                font-family: var(--font-display);
-                font-size: 1.34rem;
-                font-weight: 700;
-                letter-spacing: -0.01em;
-            }
-            .mini-status {
-                display: flex;
-                align-items: center;
-                gap: 9px;
-                background: var(--surface-2);
-                border: 1px solid var(--border-soft);
-                border-radius: 20px;
-                padding: 6px 12px;
-                flex-shrink: 0;
-            }
-            .mini-status-cell {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-            .mini-status-cell i {
-                font-size: 0.82rem;
-                color: var(--amber);
-            }
-            .mini-status-cell span {
-                font-family: var(--font-mono);
-                font-size: 0.78rem;
-                font-weight: 600;
-                color: var(--text);
-            }
-            .mini-status-divider {
-                width: 1px;
-                height: 12px;
-                background: var(--border);
-            }
+/* ===== HEADER — persistent on every tab ===== */
+.top-bar{padding:20px 18px 12px;z-index:10;flex-shrink:0;}
+.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.location-pill{display:inline-flex;align-items:center;gap:7px;background:var(--surface-2);border:1px solid var(--border);color:var(--sand);padding:7px 13px;border-radius:20px;font-size:0.72rem;font-weight:700;letter-spacing:0.02em;cursor:pointer;user-select:none;transition:0.15s;}
+.location-pill i{color:var(--amber);font-size:0.75rem;}
+.location-pill:active{transform:scale(0.96);border-color:var(--amber);}
+[dir="rtl"] .location-pill{flex-direction:row-reverse;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+.icon-btn{width:38px;height:38px;background:var(--surface-2);border-radius:11px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-soft);color:var(--text);cursor:pointer;}
+.lang-btn{font-family:var(--font-mono);font-weight:600;font-size:0.68rem;color:var(--sand);width:auto;padding:0 10px;border-color:var(--border);}
+.identity-row{display:flex;justify-content:space-between;align-items:center;}
+.identity-row h1{font-family:var(--font-display);font-size:1.34rem;font-weight:700;letter-spacing:-0.01em;}
+.mini-status{display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:20px;padding:6px 12px;flex-shrink:0;}
+.mini-status-cell{display:flex;align-items:center;gap:5px;}
+.mini-status-cell i{font-size:0.82rem;color:var(--amber);}
+.mini-status-cell span{font-family:var(--font-mono);font-size:0.78rem;font-weight:600;color:var(--text);}
+.mini-status-divider{width:1px;height:12px;background:var(--border);}
 
-            .main-scroll {
-                flex: 1;
-                overflow-y: auto;
-                padding: 14px 18px 106px;
-                scrollbar-width: none;
-            }
-            .main-scroll::-webkit-scrollbar {
-                display: none;
-            }
-            .view {
-                display: none;
-                animation: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            .view.active {
-                display: block;
-            }
-            @keyframes rise {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
+.main-scroll{flex:1;overflow-y:auto;padding:14px 18px 106px;scrollbar-width:none;}
+.main-scroll::-webkit-scrollbar{display:none;}
+.view{display:none;animation:rise 0.28s cubic-bezier(0.16,1,0.3,1);}
+.view.active{display:block;}
+@keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 
-            .section-label {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin: 18px 0 10px;
-                font-family: var(--font-mono);
-                font-size: 0.66rem;
-                font-weight: 600;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                letter-spacing: 0.1em;
-            }
-            .section-label::after {
-                content: "";
-                flex: 1;
-                height: 1px;
-                background: var(--border-soft);
-            }
-            .section-label:first-child {
-                margin-top: 2px;
-            }
+.section-label{display:flex;align-items:center;gap:8px;margin:18px 0 10px;font-family:var(--font-mono);font-size:0.66rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;}
+.section-label::after{content:"";flex:1;height:1px;background:var(--border-soft);}
+.section-label:first-child{margin-top:2px;}
 
-            .card {
-                background: var(--surface);
-                border: 1px solid var(--border-soft);
-                border-radius: var(--r-lg);
-                padding: 16px;
-                margin-bottom: 12px;
-                position: relative;
-                height: 100%;
-            }
-            .card::before {
-                content: "";
-                position: absolute;
-                top: 14px;
-                bottom: 14px;
-                left: 0;
-                width: 3px;
-                background: var(--plate, var(--amber));
-                border-radius: 0 3px 3px 0;
-            }
-            [dir="rtl"] .card::before {
-                left: auto;
-                right: 0;
-                border-radius: 3px 0 0 3px;
-            }
-            .card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 11px;
-            }
-            .card-title {
-                font-family: var(--font-display);
-                font-size: 0.92rem;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .card-title i {
-                color: var(--amber);
-                font-size: 0.85rem;
-            }
-            .pill {
-                font-family: var(--font-mono);
-                font-size: 0.63rem;
-                padding: 4px 9px;
-                border-radius: 6px;
-                font-weight: 600;
-                letter-spacing: 0.02em;
-            }
-            .pill-live {
-                background: var(--teal-soft);
-                color: var(--teal);
-            }
-            .pill-amber {
-                background: var(--amber-soft);
-                color: var(--amber);
-            }
+.card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;position:relative;height:100%;}
+.card::before{content:"";position:absolute;top:14px;bottom:14px;left:0;width:3px;background:var(--plate,var(--amber));border-radius:0 3px 3px 0;}
+[dir="rtl"] .card::before{left:auto;right:0;border-radius:3px 0 0 3px;}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;}
+.card-title{font-family:var(--font-display);font-size:0.92rem;font-weight:600;display:flex;align-items:center;gap:8px;}
+.card-title i{color:var(--amber);font-size:0.85rem;}
+.pill{font-family:var(--font-mono);font-size:0.63rem;padding:4px 9px;border-radius:6px;font-weight:600;letter-spacing:0.02em;}
+.pill-live{background:var(--teal-soft);color:var(--teal);}
+.pill-amber{background:var(--amber-soft);color:var(--amber);}
 
-            .card-prayer {
-                --plate: var(--sand);
-            }
-            .prayer-grid {
-                display: grid;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 4px;
-                margin-top: 10px;
-            }
-            .prayer-cell {
-                text-align: center;
-                padding: 7px 2px;
-                border-radius: 8px;
-                background: var(--surface-3);
-            }
-            .prayer-cell.next {
-                background: var(--amber-soft);
-                border: 1px solid rgba(255, 122, 26, 0.4);
-            }
-            .prayer-name {
-                font-size: 0.58rem;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                font-weight: 600;
-            }
-            .prayer-cell.next .prayer-name {
-                color: var(--amber);
-            }
-            .prayer-time {
-                font-family: var(--font-mono);
-                font-size: 0.72rem;
-                font-weight: 600;
-                margin-top: 3px;
-            }
+.card-prayer{--plate:var(--sand);}
+.prayer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:10px;}
+.prayer-cell{text-align:center;padding:7px 2px;border-radius:8px;background:var(--surface-3);}
+.prayer-cell.next{background:var(--amber-soft);border:1px solid rgba(255,122,26,0.4);}
+.prayer-name{font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.04em;font-weight:600;}
+.prayer-cell.next .prayer-name{color:var(--amber);}
+.prayer-time{font-family:var(--font-mono);font-size:0.72rem;font-weight:600;margin-top:3px;}
 
-            .qa-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-            }
-            .qa-btn {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 6px;
-                background: var(--surface-3);
-                border: 1px solid var(--border-soft);
-                border-radius: var(--r-md);
-                padding: 14px 4px;
-                cursor: pointer;
-                text-align: center;
-            }
-            .qa-btn i {
-                font-size: 1.1rem;
-                color: var(--amber);
-            }
-            .qa-btn span {
-                font-size: 0.64rem;
-                color: var(--text-muted);
-                font-weight: 600;
-                line-height: 1.2;
-            }
+.qa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.qa-btn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:14px 4px;cursor:pointer;text-align:center;}
+.qa-btn i{font-size:1.1rem;color:var(--amber);}
+.qa-btn span{font-size:0.64rem;color:var(--text-muted);font-weight:600;line-height:1.2;}
 
-            .card-announce {
-                --plate: var(--teal);
-            }
-            .announcement-item {
-                padding: 10px 0;
-                border-bottom: 1px solid var(--border-soft);
-            }
-            .announcement-item:last-child {
-                border-bottom: none;
-            }
-            .announcement-item h4 {
-                font-family: var(--font-display);
-                font-size: 0.87rem;
-                font-weight: 600;
-            }
-            .announcement-item p {
-                font-size: 0.78rem;
-                color: var(--text-muted);
-                margin-top: 4px;
-                line-height: 1.45;
-            }
-            .announcement-meta {
-                font-size: 0.68rem;
-                display: flex;
-                gap: 12px;
-                color: var(--text-dim);
-                margin-top: 6px;
-                font-family: var(--font-mono);
-            }
-            .expand-btn {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                width: 100%;
-                background: none;
-                border: none;
-                color: var(--teal);
-                font-size: 0.75rem;
-                font-weight: 600;
-                font-family: var(--font-mono);
-                padding: 10px 0 2px;
-                cursor: pointer;
-            }
-            .hidden-announcements {
-                display: none;
-            }
-            .hidden-announcements.expanded {
-                display: block;
-            }
+.card-announce{--plate:var(--teal);}
+.announcement-item{padding:10px 0;border-bottom:1px solid var(--border-soft);}
+.announcement-item:last-child{border-bottom:none;}
+.announcement-item h4{font-family:var(--font-display);font-size:0.87rem;font-weight:600;}
+.announcement-item p{font-size:0.78rem;color:var(--text-muted);margin-top:4px;line-height:1.45;}
+.announcement-meta{font-size:0.68rem;display:flex;gap:12px;color:var(--text-dim);margin-top:6px;font-family:var(--font-mono);}
+.expand-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:none;color:var(--teal);font-size:0.75rem;font-weight:600;font-family:var(--font-mono);padding:10px 0 2px;cursor:pointer;}
+.hidden-announcements{display:none;}
+.hidden-announcements.expanded{display:block;}
 
-            .card-about-overview {
-                --plate: var(--amber);
-            }
-            .stat-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                margin-top: 10px;
-            }
-            .stat-tile {
-                background: var(--surface-3);
-                border: 1px solid var(--border-soft);
-                border-radius: var(--r-md);
-                padding: 12px 10px;
-            }
-            .stat-val {
-                font-family: var(--font-mono);
-                font-size: 1.15rem;
-                font-weight: 700;
-                color: var(--amber);
-            }
-            .stat-lbl {
-                font-size: 0.64rem;
-                color: var(--text-muted);
-                margin-top: 3px;
-                font-weight: 600;
-            }
-            .history-item {
-                display: flex;
-                gap: 10px;
-                margin-bottom: 12px;
-            }
-            .history-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: var(--sand);
-                margin-top: 6px;
-                flex-shrink: 0;
-            }
-            .history-item p {
-                font-size: 0.79rem;
-                color: var(--text-muted);
-                line-height: 1.5;
-            }
-            .history-item strong {
-                color: var(--text);
-                font-family: var(--font-display);
-                font-weight: 600;
-                font-size: 0.83rem;
-                display: block;
-                margin-bottom: 2px;
-            }
-            .company-chip {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                background: var(--surface-3);
-                border: 1px solid var(--border-soft);
-                padding: 7px 12px;
-                border-radius: 9px;
-                font-size: 0.75rem;
-                color: var(--text-muted);
-                margin: 0 6px 6px 0;
-            }
-            .company-chip i {
-                color: var(--teal);
-                font-size: 0.7rem;
-            }
+.card-about-overview{--plate:var(--amber);}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px;}
+.stat-tile{background:var(--surface-3);border:1px solid var(--border-soft);border-radius:var(--r-md);padding:12px 10px;}
+.stat-val{font-family:var(--font-mono);font-size:1.15rem;font-weight:700;color:var(--amber);}
+.stat-lbl{font-size:0.64rem;color:var(--text-muted);margin-top:3px;font-weight:600;}
+.history-item{display:flex;gap:10px;margin-bottom:12px;}
+.history-dot{width:8px;height:8px;border-radius:50%;background:var(--sand);margin-top:6px;flex-shrink:0;}
+.history-item p{font-size:0.79rem;color:var(--text-muted);line-height:1.5;}
+.history-item strong{color:var(--text);font-family:var(--font-display);font-weight:600;font-size:0.83rem;display:block;margin-bottom:2px;}
+.company-chip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-3);border:1px solid var(--border-soft);padding:7px 12px;border-radius:9px;font-size:0.75rem;color:var(--text-muted);margin:0 6px 6px 0;}
+.company-chip i{color:var(--teal);font-size:0.7rem;}
 
-            .card-countdown {
-                --plate: var(--amber);
-                background: linear-gradient(155deg, var(--amber-soft) 0%, var(--surface) 60%);
-            }
-            .cd-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 7px;
-                margin-top: 12px;
-                text-align: center;
-            }
-            .cd-box {
-                background: rgba(10, 13, 19, 0.55);
-                border: 1px solid var(--border);
-                border-radius: 9px;
-                padding: 8px 3px;
-            }
-            .cd-val {
-                font-family: var(--font-mono);
-                font-size: 1.15rem;
-                font-weight: 700;
-                color: var(--amber);
-            }
-            .cd-lbl {
-                font-size: 0.56rem;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                margin-top: 2px;
-                font-weight: 600;
-                letter-spacing: 0.05em;
-            }
+.card-countdown{--plate:var(--amber);background:linear-gradient(155deg,var(--amber-soft) 0%,var(--surface) 60%);}
+.cd-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px;text-align:center;}
+.cd-box{background:rgba(10,13,19,0.55);border:1px solid var(--border);border-radius:9px;padding:8px 3px;}
+.cd-val{font-family:var(--font-mono);font-size:1.15rem;font-weight:700;color:var(--amber);}
+.cd-lbl{font-size:0.56rem;color:var(--text-dim);text-transform:uppercase;margin-top:2px;font-weight:600;letter-spacing:0.05em;}
 
-            .filter-row {
-                display: flex;
-                gap: 6px;
-                margin-bottom: 12px;
-                overflow-x: auto;
-                padding-bottom: 2px;
-            }
-            .filter-chip {
-                font-size: 0.68rem;
-                font-weight: 600;
-                padding: 6px 12px;
-                border-radius: 20px;
-                background: var(--surface-3);
-                color: var(--text-muted);
-                border: 1px solid var(--border-soft);
-                white-space: nowrap;
-                cursor: pointer;
-            }
-            .filter-chip.active {
-                background: var(--amber);
-                color: #1a0d02;
-                border-color: var(--amber);
-            }
-            .event-row {
-                background: var(--surface-2);
-                padding: 11px 12px;
-                border-radius: 11px;
-                margin-bottom: 8px;
-                border: 1px solid var(--border-soft);
-                display: flex;
-                gap: 11px;
-                align-items: center;
-            }
-            .event-icon {
-                width: 36px;
-                height: 36px;
-                border-radius: 9px;
-                background: var(--surface-3);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: var(--amber);
-                flex-shrink: 0;
-            }
-            .event-body {
-                flex: 1;
-                min-width: 0;
-            }
-            .event-body h4 {
-                font-size: 0.83rem;
-                font-weight: 600;
-                font-family: var(--font-display);
-            }
-            .event-body .meta {
-                font-size: 0.7rem;
-                color: var(--text-muted);
-                display: flex;
-                gap: 10px;
-                margin-top: 3px;
-                flex-wrap: wrap;
-            }
-            .live-dot {
-                width: 7px;
-                height: 7px;
-                border-radius: 50%;
-                background: var(--teal);
-                display: inline-block;
-                margin-right: 4px;
-                box-shadow: 0 0 8px var(--teal);
-            }
+.filter-row{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
+.filter-chip{font-size:0.68rem;font-weight:600;padding:6px 12px;border-radius:20px;background:var(--surface-3);color:var(--text-muted);border:1px solid var(--border-soft);white-space:nowrap;cursor:pointer;}
+.filter-chip.active{background:var(--amber);color:#1a0d02;border-color:var(--amber);}
+.event-row{background:var(--surface-2);padding:11px 12px;border-radius:11px;margin-bottom:8px;border:1px solid var(--border-soft);display:flex;gap:11px;align-items:center;}
+.event-icon{width:36px;height:36px;border-radius:9px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;color:var(--amber);flex-shrink:0;}
+.event-body{flex:1;min-width:0;}
+.event-body h4{font-size:0.83rem;font-weight:600;font-family:var(--font-display);}
+.event-body .meta{font-size:0.7rem;color:var(--text-muted);display:flex;gap:10px;margin-top:3px;flex-wrap:wrap;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;margin-right:4px;box-shadow:0 0 8px var(--teal);}
 
-            .card-facility {
-                --plate: var(--teal);
-            }
-            .map-box {
-                width: 100%;
-                height: 220px;
-                background: var(--surface-2);
-                border-radius: var(--r-md);
-                overflow: hidden;
-                border: 1px solid var(--border-soft);
-            }
-            #leaflet-map {
-                width: 100%;
-                height: 100%;
-            }
-            .leaflet-div-icon {
-                background: none;
-                border: none;
-            }
-            .geo-pin {
-                width: 28px;
-                height: 28px;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-                border: 2px solid rgba(10, 13, 19, 0.5);
-            }
-            .geo-pin i {
-                transform: rotate(45deg);
-                color: #0a0d13;
-                font-size: 0.75rem;
-            }
-            .leaflet-popup-content-wrapper {
-                background: var(--surface-2);
-                color: var(--text);
-                border-radius: 10px;
-            }
-            .leaflet-popup-tip {
-                background: var(--surface-2);
-            }
-            .leaflet-popup-content {
-                font-family: var(--font-body);
-                font-size: 0.78rem;
-            }
-            .leaflet-popup-content strong {
-                font-family: var(--font-display);
-            }
-            .leaflet-control-attribution {
-                background: rgba(10, 13, 19, 0.7) !important;
-                color: var(--text-dim) !important;
-                font-size: 0.55rem !important;
-            }
-            .leaflet-control-attribution a {
-                color: var(--sand) !important;
-            }
-            .map-info-box {
-                margin-top: 10px;
-                padding: 11px;
-                background: var(--surface-2);
-                border-radius: 10px;
-                font-size: 0.76rem;
-                color: var(--text-muted);
-                border: 1px solid var(--border-soft);
-                line-height: 1.5;
-            }
-            .map-info-box strong {
-                color: var(--text);
-                font-family: var(--font-display);
-            }
-            .facility-list-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px 12px;
-                background: var(--surface-2);
-                border-radius: 10px;
-                border: 1px solid var(--border-soft);
-                margin-top: 8px;
-                cursor: pointer;
-            }
-            .facility-list-row .fl-name {
-                font-size: 0.8rem;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                gap: 9px;
-            }
-            .facility-list-row .fl-name i {
-                color: var(--amber);
-                width: 16px;
-            }
-            .facility-list-row .fl-time {
-                font-family: var(--font-mono);
-                font-size: 0.68rem;
-                color: var(--text-muted);
-            }
+.card-facility{--plate:var(--teal);}
+.map-box{width:100%;height:220px;background:var(--surface-2);border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border-soft);}
+#leaflet-map{width:100%;height:100%;}
+.leaflet-div-icon{background:none;border:none;}
+.geo-pin{width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.5);border:2px solid rgba(10,13,19,0.5);}
+.geo-pin i{transform:rotate(45deg);color:#0a0d13;font-size:0.75rem;}
+.leaflet-popup-content-wrapper{background:var(--surface-2);color:var(--text);border-radius:10px;}
+.leaflet-popup-tip{background:var(--surface-2);}
+.leaflet-popup-content{font-family:var(--font-body);font-size:0.78rem;}
+.leaflet-popup-content strong{font-family:var(--font-display);}
+.leaflet-control-attribution{background:rgba(10,13,19,0.7) !important;color:var(--text-dim) !important;font-size:0.55rem !important;}
+.leaflet-control-attribution a{color:var(--sand) !important;}
+.map-info-box{margin-top:10px;padding:11px;background:var(--surface-2);border-radius:10px;font-size:0.76rem;color:var(--text-muted);border:1px solid var(--border-soft);line-height:1.5;}
+.map-info-box strong{color:var(--text);font-family:var(--font-display);}
+.facility-list-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border-soft);margin-top:8px;cursor:pointer;}
+.facility-list-row .fl-name{font-size:0.8rem;font-weight:600;display:flex;align-items:center;gap:9px;}
+.facility-list-row .fl-name i{color:var(--amber);width:16px;}
+.facility-list-row .fl-time{font-family:var(--font-mono);font-size:0.68rem;color:var(--text-muted);}
 
-            .day-tabs {
-                display: flex;
-                gap: 6px;
-                overflow-x: auto;
-                margin-bottom: 12px;
-                padding-bottom: 2px;
-            }
-            .day-tab {
-                font-size: 0.68rem;
-                font-weight: 700;
-                font-family: var(--font-mono);
-                padding: 7px 11px;
-                border-radius: 9px;
-                background: var(--surface-3);
-                color: var(--text-muted);
-                border: 1px solid var(--border-soft);
-                cursor: pointer;
-                white-space: nowrap;
-            }
-            .day-tab.active {
-                background: var(--amber);
-                color: #1a0d02;
-                border-color: var(--amber);
-            }
-            .meal-block {
-                margin-bottom: 12px;
-            }
-            .meal-block h5 {
-                font-size: 0.72rem;
-                color: var(--sand);
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                font-weight: 700;
-                margin-bottom: 6px;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-            .meal-time {
-                font-family: var(--font-mono);
-                color: var(--text-dim);
-                font-weight: 500;
-            }
-            .food-row {
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            .food-chip {
-                font-size: 0.72rem;
-                background: var(--surface-3);
-                border: 1px solid var(--border-soft);
-                padding: 5px 10px;
-                border-radius: 7px;
-                color: var(--text-muted);
-            }
+.day-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+.day-tab{font-size:0.68rem;font-weight:700;font-family:var(--font-mono);padding:7px 11px;border-radius:9px;background:var(--surface-3);color:var(--text-muted);border:1px solid var(--border-soft);cursor:pointer;white-space:nowrap;}
+.day-tab.active{background:var(--amber);color:#1a0d02;border-color:var(--amber);}
+.meal-block{margin-bottom:12px;}
+.meal-block h5{font-size:0.72rem;color:var(--sand);text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.meal-time{font-family:var(--font-mono);color:var(--text-dim);font-weight:500;}
+.food-row{display:flex;gap:8px;flex-wrap:wrap;}
+.food-chip{font-size:0.72rem;background:var(--surface-3);border:1px solid var(--border-soft);padding:5px 10px;border-radius:7px;color:var(--text-muted);}
 
-            .transport-row {
-                background: var(--surface-2);
-                padding: 11px 12px;
-                border-radius: 11px;
-                margin-bottom: 8px;
-                border: 1px solid var(--border-soft);
-            }
-            .transport-row .t-top {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .transport-row h4 {
-                font-size: 0.82rem;
-                font-weight: 600;
-                font-family: var(--font-display);
-            }
-            .transport-row p {
-                font-size: 0.72rem;
-                color: var(--text-muted);
-                margin-top: 3px;
-            }
+.transport-row{background:var(--surface-2);padding:11px 12px;border-radius:11px;margin-bottom:8px;border:1px solid var(--border-soft);}
+.transport-row .t-top{display:flex;justify-content:space-between;align-items:center;}
+.transport-row h4{font-size:0.82rem;font-weight:600;font-family:var(--font-display);}
+.transport-row p{font-size:0.72rem;color:var(--text-muted);margin-top:3px;}
 
-            .numbers-group {
-                margin-bottom: 14px;
-            }
-            .numbers-group h5 {
-                font-size: 0.7rem;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                font-weight: 700;
-                margin-bottom: 8px;
-            }
-            .contact-card {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px 12px;
-                background: var(--surface-2);
-                border-radius: var(--r-md);
-                border: 1px solid var(--border-soft);
-                margin-bottom: 8px;
-            }
-            .contact-info {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            .contact-icon {
-                width: 34px;
-                height: 34px;
-                border-radius: 9px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.9rem;
-            }
-            .contact-info h4 {
-                font-size: 0.8rem;
-                font-weight: 600;
-            }
-            .contact-info p {
-                font-size: 0.68rem;
-                color: var(--text-muted);
-                margin-top: 1px;
-            }
-            .call-btn {
-                background: var(--amber);
-                color: #1a0d02;
-                border: none;
-                width: 34px;
-                height: 34px;
-                border-radius: 9px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                text-decoration: none;
-            }
-            .call-btn-danger {
-                background: var(--red);
-                color: #fff;
-            }
+.numbers-group{margin-bottom:14px;}
+.numbers-group h5{font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;margin-bottom:8px;}
+.contact-card{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface-2);border-radius:var(--r-md);border:1px solid var(--border-soft);margin-bottom:8px;}
+.contact-info{display:flex;align-items:center;gap:10px;}
+.contact-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;}
+.contact-info h4{font-size:0.8rem;font-weight:600;}
+.contact-info p{font-size:0.68rem;color:var(--text-muted);margin-top:1px;}
+.call-btn{background:var(--amber);color:#1a0d02;border:none;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;text-decoration:none;}
+.call-btn-danger{background:var(--red);color:#fff;}
 
-            .form-control {
-                width: 100%;
-                padding: 11px 13px;
-                background: var(--surface);
-                border: 1px solid var(--border);
-                border-radius: var(--r-md);
-                color: var(--text);
-                font-size: 0.83rem;
-                margin-bottom: 10px;
-                outline: none;
-                font-family: var(--font-body);
-            }
-            .form-control:focus {
-                border-color: var(--amber);
-            }
-            label {
-                display: block;
-                font-size: 0.7rem;
-                color: var(--text-muted);
-                margin-bottom: 4px;
-                font-weight: 600;
-                font-family: var(--font-mono);
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-            }
-            .btn-primary {
-                width: 100%;
-                padding: 13px;
-                background: var(--amber);
-                border: none;
-                border-radius: var(--r-md);
-                color: #1a0d02;
-                font-weight: 700;
-                font-size: 0.84rem;
-                cursor: pointer;
-                font-family: var(--font-display);
-            }
-            .btn-secondary {
-                width: 100%;
-                padding: 11px;
-                background: var(--surface-3);
-                border: 1px solid var(--border);
-                border-radius: var(--r-md);
-                color: var(--text);
-                font-weight: 600;
-                font-size: 0.78rem;
-                cursor: pointer;
-                font-family: var(--font-mono);
-                margin-bottom: 10px;
-            }
-            .toggle-row {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                background: var(--surface-2);
-                padding: 10px 13px;
-                border-radius: var(--r-md);
-                margin-bottom: 10px;
-            }
-            .toggle-row span {
-                font-size: 0.78rem;
-                font-weight: 600;
-            }
-            .switch {
-                position: relative;
-                width: 38px;
-                height: 22px;
-                flex-shrink: 0;
-            }
-            .switch input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-            }
-            .switch-track {
-                position: absolute;
-                inset: 0;
-                background: var(--surface-3);
-                border: 1px solid var(--border);
-                border-radius: 20px;
-                cursor: pointer;
-                transition: 0.2s;
-            }
-            .switch-track::before {
-                content: "";
-                position: absolute;
-                width: 16px;
-                height: 16px;
-                left: 2px;
-                top: 2px;
-                background: var(--text-dim);
-                border-radius: 50%;
-                transition: 0.2s;
-            }
-            .switch input:checked+.switch-track {
-                background: var(--amber-soft);
-                border-color: var(--amber);
-            }
-            .switch input:checked+.switch-track::before {
-                transform: translateX(16px);
-                background: var(--amber);
-            }
-            .note-text {
-                font-size: 0.68rem;
-                color: var(--text-dim);
-                line-height: 1.5;
-                margin: -4px 0 10px;
-            }
+.form-control{width:100%;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);font-size:0.83rem;margin-bottom:10px;outline:none;font-family:var(--font-body);}
+.form-control:focus{border-color:var(--amber);}
+label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;font-weight:600;font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.04em;}
+.btn-primary{width:100%;padding:13px;background:var(--amber);border:none;border-radius:var(--r-md);color:#1a0d02;font-weight:700;font-size:0.84rem;cursor:pointer;font-family:var(--font-display);}
+.btn-secondary{width:100%;padding:11px;background:var(--surface-3);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);font-weight:600;font-size:0.78rem;cursor:pointer;font-family:var(--font-mono);margin-bottom:10px;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface-2);padding:10px 13px;border-radius:var(--r-md);margin-bottom:10px;}
+.toggle-row span{font-size:0.78rem;font-weight:600;}
+.switch{position:relative;width:38px;height:22px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.switch-track{position:absolute;inset:0;background:var(--surface-3);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:0.2s;}
+.switch-track::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--text-dim);border-radius:50%;transition:0.2s;}
+.switch input:checked + .switch-track{background:var(--amber-soft);border-color:var(--amber);}
+.switch input:checked + .switch-track::before{transform:translateX(16px);background:var(--amber);}
+.note-text{font-size:0.68rem;color:var(--text-dim);line-height:1.5;margin:-4px 0 10px;}
 
-            .toast-notification {
-                position: absolute;
-                top: 16px;
-                left: 16px;
-                right: 16px;
-                background: var(--surface-2);
-                border: 1px solid var(--amber);
-                border-left: 4px solid var(--amber);
-                border-radius: var(--r-md);
-                padding: 12px 14px;
-                z-index: 999;
-                box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
-                display: none;
-            }
-            [dir="rtl"] .toast-notification {
-                border-left: 1px solid var(--amber);
-                border-right: 4px solid var(--amber);
-            }
-            .toast-notification h4 {
-                font-family: var(--font-display);
-                font-size: 0.85rem;
-            }
-            .toast-notification p {
-                font-size: 0.72rem;
-                color: var(--text-muted);
-                margin-top: 1px;
-            }
+.toast-notification{position:absolute;top:16px;left:16px;right:16px;background:var(--surface-2);border:1px solid var(--amber);border-left:4px solid var(--amber);border-radius:var(--r-md);padding:12px 14px;z-index:999;box-shadow:0 14px 30px rgba(0,0,0,0.55);display:none;}
+[dir="rtl"] .toast-notification{border-left:1px solid var(--amber);border-right:4px solid var(--amber);}
+.toast-notification h4{font-family:var(--font-display);font-size:0.85rem;}
+.toast-notification p{font-size:0.72rem;color:var(--text-muted);margin-top:1px;}
 
-            .modal-overlay {
-                position: absolute;
-                inset: 0;
-                background: rgba(4, 6, 10, 0.88);
-                backdrop-filter: blur(9px);
-                z-index: 100;
-                display: none;
-                align-items: flex-end;
-                justify-content: center;
-            }
-            .modal-card {
-                width: 100%;
-                max-height: 88%;
-                background: var(--bg);
-                border-top-left-radius: 26px;
-                border-top-right-radius: 26px;
-                border-top: 1px solid var(--border);
-                padding: 20px;
-                overflow-y: auto;
-            }
-            .modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 16px;
-                padding-bottom: 12px;
-                border-bottom: 1px solid var(--border-soft);
-            }
-            .modal-header h2 {
-                font-family: var(--font-display);
-                font-size: 1.05rem;
-                font-weight: 700;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            .admin-nav {
-                display: flex;
-                background: rgba(0, 0, 0, 0.35);
-                padding: 4px;
-                border-radius: 12px;
-                margin-bottom: 16px;
-                gap: 4px;
-                overflow-x: auto;
-            }
-            .admin-tab {
-                flex: 1;
-                text-align: center;
-                padding: 8px 6px;
-                font-size: 0.62rem;
-                font-weight: 700;
-                border-radius: 8px;
-                color: var(--text-muted);
-                cursor: pointer;
-                white-space: nowrap;
-                font-family: var(--font-mono);
-            }
-            .admin-tab.active {
-                background: var(--amber);
-                color: #1a0d02;
-            }
-            .admin-block {
-                background: var(--surface-2);
-                padding: 10px;
-                border-radius: 10px;
-                margin-bottom: 8px;
-                border: 1px solid var(--border-soft);
-            }
+.modal-overlay{position:absolute;inset:0;background:rgba(4,6,10,0.88);backdrop-filter:blur(9px);z-index:100;display:none;align-items:flex-end;justify-content:center;}
+.modal-card{width:100%;max-height:88%;background:var(--bg);border-top-left-radius:26px;border-top-right-radius:26px;border-top:1px solid var(--border);padding:20px;overflow-y:auto;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border-soft);}
+.modal-header h2{font-family:var(--font-display);font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+.admin-nav{display:flex;background:rgba(0,0,0,0.35);padding:4px;border-radius:12px;margin-bottom:16px;gap:4px;overflow-x:auto;}
+.admin-tab{flex:1;text-align:center;padding:8px 6px;font-size:0.62rem;font-weight:700;border-radius:8px;color:var(--text-muted);cursor:pointer;white-space:nowrap;font-family:var(--font-mono);}
+.admin-tab.active{background:var(--amber);color:#1a0d02;}
+.admin-block{background:var(--surface-2);padding:10px;border-radius:10px;margin-bottom:8px;border:1px solid var(--border-soft);}
 
-            .nav-bar {
-                position: absolute;
-                bottom: 18px;
-                left: 12px;
-                right: 12px;
-                background: rgba(18, 24, 38, 0.92);
-                backdrop-filter: blur(20px);
-                border: 1px solid var(--border);
-                border-radius: 22px;
-                display: flex;
-                justify-content: space-around;
-                padding: 9px 0;
-                box-shadow: 0 14px 34px rgba(0, 0, 0, 0.75);
-                z-index: 50;
-                transition:
-                    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                    opacity 0.3s ease;
-            }
-            .nav-bar.nav-hidden {
-                transform: translateY(100px);
-                opacity: 0;
-                pointer-events: none;
-            }
-            .nav-bar.nav-visible {
-                transform: translateY(0);
-                opacity: 1;
-                pointer-events: auto;
-            }
-            .nav-btn {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 4px;
-                color: var(--text-dim);
-                font-size: 0.6rem;
-                font-weight: 600;
-                cursor: pointer;
-                flex: 1;
-                position: relative;
-                padding-top: 3px;
-            }
-            .nav-btn i {
-                font-size: 1.05rem;
-            }
-            .nav-btn.active {
-                color: var(--amber);
-            }
-            .nav-btn.active::before {
-                content: "";
-                position: absolute;
-                top: -9px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 16px;
-                height: 2px;
-                background: var(--amber);
-                border-radius: 2px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="app-shell">
-            <div id="toast" class="toast-notification">
-                <div style="display: flex; align-items: center; gap: 10px">
-                    <i class="fa-solid fa-tower-broadcast" style="color: var(--amber); font-size: 1.15rem"></i>
-                    <div>
-                        <h4 id="toast-title">Camp Broadcast</h4>
-                        <p id="toast-body">Notification message here...</p>
-                    </div>
-                </div>
-            </div>
+.nav-bar{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;background:rgba(18,24,38,0.92);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:22px;display:flex;justify-content:space-around;padding:9px 0;box-shadow:0 14px 34px rgba(0,0,0,0.75);z-index:50;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease;}
+.nav-bar.nav-hidden{transform:translateY(100px);opacity:0;pointer-events:none;}
+.nav-bar.nav-visible{transform:translateY(0);opacity:1;pointer-events:auto;}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-dim);font-size:0.6rem;font-weight:600;cursor:pointer;flex:1;position:relative;padding-top:3px;}
+.nav-btn i{font-size:1.05rem;}
+.nav-btn.active{color:var(--amber);}
+.nav-btn.active::before{content:"";position:absolute;top:-9px;left:50%;transform:translateX(-50%);width:16px;height:2px;background:var(--amber);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="app-shell">
 
-            <!-- PERSISTENT HEADER: visible on every tab -->
-            <div class="top-bar">
-                <div class="header-row">
-                    <div class="location-pill" id="location-pill-btn" onclick="handleLocationClick()">
-                        <i class="fa-solid fa-location-dot"></i>
-                        <span id="header-location-name">Lekhwair Camp</span>
-                    </div>
-                    <div class="header-actions">
-                        <div class="reception-tag"><i class="fa-solid fa-desktop"></i> Reception Mode</div>
-                        <div class="icon-btn lang-btn" onclick="toggleLanguage()">عربي</div>
-                        <div class="icon-btn" onclick="triggerToast('Notifications','No unread system alerts.')">
-                            <i class="fa-regular fa-bell"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="identity-row">
-                    <h1 data-i18n="homeTitle">Welcome Back</h1>
-                    <div class="mini-status">
-                        <div class="mini-status-cell">
-                            <i class="fa-solid fa-sun" id="weather-icon"></i><span id="strip-temp">--°C</span>
-                        </div>
-                        <div class="mini-status-divider"></div>
-                        <div class="mini-status-cell">
-                            <i class="fa-regular fa-clock"></i><span id="strip-time">--:--</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div id="toast" class="toast-notification">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <i class="fa-solid fa-tower-broadcast" style="color:var(--amber);font-size:1.15rem;"></i>
+      <div><h4 id="toast-title">Camp Broadcast</h4><p id="toast-body">Notification message here...</p></div>
+    </div>
+  </div>
 
-            <div class="main-scroll" id="main-scroll-container" onscroll="handleScrollBehavior()">
-                <!-- HOME -->
-                <div id="view-home" class="view active">
-                    <div class="card card-prayer" id="card-prayer">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-mosque"></i>
-                                <span data-i18n="prayerTitle">Prayer Times</span></span>
-                            <span class="pill pill-amber" id="next-prayer-pill">Asr 15:42</span>
-                        </div>
-                        <div class="prayer-grid" id="prayer-grid"></div>
-                    </div>
+  <!-- PERSISTENT HEADER: visible on every tab -->
+  <div class="top-bar">
+    <div class="header-row">
+      <div class="location-pill" id="location-pill-btn" onclick="handleLocationClick()">
+        <i class="fa-solid fa-location-dot"></i>
+        <span id="header-location-name">Lekhwair Camp</span>
+      </div>
+      <div class="header-actions">
+        <div class="reception-tag"><i class="fa-solid fa-desktop"></i> Reception Mode</div>
+        <div class="icon-btn lang-btn" onclick="toggleLanguage()">عربي</div>
+        <div class="icon-btn" onclick="triggerToast('Notifications','No unread system alerts.')"><i class="fa-regular fa-bell"></i></div>
+      </div>
+    </div>
+    <div class="identity-row">
+      <h1 data-i18n="homeTitle">Welcome Back</h1>
+      <div class="mini-status">
+        <div class="mini-status-cell"><i class="fa-solid fa-sun" id="weather-icon"></i><span id="strip-temp">--°C</span></div>
+        <div class="mini-status-divider"></div>
+        <div class="mini-status-cell"><i class="fa-regular fa-clock"></i><span id="strip-time">--:--</span></div>
+      </div>
+    </div>
+  </div>
 
-                    <div class="card" id="card-quickactions" style="--plate: var(--sand)">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-bolt"></i>
-                                <span data-i18n="quickActions">Quick Actions</span></span>
-                        </div>
-                        <div class="qa-grid">
-                            <div class="qa-btn" onclick="openModal('dining-modal')">
-                                <i class="fa-solid fa-utensils"></i><span data-i18n="qaMenu">Menu</span>
-                            </div>
-                            <div class="qa-btn" onclick="openModal('transport-modal')">
-                                <i class="fa-solid fa-bus"></i><span data-i18n="qaTransport">Transportation</span>
-                            </div>
-                            <div class="qa-btn" onclick="openModal('numbers-modal')">
-                                <i class="fa-solid fa-phone"></i><span data-i18n="qaContacts">Contacts</span>
-                            </div>
-                        </div>
-                    </div>
+  <div class="main-scroll" id="main-scroll-container" onscroll="handleScrollBehavior()">
 
-                    <div class="card card-announce" id="card-announcement">
-                        <div class="card-header">
-                            <span class="card-title" style="color: var(--teal)"><i class="fa-solid fa-tower-broadcast" style="color: var(--teal)"></i>
-                                <span data-i18n="eventBadge">Camp Announcements</span></span>
-                        </div>
-                        <div id="announcements-visible"></div>
-                        <div id="announcements-hidden" class="hidden-announcements"></div>
-                        <button class="expand-btn" id="announce-expand-btn" onclick="toggleAnnouncements()" style="display: none">
-                            <span id="announce-expand-label">Show more</span>
-                            <i class="fa-solid fa-chevron-down" id="announce-expand-icon"></i>
-                        </button>
-                    </div>
-                </div>
+    <!-- HOME -->
+    <div id="view-home" class="view active">
 
-                <!-- ABOUT -->
-                <div id="view-about" class="view">
-                    <div class="card card-about-overview" id="card-about-overview">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-circle-info"></i>
-                                <span data-i18n="navAbout">Site Overview</span></span>
-                            <span class="pill pill-live" data-i18n="activeBase">Active Base</span>
-                        </div>
-                        <h3 id="about-camp-title" style="font-family: var(--font-display); font-size: 1.05rem">
-                            Lekhwair PDO Camp
-                        </h3>
-                        <p id="about-camp-region" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px">
-                            Ad Dhahirah Governorate, North Oman
-                        </p>
-                        <p id="about-camp-desc" style="font-size: 0.79rem; color: var(--text-muted); margin-top: 10px; line-height: 1.55"></p>
-                    </div>
-
-                    <div class="card" id="card-about-stats" style="--plate: var(--amber)">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-chart-simple"></i>
-                                <span data-i18n="siteFacts">Site Facts</span></span>
-                        </div>
-                        <div class="stat-grid" id="stats-grid"></div>
-                    </div>
-
-                    <div class="card" id="card-about-history" style="--plate: var(--sand)">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-timeline"></i>
-                                <span data-i18n="historyTitle">Historical Notes</span></span>
-                        </div>
-                        <div id="history-container"></div>
-                    </div>
-
-                    <div class="card" id="card-about-companies" style="--plate: var(--teal)">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-people-group"></i>
-                                <span data-i18n="companiesTitle">Companies & Teams On Site</span></span>
-                        </div>
-                        <div id="companies-container"></div>
-                    </div>
-                </div>
-
-                <!-- FACILITY -->
-                <div id="view-facility" class="view">
-                    <div class="card card-facility" id="card-facility">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-map-marked-alt"></i>
-                                <span data-i18n="navFacility">Camp Facilities</span></span>
-                            <span style="font-size: 0.68rem; color: var(--text-dim)" data-i18n="tapPin">Tap for details</span>
-                        </div>
-                        <div class="map-box"><div id="leaflet-map"></div></div>
-                        <div class="map-info-box" id="map-details-box" data-i18n="mapDefaultText">
-                            Tap any map pin above to inspect facility timings.
-                        </div>
-                        <div id="facility-list-container"></div>
-                    </div>
-                </div>
-
-                <!-- EVENTS -->
-                <div id="view-events" class="view">
-                    <div class="card card-countdown" id="card-countdown">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-hourglass-start"></i>
-                                <span data-i18n="nextEventTitle">Next Upcoming Event</span></span>
-                            <span class="pill pill-amber" id="next-event-tag">Sports</span>
-                        </div>
-                        <h3 id="next-event-name" style="font-family: var(--font-display); font-size: 1.02rem">
-                            Inter-Block Football Semi-Final
-                        </h3>
-                        <p id="next-event-time-desc" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px">
-                            Main Sports Ground · Today, 19:30
-                        </p>
-                        <div class="cd-grid">
-                            <div class="cd-box">
-                                <div class="cd-val" id="cd-days">00</div>
-                                <div class="cd-lbl" data-i18n="daysLbl">Days</div>
-                            </div>
-                            <div class="cd-box">
-                                <div class="cd-val" id="cd-hours">00</div>
-                                <div class="cd-lbl" data-i18n="hoursLbl">Hours</div>
-                            </div>
-                            <div class="cd-box">
-                                <div class="cd-val" id="cd-mins">00</div>
-                                <div class="cd-lbl" data-i18n="minsLbl">Mins</div>
-                            </div>
-                            <div class="cd-box">
-                                <div class="cd-val" id="cd-secs">00</div>
-                                <div class="cd-lbl" data-i18n="secsLbl">Secs</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card" id="card-events" style="--plate: var(--sand)">
-                        <div class="card-header">
-                            <span class="card-title"><i class="fa-solid fa-calendar-days"></i>
-                                <span data-i18n="campSchedule">Current & Upcoming Events</span></span>
-                        </div>
-                        <div class="filter-row" id="event-filters"></div>
-                        <div id="events-container"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- DINING MODAL -->
-            <div id="dining-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-header">
-                        <h2><i class="fa-solid fa-utensils" style="color: var(--amber)"></i> Dining Menu</h2>
-                        <div class="icon-btn" onclick="closeModal('dining-modal')">
-                            <i class="fa-solid fa-xmark"></i>
-                        </div>
-                    </div>
-                    <div class="day-tabs" id="day-tabs"></div>
-                    <div id="dining-container"></div>
-                </div>
-            </div>
-
-            <!-- TRANSPORT MODAL -->
-            <div id="transport-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-header">
-                        <h2><i class="fa-solid fa-bus" style="color: var(--amber)"></i> Transportation Schedule</h2>
-                        <div class="icon-btn" onclick="closeModal('transport-modal')">
-                            <i class="fa-solid fa-xmark"></i>
-                        </div>
-                    </div>
-                    <div id="transport-container"></div>
-                </div>
-            </div>
-
-            <!-- NUMBERS MODAL -->
-            <div id="numbers-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-header">
-                        <h2><i class="fa-solid fa-phone-flip" style="color: var(--amber)"></i> Contacts</h2>
-                        <div class="icon-btn" onclick="closeModal('numbers-modal')">
-                            <i class="fa-solid fa-xmark"></i>
-                        </div>
-                    </div>
-                    <div id="numbers-container"></div>
-                </div>
-            </div>
-
-            <!-- ADMIN PANEL -->
-            <div id="admin-modal" class="modal-overlay">
-                <div class="modal-card">
-                    <div class="modal-header">
-                        <h2><i class="fa-solid fa-user-gear" style="color: var(--amber)"></i> Camp Admin Panel</h2>
-                        <div class="icon-btn" onclick="closeModal('admin-modal')">
-                            <i class="fa-solid fa-xmark"></i>
-                        </div>
-                    </div>
-                    <div class="admin-nav">
-                        <div class="admin-tab active" onclick="switchAdminTab('general',this)">General</div>
-                        <div class="admin-tab" onclick="switchAdminTab('prayer',this)">Prayer</div>
-                        <div class="admin-tab" onclick="switchAdminTab('notify',this)">Notify</div>
-                        <div class="admin-tab" onclick="switchAdminTab('about',this)">About</div>
-                        <div class="admin-tab" onclick="switchAdminTab('events',this)">Events</div>
-                        <div class="admin-tab" onclick="switchAdminTab('facility',this)">Facility</div>
-                        <div class="admin-tab" onclick="switchAdminTab('dining',this)">Dining</div>
-                        <div class="admin-tab" onclick="switchAdminTab('transport',this)">Transport</div>
-                        <div class="admin-tab" onclick="switchAdminTab('numbers',this)">Contacts</div>
-                    </div>
-
-                    <div id="admin-tab-general" class="admin-content">
-                        <label>Camp Facility Name</label>
-                        <input type="text" id="input-camp-name" class="form-control" value="Lekhwair Camp" />
-                        <label>Region</label>
-                        <input type="text" id="input-camp-region" class="form-control" value="Ad Dhahirah Governorate, North Oman" />
-                        <div class="toggle-row">
-                            <span>Manual weather override</span>
-                            <label class="switch"><input type="checkbox" id="input-weather-override" onchange="renderStatusStrip()" /><span class="switch-track"></span></label>
-                        </div>
-                        <p class="note-text">
-                            By default, weather is fetched live from Open-Meteo for Lekhwair's coordinates. Enable this
-                            only if the live feed is wrong (e.g. during a localized sandstorm) — override values below
-                            will be used instead.
-                        </p>
-                        <label>Manual Condition</label>
-                        <select id="input-weather-condition" class="form-control">
-                            <option value="sunny">Sunny</option>
-                            <option value="cloudy">Partly Cloudy</option>
-                            <option value="rain">Rain</option>
-                            <option value="sand">Sandstorm</option>
-                        </select>
-                        <label>Manual Temperature</label>
-                        <input type="text" id="input-camp-temp" class="form-control" value="42°C" />
-                        <button class="btn-primary" onclick="saveGeneralSettings()">Update Settings</button>
-                    </div>
-
-                    <div id="admin-tab-prayer" class="admin-content" style="display: none">
-                        <p class="note-text">
-                            Live sync pulls from the Ministry of Awqaf calendar. Browsers can't fetch that page directly
-                            (it isn't a public API and blocks cross-origin requests), so live sync needs a small
-                            server-side proxy — for example a Supabase Edge Function that fetches and parses the page,
-                            then this app calls your proxy. Until that's wired up, set today's times manually below.
-                        </p>
-                        <button class="btn-secondary" onclick="attemptPrayerSync()">
-                            <i class="fa-solid fa-rotate"></i> Attempt Live Sync
-                        </button>
-                        <div id="admin-prayer-fields"></div>
-                        <button class="btn-primary" onclick="savePrayerTimes()">Save Prayer Times</button>
-                    </div>
-
-                    <div id="admin-tab-notify" class="admin-content" style="display: none">
-                        <label>New Announcement Title</label>
-                        <input type="text" id="input-notif-title" class="form-control" placeholder="e.g. RO Plant Maintenance" />
-                        <label>Message</label>
-                        <textarea id="input-notif-desc" class="form-control" rows="3" placeholder="Details residents need to know"></textarea>
-                        <label>Location / Department</label>
-                        <input type="text" id="input-notif-location" class="form-control" placeholder="e.g. Utility Dept" />
-                        <button class="btn-primary" onclick="pushNewAnnouncement()">Push Announcement</button>
-                        <div class="section-label" style="margin-top: 18px">Existing Announcements</div>
-                        <div id="admin-announcements-list"></div>
-                    </div>
-
-                    <div id="admin-tab-about" class="admin-content" style="display: none">
-                        <label>Site Description</label>
-                        <textarea id="input-about-desc" class="form-control" rows="3"></textarea>
-                        <label>Daily Production</label>
-                        <input type="text" id="input-stat-production" class="form-control" />
-                        <label>Camp Personnel</label>
-                        <input type="text" id="input-stat-personnel" class="form-control" />
-                        <label>Companies On Site</label>
-                        <input type="text" id="input-stat-companies" class="form-control" />
-                        <label>Established</label>
-                        <input type="text" id="input-stat-established" class="form-control" />
-                        <label>History Notes (one milestone per line, format: Title | Description)</label>
-                        <textarea id="input-history" class="form-control" rows="4"></textarea>
-                        <label>Companies & Teams (one per line)</label>
-                        <textarea id="input-companies" class="form-control" rows="3"></textarea>
-                        <button class="btn-primary" onclick="saveAboutSettings()">Save Site Info</button>
-                    </div>
-
-                    <div id="admin-tab-events" class="admin-content" style="display: none">
-                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px">
-                            Manage camp events and schedules.
-                        </p>
-                        <div id="admin-events-list"></div>
-                    </div>
-
-                    <div id="admin-tab-facility" class="admin-content" style="display: none">
-                        <p class="note-text">
-                            Coordinates position the pin on the map only — they're never shown in the resident-facing
-                            facility list, just the name and hours.
-                        </p>
-                        <div id="admin-places-list"></div>
-                    </div>
-
-                    <div id="admin-tab-dining" class="admin-content" style="display: none">
-                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px">
-                            Edit today's tab, then select a day to edit its menu.
-                        </p>
-                        <div class="day-tabs" id="admin-day-tabs"></div>
-                        <div id="admin-dining-fields"></div>
-                        <button class="btn-primary" onclick="saveDiningDay()">Save This Day</button>
-                    </div>
-
-                    <div id="admin-tab-transport" class="admin-content" style="display: none">
-                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px">
-                            Manage shuttle routes and departure times.
-                        </p>
-                        <div id="admin-transport-list"></div>
-                    </div>
-
-                    <div id="admin-tab-numbers" class="admin-content" style="display: none">
-                        <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px">
-                            Manage emergency and helpdesk numbers.
-                        </p>
-                        <div id="admin-numbers-list"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- BOTTOM NAV -->
-            <div class="nav-bar nav-visible" id="mobile-nav-bar">
-                <div class="nav-btn active" id="nav-home" onclick="switchTab('home')">
-                    <i class="fa-solid fa-house"></i><span data-i18n="navHome">Home</span>
-                </div>
-                <div class="nav-btn" id="nav-about" onclick="switchTab('about')">
-                    <i class="fa-solid fa-circle-info"></i><span data-i18n="navAboutNav">About</span>
-                </div>
-                <div class="nav-btn" id="nav-facility" onclick="switchTab('facility')">
-                    <i class="fa-solid fa-map"></i><span data-i18n="navFacilityNav">Facility</span>
-                </div>
-                <div class="nav-btn" id="nav-events" onclick="switchTab('events')">
-                    <i class="fa-solid fa-calendar-star"></i><span data-i18n="navEvents">Events</span>
-                </div>
-            </div>
+      <div class="card card-prayer" id="card-prayer">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-mosque"></i> <span data-i18n="prayerTitle">Prayer Times</span></span>
+          <span class="pill pill-amber" id="next-prayer-pill">Asr 15:42</span>
         </div>
+        <div class="prayer-grid" id="prayer-grid"></div>
+      </div>
 
-        <script>
-            const translations = {
-                en: {
-                    langBtn: "عربي",
-                    homeTitle: "Welcome Back",
-                    prayerTitle: "Prayer Times",
-                    quickActions: "Quick Actions",
-                    qaMenu: "Menu",
-                    qaTransport: "Transportation",
-                    qaContacts: "Contacts",
-                    eventBadge: "Camp Announcements",
-                    navHome: "Home",
-                    navAboutNav: "About",
-                    navFacilityNav: "Facility",
-                    navEvents: "Events",
-                    navAbout: "Site Overview",
-                    activeBase: "Active Base",
-                    siteFacts: "Site Facts",
-                    historyTitle: "Historical Notes",
-                    companiesTitle: "Companies & Teams On Site",
-                    navFacility: "Camp Facilities",
-                    tapPin: "Tap for details",
-                    mapDefaultText: "Tap any map pin above to inspect facility timings.",
-                    nextEventTitle: "Next Upcoming Event",
-                    daysLbl: "Days",
-                    hoursLbl: "Hours",
-                    minsLbl: "Mins",
-                    secsLbl: "Secs",
-                    campSchedule: "Current & Upcoming Events"
-                },
-                ar: {
-                    langBtn: "English",
-                    homeTitle: "مرحباً بك",
-                    prayerTitle: "مواقيت الصلاة",
-                    quickActions: "إجراءات سريعة",
-                    qaMenu: "القائمة",
-                    qaTransport: "المواصلات",
-                    qaContacts: "جهات الاتصال",
-                    eventBadge: "إعلانات المخيم",
-                    navHome: "الرئيسية",
-                    navAboutNav: "حول",
-                    navFacilityNav: "المرافق",
-                    navEvents: "الفعاليات",
-                    navAbout: "نظرة عامة",
-                    activeBase: "قاعدة نشطة",
-                    siteFacts: "حقائق الموقع",
-                    historyTitle: "ملاحظات تاريخية",
-                    companiesTitle: "الشركات والفرق العاملة",
-                    navFacility: "مرافق المخيم",
-                    tapPin: "اضغط للتفاصيل",
-                    mapDefaultText: "اضغط على أي موقع على الخريطة لعرض أوقات العمل.",
-                    nextEventTitle: "الفعالية القادمة",
-                    daysLbl: "أيام",
-                    hoursLbl: "ساعات",
-                    minsLbl: "دقائق",
-                    secsLbl: "ثواني",
-                    campSchedule: "الفعاليات الحالية والقادمة"
-                }
-            };
-            let currentLang = localStorage.getItem('basecamp_lang') || 'en';
+      <div class="card" id="card-quickactions" style="--plate:var(--sand);">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-bolt"></i> <span data-i18n="quickActions">Quick Actions</span></span>
+        </div>
+        <div class="qa-grid">
+          <div class="qa-btn" onclick="openModal('dining-modal')"><i class="fa-solid fa-utensils"></i><span data-i18n="qaMenu">Menu</span></div>
+          <div class="qa-btn" onclick="openModal('transport-modal')"><i class="fa-solid fa-bus"></i><span data-i18n="qaTransport">Transportation</span></div>
+          <div class="qa-btn" onclick="openModal('numbers-modal')"><i class="fa-solid fa-phone"></i><span data-i18n="qaContacts">Contacts</span></div>
+        </div>
+      </div>
 
-            function applyLanguage(lang) {
-                document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-                document.documentElement.lang = lang;
-                document.querySelectorAll('[data-i18n]').forEach(el => {
-                    const k = el.getAttribute('data-i18n');
-                    if (translations[lang][k]) el.innerHTML = translations[lang][k];
-                });
-                const langBtn = document.querySelector('.lang-btn');
-                if (langBtn) langBtn.innerText = translations[lang].langBtn;
-                currentLang = lang;
-                localStorage.setItem('basecamp_lang', lang);
-            }
+      <div class="card card-announce" id="card-announcement">
+        <div class="card-header">
+          <span class="card-title" style="color:var(--teal);"><i class="fa-solid fa-tower-broadcast" style="color:var(--teal);"></i> <span data-i18n="eventBadge">Camp Announcements</span></span>
+        </div>
+        <div id="announcements-visible"></div>
+        <div id="announcements-hidden" class="hidden-announcements"></div>
+        <button class="expand-btn" id="announce-expand-btn" onclick="toggleAnnouncements()" style="display:none;">
+          <span id="announce-expand-label">Show more</span> <i class="fa-solid fa-chevron-down" id="announce-expand-icon"></i>
+        </button>
+      </div>
+    </div>
 
-            function toggleLanguage() { applyLanguage(currentLang === 'en' ? 'ar' : 'en'); }
+    <!-- ABOUT -->
+    <div id="view-about" class="view">
+      <div class="card card-about-overview" id="card-about-overview">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-circle-info"></i> <span data-i18n="navAbout">Site Overview</span></span>
+          <span class="pill pill-live" data-i18n="activeBase">Active Base</span>
+        </div>
+        <h3 id="about-camp-title" style="font-family:var(--font-display);font-size:1.05rem;">Lekhwair PDO Camp</h3>
+        <p id="about-camp-region" style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;">Ad Dhahirah Governorate, North Oman</p>
+        <p id="about-camp-desc" style="font-size:0.79rem;color:var(--text-muted);margin-top:10px;line-height:1.55;"></p>
+      </div>
 
-            /* Lekhwair PDO field coordinates */
-            const CAMP_LAT = 22.8750,
-                CAMP_LNG = 55.3700;
+      <div class="card" id="card-about-stats" style="--plate:var(--amber);">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-chart-simple"></i> <span data-i18n="siteFacts">Site Facts</span></span>
+        </div>
+        <div class="stat-grid" id="stats-grid"></div>
+      </div>
 
-            let campData = { name: "Lekhwair Camp", region: "Ad Dhahirah Governorate, North Oman" };
-            let liveWeather = { temp: null, condition: 'sunny', loaded: false };
-            let manualWeather = { temp: "42°C", condition: 'sunny', override: false };
+      <div class="card" id="card-about-history" style="--plate:var(--sand);">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-timeline"></i> <span data-i18n="historyTitle">Historical Notes</span></span>
+        </div>
+        <div id="history-container"></div>
+      </div>
 
-            const weatherIcons = { sunny: 'fa-sun', cloudy: 'fa-cloud-sun', rain: 'fa-cloud-rain', sand: 'fa-smog' };
+      <div class="card" id="card-about-companies" style="--plate:var(--teal);">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-people-group"></i> <span data-i18n="companiesTitle">Companies & Teams On Site</span></span>
+        </div>
+        <div id="companies-container"></div>
+      </div>
+    </div>
 
-            /* WMO weather code -> our condition buckets */
-            function mapWeatherCode(code) {
-                if (code === 0) return 'sunny';
-                if ([1, 2, 3].includes(code)) return 'cloudy';
-                if ([45, 48].includes(code)) return 'sand';
-                if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(code)) return 'rain';
-                return 'sunny';
-            }
+    <!-- FACILITY -->
+    <div id="view-facility" class="view">
+      <div class="card card-facility" id="card-facility">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-map-marked-alt"></i> <span data-i18n="navFacility">Camp Facilities</span></span>
+          <span style="font-size:0.68rem;color:var(--text-dim);" data-i18n="tapPin">Tap for details</span>
+        </div>
+        <div class="map-box"><div id="leaflet-map"></div></div>
+        <div class="map-info-box" id="map-details-box" data-i18n="mapDefaultText">Tap any map pin above to inspect facility timings.</div>
+        <div id="facility-list-container"></div>
+      </div>
+    </div>
 
-            async function fetchLiveWeather() {
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CAMP_LAT}&longitude=${CAMP_LNG}&current=temperature_2m,weather_code&timezone=auto`);
-                    const data = await res.json();
-                    liveWeather.temp = Math.round(data.current.temperature_2m) + '°C';
-                    liveWeather.condition = mapWeatherCode(data.current.weather_code);
-                    liveWeather.loaded = true;
-                } catch (e) {
-                    liveWeather.loaded = false;
-                }
-                renderStatusStrip();
-            }
+    <!-- EVENTS -->
+    <div id="view-events" class="view">
+      <div class="card card-countdown" id="card-countdown">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-hourglass-start"></i> <span data-i18n="nextEventTitle">Next Upcoming Event</span></span>
+          <span class="pill pill-amber" id="next-event-tag">Sports</span>
+        </div>
+        <h3 id="next-event-name" style="font-family:var(--font-display);font-size:1.02rem;">Inter-Block Football Semi-Final</h3>
+        <p id="next-event-time-desc" style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Main Sports Ground · Today, 19:30</p>
+        <div class="cd-grid">
+          <div class="cd-box"><div class="cd-val" id="cd-days">00</div><div class="cd-lbl" data-i18n="daysLbl">Days</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-hours">00</div><div class="cd-lbl" data-i18n="hoursLbl">Hours</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-mins">00</div><div class="cd-lbl" data-i18n="minsLbl">Mins</div></div>
+          <div class="cd-box"><div class="cd-val" id="cd-secs">00</div><div class="cd-lbl" data-i18n="secsLbl">Secs</div></div>
+        </div>
+      </div>
+      <div class="card" id="card-events" style="--plate:var(--sand);">
+        <div class="card-header">
+          <span class="card-title"><i class="fa-solid fa-calendar-days"></i> <span data-i18n="campSchedule">Current & Upcoming Events</span></span>
+        </div>
+        <div class="filter-row" id="event-filters"></div>
+        <div id="events-container"></div>
+      </div>
+    </div>
 
-            let aboutData = {
-                desc: "Lekhwair is one of Petroleum Development Oman's interior production sites, hosting PDO staff and contractor teams supporting field operations, well maintenance, and logistics across the concession area.",
-                production: "—— boepd",
-                personnel: "——",
-                companies_count: "——",
-                established: "——",
-                history: [
-                    { title: "Interior operations network", desc: "Lekhwair developed as part of PDO's wider network of interior production stations supporting exploration and field operations in the concession area." },
-                    { title: "Ongoing field development", desc: "Ongoing agreements and small-field developments continue to expand activity around the Lekhwair concession block." }
-                ],
-                companies: ["PDO Operations", "Contractor Support Teams", "Camp Facilities Management", "Logistics & Transport"]
-            };
+  </div>
 
-            let campAnnouncements = [
-                { id: 1, title: 'RO Plant Maintenance', desc: "Water supply may experience brief pressure drops tonight between 23:00 and 01:00 due to scheduled RO membrane flushing.", date: '2026-08-11', location: 'Utility Dept' },
-                { id: 2, title: 'Gym Equipment Upgrade', desc: 'New treadmills and free weights have been installed in the Recreation Hall gym. Available from 05:00 daily.', date: '2026-08-09', location: 'Recreation Hall' },
-                { id: 3, title: 'Friday Prayer Timing Update', desc: 'Friday (Jummah) prayer will begin 10 minutes earlier this week to accommodate the visiting Imam.', date: '2026-08-08', location: 'Camp Mosque' },
-                { id: 4, title: 'Road Closure Near Gate 2', desc: 'Gate 2 access road will be closed for resurfacing. Use Gate 1 for all vehicle movements until further notice.', date: '2026-08-06', location: 'Main Gate' },
-                { id: 5, title: 'Laundry Service Schedule Change', desc: 'Laundry pickup now runs Sunday, Tuesday and Thursday only. Drop bags at reception by 08:00.', date: '2026-08-03', location: 'Laundry Services' },
-                { id: 6, title: 'HSE Toolbox Talk — Heat Stress', desc: 'Mandatory toolbox talk on heat stress awareness for all outdoor crews this week at shift handover.', date: '2026-07-30', location: 'HSE Department' }
-            ];
-            let announcementsExpanded = false;
+  <!-- DINING MODAL -->
+  <div id="dining-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-utensils" style="color:var(--amber)"></i> Dining Menu</h2>
+        <div class="icon-btn" onclick="closeModal('dining-modal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <div class="day-tabs" id="day-tabs"></div>
+      <div id="dining-container"></div>
+    </div>
+  </div>
 
-            const weatherLabels = { sunny: 'Sunny', cloudy: 'Partly Cloudy', rain: 'Rain', sand: 'Sandstorm' };
+  <!-- TRANSPORT MODAL -->
+  <div id="transport-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-bus" style="color:var(--amber)"></i> Transportation Schedule</h2>
+        <div class="icon-btn" onclick="closeModal('transport-modal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <div id="transport-container"></div>
+    </div>
+  </div>
 
-            let nextEventTimestamp = new Date().getTime() + (18 * 3600 * 1000) + (24 * 60 * 1000);
-            let campEvents = [
-                { id: 1, title: 'Inter-Block Football Semi-Final', category: 'Sports', date: 'Today, 19:30', location: 'Main Sports Ground', icon: 'fa-futbol', timeVal: nextEventTimestamp, live: false },
-                { id: 2, title: 'Movie Night: Action Feature', category: 'Entertainment', date: 'Tomorrow, 20:00', location: 'Recreation Hall', icon: 'fa-film', timeVal: new Date().getTime() + (42 * 3600 * 1000), live: false },
-                { id: 3, title: 'HSE Safety Quiz & Raffle Draw', category: 'Community', date: 'Thursday, 18:00', location: 'Dining Mess Hall', icon: 'fa-award', timeVal: new Date().getTime() + (90 * 3600 * 1000), live: false }
-            ];
-            let activeFilter = 'All';
+  <!-- NUMBERS MODAL -->
+  <div id="numbers-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-phone-flip" style="color:var(--amber)"></i> Contacts</h2>
+        <div class="icon-btn" onclick="closeModal('numbers-modal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <div id="numbers-container"></div>
+    </div>
+  </div>
 
-            /* mapPlaces use real lat/lng — used for the map pin only, never shown in the facility list */
-            let mapPlaces = [
-                { id: 1, name: 'Main Mess Hall', icon: 'fa-utensils', color: '#ff7a1a', lat: 22.8756, lng: 55.3695, info: 'Timing: 04:30 – 21:00\nServes Breakfast, Lunch, Dinner' },
-                { id: 2, name: 'Camp Clinic', icon: 'fa-kit-medical', color: '#f0453d', lat: 22.8744, lng: 55.3708, info: '24/7 Medical Response\nDoctor on duty: Dr. Ahmed' },
-                { id: 3, name: 'Gym & Recreation', icon: 'fa-dumbbell', color: '#2dd4bf', lat: 22.8748, lng: 55.3690, info: 'Gym Hours: 05:00 – 23:00' },
-                { id: 4, name: 'Muster Station A', icon: 'fa-people-group', color: '#c9a876', lat: 22.8752, lng: 55.3702, info: 'Primary assembly point · Main Sports Ground' }
-            ];
-            let leafletMap = null;
-            let leafletMarkers = [];
+  <!-- ADMIN PANEL -->
+  <div id="admin-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i class="fa-solid fa-user-gear" style="color:var(--amber)"></i> Camp Admin Panel</h2>
+        <div class="icon-btn" onclick="closeModal('admin-modal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <div class="admin-nav">
+        <div class="admin-tab active" onclick="switchAdminTab('general',this)">General</div>
+        <div class="admin-tab" onclick="switchAdminTab('prayer',this)">Prayer</div>
+        <div class="admin-tab" onclick="switchAdminTab('notify',this)">Notify</div>
+        <div class="admin-tab" onclick="switchAdminTab('about',this)">About</div>
+        <div class="admin-tab" onclick="switchAdminTab('events',this)">Events</div>
+        <div class="admin-tab" onclick="switchAdminTab('facility',this)">Facility</div>
+        <div class="admin-tab" onclick="switchAdminTab('dining',this)">Dining</div>
+        <div class="admin-tab" onclick="switchAdminTab('transport',this)">Transport</div>
+        <div class="admin-tab" onclick="switchAdminTab('numbers',this)">Contacts</div>
+      </div>
 
-            let contactNumbers = [
-                { id: 1, title: 'Camp Medical Clinic', phone: '999', sub: 'Emergency Doctor & Ambulance', cat: 'emergency' },
-                { id: 2, title: 'HSE & Fire Station', phone: '998', sub: 'Fire & Gas Incident Control', cat: 'emergency' },
-                { id: 3, title: 'FM Maintenance Helpdesk', phone: '2400', sub: 'Hard Services & Room Fixes', cat: 'ops' },
-                { id: 4, title: 'Main Gate Security', phone: '2401', sub: 'Visitor & Gate Pass Desk', cat: 'ops' },
-                { id: 5, title: 'Camp Reception', phone: '2402', sub: 'General Enquiries & Lost Items', cat: 'services' },
-                { id: 6, title: 'Laundry Services', phone: '2403', sub: 'Pickup & Drop-off Schedule', cat: 'services' }
-            ];
+      <div id="admin-tab-general" class="admin-content">
+        <label>Camp Facility Name</label>
+        <input type="text" id="input-camp-name" class="form-control" value="Lekhwair Camp">
+        <label>Region</label>
+        <input type="text" id="input-camp-region" class="form-control" value="Ad Dhahirah Governorate, North Oman">
+        <label>OpenWeatherMap API Key</label>
+        <input type="text" id="input-owm-key" class="form-control" placeholder="Paste your free key from openweathermap.org">
+        <p class="note-text">Weather uses OpenWeatherMap once a key is added here (free tier at openweathermap.org — 1,000 calls/day is plenty for one camp). Without a key, it automatically falls back to Open-Meteo, which needs no key but is a lower-resolution model.</p>
+        <div class="toggle-row">
+          <span>Manual weather override</span>
+          <label class="switch"><input type="checkbox" id="input-weather-override" onchange="renderStatusStrip()"><span class="switch-track"></span></label>
+        </div>
+        <p class="note-text">Enable this only if the live feed is wrong (e.g. a very localized sandstorm the satellite model missed) — override values below will be used instead.</p>
+        <label>Manual Condition</label>
+        <select id="input-weather-condition" class="form-control">
+          <option value="sunny">Sunny</option>
+          <option value="cloudy">Partly Cloudy</option>
+          <option value="rain">Rain</option>
+          <option value="sand">Sandstorm</option>
+        </select>
+        <label>Manual Temperature</label>
+        <input type="text" id="input-camp-temp" class="form-control" value="42°C">
+        <button class="btn-primary" onclick="saveGeneralSettings()">Update Settings</button>
+      </div>
 
-            let transportSchedule = [
-                { id: 1, name: 'Night Shift Shuttle #3', route: 'Camp → Production Plant B', time: 'Departs in 35m', status: 'upcoming' },
-                { id: 2, name: 'Morning Shift Shuttle #1', route: 'Camp → Main Field Office', time: '06:00 Daily', status: 'scheduled' },
-                { id: 3, name: 'Town Run', route: 'Camp → Ibri Town', time: 'Fri & Sat, 09:00', status: 'scheduled' }
-            ];
+      <div id="admin-tab-prayer" class="admin-content" style="display:none;">
+        <p class="note-text">Live sync tries mara.gov.om two ways — first via allorigins.win, then via cors-anywhere.herokuapp.com — before falling back to Aladhan (a stable structured API). Note: cors-anywhere's public demo only works in a browser that has already clicked "Request temporary access" at cors-anywhere.herokuapp.com/corsdemo, and that access expires — so it's a manual convenience for whoever runs this sync, not something residents' own devices could rely on. mara.gov.om's page markup also isn't publicly documented and its robots.txt asks bots not to crawl it, so parsing is best-effort. Review the times below before saving — manual edits always win.</p>
+        <button class="btn-secondary" onclick="attemptPrayerSync()"><i class="fa-solid fa-rotate"></i> Sync Prayer Times</button>
+        <div id="admin-prayer-fields"></div>
+        <button class="btn-primary" onclick="savePrayerTimes()">Save Prayer Times</button>
+      </div>
 
-            /* Manually adjustable — see Admin > Prayer for the live-sync note */
-            let prayerTimes = [
-                { name: 'Fajr', time: '04:32' }, { name: 'Dhuhr', time: '12:04' }, { name: 'Asr', time: '15:42' },
-                { name: 'Maghrib', time: '18:21' }, { name: 'Isha', time: '19:51' }
-            ];
+      <div id="admin-tab-notify" class="admin-content" style="display:none;">
+        <label>New Announcement Title</label>
+        <input type="text" id="input-notif-title" class="form-control" placeholder="e.g. RO Plant Maintenance">
+        <label>Message</label>
+        <textarea id="input-notif-desc" class="form-control" rows="3" placeholder="Details residents need to know"></textarea>
+        <label>Location / Department</label>
+        <input type="text" id="input-notif-location" class="form-control" placeholder="e.g. Utility Dept">
+        <button class="btn-primary" onclick="pushNewAnnouncement()">Push Announcement</button>
+        <div class="section-label" style="margin-top:18px;">Existing Announcements</div>
+        <div id="admin-announcements-list"></div>
+      </div>
 
-            const weekMenu = {
-                Sat: { Breakfast: ['Omelette & Beans', 'Paratha', 'Fresh Fruit'], Lunch: ['Chicken Curry', 'Steamed Rice', 'Salad'], Dinner: ['Grilled Chicken', 'Mutton Biryani', 'Roti'] },
-                Sun: { Breakfast: ['Boiled Eggs', 'Cereal', 'Toast'], Lunch: ['Fish Curry', 'Rice', 'Lentil Soup'], Dinner: ['Beef Stew', 'Vegetable Rice', 'Salad'] },
-                Mon: { Breakfast: ['Pancakes', 'Yogurt', 'Fruit'], Lunch: ['Chicken Biryani', 'Raita'], Dinner: ['Grilled Fish', 'Mashed Potato', 'Greens'] },
-                Tue: { Breakfast: ['Shakshuka', 'Bread', 'Juice'], Lunch: ['Mutton Curry', 'Rice', 'Salad'], Dinner: ['Roast Chicken', 'Pasta', 'Soup'] },
-                Wed: { Breakfast: ['Idli & Sambar', 'Chutney'], Lunch: ['Vegetable Biryani', 'Raita'], Dinner: ['BBQ Night', 'Grilled Meats', 'Salad Bar'] },
-                Thu: { Breakfast: ['French Toast', 'Fruit Bowl'], Lunch: ['Chicken Karahi', 'Naan'], Dinner: ['Fried Rice', 'Sweet & Sour Chicken'] },
-                Fri: { Breakfast: ['Continental Buffet', 'Full Spread'], Lunch: ['Special Friday Biryani'], Dinner: ['Light Buffet', 'Soup & Grill'] }
-            };
-            let activeDay = 'Sat';
-            let adminActiveDay = 'Sat';
+      <div id="admin-tab-about" class="admin-content" style="display:none;">
+        <label>Site Description</label>
+        <textarea id="input-about-desc" class="form-control" rows="3"></textarea>
+        <label>Daily Production</label>
+        <input type="text" id="input-stat-production" class="form-control">
+        <label>Camp Personnel</label>
+        <input type="text" id="input-stat-personnel" class="form-control">
+        <label>Companies On Site</label>
+        <input type="text" id="input-stat-companies" class="form-control">
+        <label>Established</label>
+        <input type="text" id="input-stat-established" class="form-control">
+        <label>History Notes (one milestone per line, format: Title | Description)</label>
+        <textarea id="input-history" class="form-control" rows="4"></textarea>
+        <label>Companies & Teams (one per line)</label>
+        <textarea id="input-companies" class="form-control" rows="3"></textarea>
+        <button class="btn-primary" onclick="saveAboutSettings()">Save Site Info</button>
+      </div>
 
-            window.onload = function() {
-                renderStatusStrip();
-                fetchLiveWeather();
-                setInterval(fetchLiveWeather, 900000);
-                renderPrayerTimes();
-                renderAboutSection();
-                renderAnnouncements();
-                renderEventFilters();
-                renderEvents();
-                initFacilityMap();
-                renderFacilityList();
-                renderDayTabs();
-                renderDining();
-                renderTransport();
-                renderNumbers();
-                renderAdminLists();
-                applyLanguage(currentLang);
-                setInterval(updateCountdown, 1000);
-                setInterval(() => { document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }, 1000);
-                checkDesktopMode();
-                window.addEventListener('resize', checkDesktopMode);
-            };
+      <div id="admin-tab-events" class="admin-content" style="display:none;">
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage camp events and schedules.</p>
+        <div id="admin-events-list"></div>
+      </div>
 
-            function checkDesktopMode() {
-                if (window.innerWidth > 768) {
-                    document.querySelectorAll('.view').forEach(v => v.classList.add('active'));
-                    if (leafletMap) setTimeout(() => leafletMap.invalidateSize(), 150);
-                } else { switchTab('home'); }
-            }
+      <div id="admin-tab-facility" class="admin-content" style="display:none;">
+        <p class="note-text">Coordinates position the pin on the map only — they're never shown in the resident-facing facility list, just the name and hours.</p>
+        <div id="admin-places-list"></div>
+      </div>
 
-            let lastScrollTop = 0;
+      <div id="admin-tab-dining" class="admin-content" style="display:none;">
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Edit today's tab, then select a day to edit its menu.</p>
+        <div class="day-tabs" id="admin-day-tabs"></div>
+        <div id="admin-dining-fields"></div>
+        <button class="btn-primary" onclick="saveDiningDay()">Save This Day</button>
+      </div>
 
-            function handleScrollBehavior() {
-                if (window.innerWidth > 768) return;
-                const c = document.getElementById('main-scroll-container');
-                const nb = document.getElementById('mobile-nav-bar');
-                const st = c.scrollTop,
-                    sh = c.scrollHeight,
-                    ch = c.clientHeight;
-                const atBottom = st + ch >= sh - 15;
-                if (atBottom) { nb.classList.remove('nav-hidden');
-                    nb.classList.add('nav-visible'); } else if (st > lastScrollTop && st > 50) { nb.classList.remove('nav-visible');
-                    nb.classList.add('nav-hidden'); } else if (st < lastScrollTop) { nb.classList.remove('nav-hidden');
-                    nb.classList.add('nav-visible'); }
-                lastScrollTop = st <= 0 ? 0 : st;
-            }
+      <div id="admin-tab-transport" class="admin-content" style="display:none;">
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage shuttle routes and departure times.</p>
+        <div id="admin-transport-list"></div>
+      </div>
 
-            function renderStatusStrip() {
-                document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const useManual = manualWeather.override;
-                const temp = useManual ? manualWeather.temp : (liveWeather.loaded ? liveWeather.temp : manualWeather.temp);
-                const cond = useManual ? manualWeather.condition : (liveWeather.loaded ? liveWeather.condition : manualWeather.condition);
-                document.getElementById('strip-temp').innerText = temp;
-                document.getElementById('weather-icon').className = 'fa-solid ' + (weatherIcons[cond] || 'fa-sun');
-            }
+      <div id="admin-tab-numbers" class="admin-content" style="display:none;">
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage emergency and helpdesk numbers.</p>
+        <div id="admin-numbers-list"></div>
+      </div>
+    </div>
+  </div>
 
-            function renderPrayerTimes() {
-                const now = new Date();
-                const nowMins = now.getHours() * 60 + now.getMinutes();
-                let nextIdx = prayerTimes.findIndex(p => {
-                    const [h, m] = p.time.split(':').map(Number);
-                    return (h * 60 + m) > nowMins;
-                });
-                if (nextIdx === -1) nextIdx = 0;
-                document.getElementById('next-prayer-pill').innerText = prayerTimes[nextIdx].name + ' ' + prayerTimes[nextIdx].time;
-                const grid = document.getElementById('prayer-grid');
-                grid.innerHTML = prayerTimes.map((p, i) =>
-                    `<div class="prayer-cell ${i===nextIdx?'next':''}">
-                  <div class="prayer-name">${p.name}</div>
-                  <div class="prayer-time">${p.time}</div>
-                </div>`
-                ).join('');
-            }
+  <!-- BOTTOM NAV -->
+  <div class="nav-bar nav-visible" id="mobile-nav-bar">
+    <div class="nav-btn active" id="nav-home" onclick="switchTab('home')"><i class="fa-solid fa-house"></i><span data-i18n="navHome">Home</span></div>
+    <div class="nav-btn" id="nav-about" onclick="switchTab('about')"><i class="fa-solid fa-circle-info"></i><span data-i18n="navAboutNav">About</span></div>
+    <div class="nav-btn" id="nav-facility" onclick="switchTab('facility')"><i class="fa-solid fa-map"></i><span data-i18n="navFacilityNav">Facility</span></div>
+    <div class="nav-btn" id="nav-events" onclick="switchTab('events')"><i class="fa-solid fa-calendar-days"></i><span data-i18n="navEvents">Events</span></div>
+  </div>
 
-            function attemptPrayerSync() {
-                triggerToast('Live Sync Unavailable', 'Needs a server-side proxy for mara.gov.om — set times manually below for now.');
-            }
+</div>
 
-            function savePrayerTimes() {
-                prayerTimes.forEach((p, idx) => {
-                    const val = document.getElementById('admin-prayer-' + idx).value;
-                    if (val) prayerTimes[idx].time = val;
-                });
-                renderPrayerTimes();
-                triggerToast('Prayer Times Updated', 'Today\'s prayer schedule saved.');
-            }
+<script>
+const translations = {
+  en:{
+    langBtn:"عربي",homeTitle:"Welcome Back",
+    prayerTitle:"Prayer Times",quickActions:"Quick Actions",qaMenu:"Menu",qaTransport:"Transportation",qaContacts:"Contacts",
+    eventBadge:"Camp Announcements",
+    navHome:"Home",navAboutNav:"About",navFacilityNav:"Facility",navEvents:"Events",
+    navAbout:"Site Overview",activeBase:"Active Base",siteFacts:"Site Facts",historyTitle:"Historical Notes",companiesTitle:"Companies & Teams On Site",
+    navFacility:"Camp Facilities",tapPin:"Tap for details",mapDefaultText:"Tap any map pin above to inspect facility timings.",
+    nextEventTitle:"Next Upcoming Event",daysLbl:"Days",hoursLbl:"Hours",minsLbl:"Mins",secsLbl:"Secs",campSchedule:"Current & Upcoming Events"
+  },
+  ar:{
+    langBtn:"English",homeTitle:"مرحباً بك",
+    prayerTitle:"مواقيت الصلاة",quickActions:"إجراءات سريعة",qaMenu:"القائمة",qaTransport:"المواصلات",qaContacts:"جهات الاتصال",
+    eventBadge:"إعلانات المخيم",
+    navHome:"الرئيسية",navAboutNav:"حول",navFacilityNav:"المرافق",navEvents:"الفعاليات",
+    navAbout:"نظرة عامة",activeBase:"قاعدة نشطة",siteFacts:"حقائق الموقع",historyTitle:"ملاحظات تاريخية",companiesTitle:"الشركات والفرق العاملة",
+    navFacility:"مرافق المخيم",tapPin:"اضغط للتفاصيل",mapDefaultText:"اضغط على أي موقع على الخريطة لعرض أوقات العمل.",
+    nextEventTitle:"الفعالية القادمة",daysLbl:"أيام",hoursLbl:"ساعات",minsLbl:"دقائق",secsLbl:"ثواني",campSchedule:"الفعاليات الحالية والقادمة"
+  }
+};
+let currentLang = localStorage.getItem('basecamp_lang') || 'en';
 
-            function formatDate(iso) {
-                const d = new Date(iso + 'T00:00:00');
-                return d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
-            }
+function applyLanguage(lang){
+  document.documentElement.dir = lang==='ar'?'rtl':'ltr';
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n');
+    if(translations[lang][k]) el.innerHTML = translations[lang][k];
+  });
+  const langBtn = document.querySelector('.lang-btn');
+  if(langBtn) langBtn.innerText = translations[lang].langBtn;
+  currentLang = lang;
+  localStorage.setItem('basecamp_lang', lang);
+}
+function toggleLanguage(){ applyLanguage(currentLang==='en'?'ar':'en'); }
 
-            function renderAnnouncements() {
-                const sorted = [...campAnnouncements].sort((a, b) => new Date(b.date) - new Date(a.date));
-                const visible = sorted.slice(0, 4);
-                const rest = sorted.slice(4);
-                const itemHtml = a => `
-                <div class="announcement-item">
-                  <h4>${a.title}</h4>
-                  <p>${a.desc}</p>
-                  <div class="announcement-meta">
-                    <span><i class="fa-regular fa-calendar"></i> ${formatDate(a.date)}</span>
-                    <span><i class="fa-solid fa-location-dot"></i> ${a.location}</span>
-                  </div>
-                </div>`;
-                document.getElementById('announcements-visible').innerHTML = visible.map(itemHtml).join('') || '<p style="font-size:0.78rem;color:var(--text-dim);">No announcements yet.</p>';
-                document.getElementById('announcements-hidden').innerHTML = rest.map(itemHtml).join('');
-                // Apply expanded class based on state
-                document.getElementById('announcements-hidden').classList.toggle('expanded', announcementsExpanded);
+/* Lekhwair PDO field coordinates */
+const CAMP_LAT = 22.8750, CAMP_LNG = 55.3700;
 
-                const btn = document.getElementById('announce-expand-btn');
-                if (rest.length > 0) {
-                    btn.style.display = 'flex';
-                    document.getElementById('announce-expand-label').innerText = announcementsExpanded ? 'Show less' : `Show ${rest.length} more`;
-                    document.getElementById('announce-expand-icon').style.transform = announcementsExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
-                } else {
-                    btn.style.display = 'none';
-                }
-            }
+let campData = {name:"Lekhwair Camp", region:"Ad Dhahirah Governorate, North Oman"};
+let liveWeather = {temp:null, condition:'sunny', loaded:false};
+let manualWeather = {temp:"42°C", condition:'sunny', override:false};
 
-            function toggleAnnouncements() {
-                announcementsExpanded = !announcementsExpanded;
-                renderAnnouncements();
-            }
+const weatherIcons = {sunny:'fa-sun',cloudy:'fa-cloud-sun',rain:'fa-cloud-rain',sand:'fa-smog'};
 
-            function updateCountdown() {
-                const now = new Date().getTime();
-                const distance = nextEventTimestamp - now;
-                if (distance < 0) return;
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const secs = Math.floor((distance % (1000 * 60)) / 1000);
-                document.getElementById('cd-days').innerText = String(days).padStart(2, '0');
-                document.getElementById('cd-hours').innerText = String(hours).padStart(2, '0');
-                document.getElementById('cd-mins').innerText = String(mins).padStart(2, '0');
-                document.getElementById('cd-secs').innerText = String(secs).padStart(2, '0');
-            }
+/* WMO weather code -> our condition buckets (Open-Meteo fallback) */
+function mapWeatherCode(code){
+  if(code===0) return 'sunny';
+  if([1,2,3].includes(code)) return 'cloudy';
+  if([45,48].includes(code)) return 'sand';
+  if([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99].includes(code)) return 'rain';
+  return 'sunny';
+}
+/* OpenWeatherMap "main" field -> our condition buckets */
+function mapOwmCondition(main){
+  const m = (main||'').toLowerCase();
+  if(m==='clear') return 'sunny';
+  if(['clouds'].includes(m)) return 'cloudy';
+  if(['dust','sand','haze','smoke','ash'].includes(m)) return 'sand';
+  if(['rain','drizzle','thunderstorm','mist','fog','snow','squall','tornado'].includes(m)) return 'rain';
+  return 'sunny';
+}
 
-            function renderAboutSection() {
-                document.getElementById('about-camp-desc').innerText = aboutData.desc;
-                document.getElementById('stats-grid').innerHTML = `
-                <div class="stat-tile"><div class="stat-val">${aboutData.production}</div><div class="stat-lbl">Daily Production</div></div>
-                <div class="stat-tile"><div class="stat-val">${aboutData.personnel}</div><div class="stat-lbl">Camp Personnel</div></div>
-                <div class="stat-tile"><div class="stat-val">${aboutData.companies_count}</div><div class="stat-lbl">Companies On Site</div></div>
-                <div class="stat-tile"><div class="stat-val">${aboutData.established}</div><div class="stat-lbl">Established</div></div>
-              `;
-                document.getElementById('history-container').innerHTML = aboutData.history.map(h => `
-                <div class="history-item"><div class="history-dot"></div><p><strong>${h.title}</strong>${h.desc}</p></div>
-              `).join('');
-                document.getElementById('companies-container').innerHTML = aboutData.companies.map(c => `
-                <span class="company-chip"><i class="fa-solid fa-building"></i>${c}</span>
-              `).join('');
-            }
+let owmApiKey = localStorage.getItem('basecamp_owm_key') || '';
 
-            function renderEventFilters() {
-                const cats = ['All', ...new Set(campEvents.map(e => e.category))];
-                document.getElementById('event-filters').innerHTML = cats.map(c =>
-                    `<div class="filter-chip ${c===activeFilter?'active':''}" onclick="setFilter('${c}')">${c}</div>`
-                ).join('');
-            }
+async function fetchLiveWeather(){
+  // Primary: OpenWeatherMap, once an API key is set in Admin > General (free tier at openweathermap.org).
+  if(owmApiKey){
+    try{
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${CAMP_LAT}&lon=${CAMP_LNG}&units=metric&appid=${owmApiKey}`);
+      if(!res.ok) throw new Error('OWM request failed');
+      const data = await res.json();
+      liveWeather.temp = Math.round(data.main.temp) + '°C';
+      liveWeather.condition = mapOwmCondition(data.weather[0].main);
+      liveWeather.loaded = true;
+      liveWeather.source = 'OpenWeatherMap';
+      renderStatusStrip();
+      return;
+    }catch(e){
+      // fall through to Open-Meteo below
+    }
+  }
+  // Fallback: Open-Meteo — free, no key required, used automatically if no OWM key is set or OWM fails.
+  try{
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CAMP_LAT}&longitude=${CAMP_LNG}&current=temperature_2m,weather_code&timezone=auto`);
+    const data = await res.json();
+    liveWeather.temp = Math.round(data.current.temperature_2m) + '°C';
+    liveWeather.condition = mapWeatherCode(data.current.weather_code);
+    liveWeather.loaded = true;
+    liveWeather.source = 'Open-Meteo';
+  }catch(e){
+    liveWeather.loaded = false;
+  }
+  renderStatusStrip();
+}
 
-            function setFilter(cat) { activeFilter = cat;
-                renderEventFilters();
-                renderEvents(); }
+let aboutData = {
+  desc:"Lekhwair is one of Petroleum Development Oman's interior production sites, hosting PDO staff and contractor teams supporting field operations, well maintenance, and logistics across the concession area.",
+  production:"—— boepd", personnel:"——", companies_count:"——", established:"——",
+  history:[
+    {title:"Interior operations network", desc:"Lekhwair developed as part of PDO's wider network of interior production stations supporting exploration and field operations in the concession area."},
+    {title:"Ongoing field development", desc:"Ongoing agreements and small-field developments continue to expand activity around the Lekhwair concession block."}
+  ],
+  companies:["PDO Operations","Contractor Support Teams","Camp Facilities Management","Logistics & Transport"]
+};
 
-            function renderEvents() {
-                campEvents.sort((a, b) => a.timeVal - b.timeVal);
-                if (campEvents.length > 0) {
-                    nextEventTimestamp = campEvents[0].timeVal;
-                    document.getElementById('next-event-name').innerText = campEvents[0].title;
-                    document.getElementById('next-event-time-desc').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${campEvents[0].location} &bull; <i class="fa-regular fa-clock"></i> ${campEvents[0].date}`;
-                    document.getElementById('next-event-tag').innerText = campEvents[0].category;
-                }
-                const list = activeFilter === 'All' ? campEvents : campEvents.filter(e => e.category === activeFilter);
-                document.getElementById('events-container').innerHTML = list.map(ev => `
-                <div class="event-row">
-                  <div class="event-icon"><i class="fa-solid ${ev.icon}"></i></div>
-                  <div class="event-body">
-                    <h4>${ev.live?'<span class=\"live-dot\"></span>':''}${ev.title}</h4>
-                    <div class="meta">
-                      <span><i class="fa-regular fa-calendar-days"></i> ${ev.date}</span>
-                      <span><i class="fa-solid fa-location-dot"></i> ${ev.location}</span>
-                    </div>
-                  </div>
-                </div>`).join('');
-            }
+let campAnnouncements = [
+  {id:1,title:'RO Plant Maintenance',desc:"Water supply may experience brief pressure drops tonight between 23:00 and 01:00 due to scheduled RO membrane flushing.",date:'2026-08-11',location:'Utility Dept'},
+  {id:2,title:'Gym Equipment Upgrade',desc:'New treadmills and free weights have been installed in the Recreation Hall gym. Available from 05:00 daily.',date:'2026-08-09',location:'Recreation Hall'},
+  {id:3,title:'Friday Prayer Timing Update',desc:'Friday (Jummah) prayer will begin 10 minutes earlier this week to accommodate the visiting Imam.',date:'2026-08-08',location:'Camp Mosque'},
+  {id:4,title:'Road Closure Near Gate 2',desc:'Gate 2 access road will be closed for resurfacing. Use Gate 1 for all vehicle movements until further notice.',date:'2026-08-06',location:'Main Gate'},
+  {id:5,title:'Laundry Service Schedule Change',desc:'Laundry pickup now runs Sunday, Tuesday and Thursday only. Drop bags at reception by 08:00.',date:'2026-08-03',location:'Laundry Services'},
+  {id:6,title:'HSE Toolbox Talk — Heat Stress',desc:'Mandatory toolbox talk on heat stress awareness for all outdoor crews this week at shift handover.',date:'2026-07-30',location:'HSE Department'}
+];
+let announcementsExpanded = false;
 
-            function switchTab(tabId) {
-                if (window.innerWidth > 768) return;
-                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-                document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
-                document.getElementById('view-' + tabId).classList.add('active');
-                document.getElementById('nav-' + tabId).classList.add('active');
-                document.getElementById('main-scroll-container').scrollTop = 0;
-                if (tabId === 'facility' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 150);
-            }
+const weatherLabels = {sunny:'Sunny',cloudy:'Partly Cloudy',rain:'Rain',sand:'Sandstorm'};
 
-            let clickCount = 0,
-                clickTimer = null;
+let nextEventTimestamp = new Date().getTime() + (18*3600*1000) + (24*60*1000);
+let campEvents = [
+  {id:1,title:'Inter-Block Football Semi-Final',category:'Sports',date:'Today, 19:30',location:'Main Sports Ground',icon:'fa-futbol',timeVal:nextEventTimestamp,live:false},
+  {id:2,title:'Movie Night: Action Feature',category:'Entertainment',date:'Tomorrow, 20:00',location:'Recreation Hall',icon:'fa-film',timeVal:new Date().getTime()+(42*3600*1000),live:false},
+  {id:3,title:'HSE Safety Quiz & Raffle Draw',category:'Community',date:'Thursday, 18:00',location:'Dining Mess Hall',icon:'fa-award',timeVal:new Date().getTime()+(90*3600*1000),live:false}
+];
+let activeFilter = 'All';
 
-            function handleLocationClick() {
-                clickCount++;
-                if (clickTimer) clearTimeout(clickTimer);
-                if (clickCount === 3) {
-                    clickCount = 0;
-                    openModal('admin-modal');
-                    triggerToast('Admin Mode', 'Unlocked Secret Camp Control Panel.');
-                } else {
-                    clickTimer = setTimeout(() => { clickCount = 0; }, 400);
-                }
-            }
+/* mapPlaces use real lat/lng — used for the map pin only, never shown in the facility list */
+let mapPlaces = [
+  {id:1,name:'Main Mess Hall',icon:'fa-utensils',color:'#ff7a1a',lat:22.8756,lng:55.3695,info:'Timing: 04:30 – 21:00\nServes Breakfast, Lunch, Dinner'},
+  {id:2,name:'Camp Clinic',icon:'fa-kit-medical',color:'#f0453d',lat:22.8744,lng:55.3708,info:'24/7 Medical Response\nDoctor on duty: Dr. Ahmed'},
+  {id:3,name:'Gym & Recreation',icon:'fa-dumbbell',color:'#2dd4bf',lat:22.8748,lng:55.3690,info:'Gym Hours: 05:00 – 23:00'},
+  {id:4,name:'Muster Station A',icon:'fa-people-group',color:'#c9a876',lat:22.8752,lng:55.3702,info:'Primary assembly point · Main Sports Ground'}
+];
+let leafletMap = null;
+let leafletMarkers = [];
 
-            function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+let contactNumbers = [
+  {id:1,title:'Camp Medical Clinic',phone:'999',sub:'Emergency Doctor & Ambulance',cat:'emergency'},
+  {id:2,title:'HSE & Fire Station',phone:'998',sub:'Fire & Gas Incident Control',cat:'emergency'},
+  {id:3,title:'FM Maintenance Helpdesk',phone:'2400',sub:'Hard Services & Room Fixes',cat:'ops'},
+  {id:4,title:'Main Gate Security',phone:'2401',sub:'Visitor & Gate Pass Desk',cat:'ops'},
+  {id:5,title:'Camp Reception',phone:'2402',sub:'General Enquiries & Lost Items',cat:'services'},
+  {id:6,title:'Laundry Services',phone:'2403',sub:'Pickup & Drop-off Schedule',cat:'services'}
+];
 
-            function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+let transportSchedule = [
+  {id:1,name:'Night Shift Shuttle #3',route:'Camp → Production Plant B',time:'Departs in 35m',status:'upcoming'},
+  {id:2,name:'Morning Shift Shuttle #1',route:'Camp → Main Field Office',time:'06:00 Daily',status:'scheduled'},
+  {id:3,name:'Town Run',route:'Camp → Ibri Town',time:'Fri & Sat, 09:00',status:'scheduled'}
+];
 
-            function switchAdminTab(tab, el) {
-                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.admin-content').forEach(c => c.style.display = 'none');
-                el.classList.add('active');
-                document.getElementById('admin-tab-' + tab).style.display = 'block';
-            }
+/* Manually adjustable — see Admin > Prayer for the live-sync note */
+let prayerTimes = [
+  {name:'Fajr',time:'04:32'},{name:'Dhuhr',time:'12:04'},{name:'Asr',time:'15:42'},
+  {name:'Maghrib',time:'18:21'},{name:'Isha',time:'19:51'}
+];
 
-            function initFacilityMap() {
-                leafletMap = L.map('leaflet-map', { zoomControl: false, attributionControl: true }).setView([CAMP_LAT, CAMP_LNG], 16);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap &copy; CARTO',
-                    maxZoom: 19
-                }).addTo(leafletMap);
-                L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
-                renderMapMarkers();
-            }
+const weekMenu = {
+  Sat:{Breakfast:['Omelette & Beans','Paratha','Fresh Fruit'],Lunch:['Chicken Curry','Steamed Rice','Salad'],Dinner:['Grilled Chicken','Mutton Biryani','Roti']},
+  Sun:{Breakfast:['Boiled Eggs','Cereal','Toast'],Lunch:['Fish Curry','Rice','Lentil Soup'],Dinner:['Beef Stew','Vegetable Rice','Salad']},
+  Mon:{Breakfast:['Pancakes','Yogurt','Fruit'],Lunch:['Chicken Biryani','Raita'],Dinner:['Grilled Fish','Mashed Potato','Greens']},
+  Tue:{Breakfast:['Shakshuka','Bread','Juice'],Lunch:['Mutton Curry','Rice','Salad'],Dinner:['Roast Chicken','Pasta','Soup']},
+  Wed:{Breakfast:['Idli & Sambar','Chutney'],Lunch:['Vegetable Biryani','Raita'],Dinner:['BBQ Night','Grilled Meats','Salad Bar']},
+  Thu:{Breakfast:['French Toast','Fruit Bowl'],Lunch:['Chicken Karahi','Naan'],Dinner:['Fried Rice','Sweet & Sour Chicken']},
+  Fri:{Breakfast:['Continental Buffet','Full Spread'],Lunch:['Special Friday Biryani'],Dinner:['Light Buffet','Soup & Grill']}
+};
+let activeDay = 'Sat';
+let adminActiveDay = 'Sat';
 
-            function renderMapMarkers() {
-                leafletMarkers.forEach(m => leafletMap.removeLayer(m));
-                leafletMarkers = [];
-                mapPlaces.forEach(p => {
-                    const icon = L.divIcon({
-                        className: '',
-                        html: `<div class="geo-pin" style="background:${p.color};"><i class="fa-solid ${p.icon}"></i></div>`,
-                        iconSize: [28, 28],
-                        iconAnchor: [14, 28]
-                    });
-                    const marker = L.marker([p.lat, p.lng], { icon }).addTo(leafletMap);
-                    // Use real newline replacement
-                    marker.bindPopup(`<strong>${p.name}</strong><br>${p.info.replace(/\n/g, '<br>')}`);
-                    marker.on('click', () => showMapInfo(p.name, p.info));
-                    leafletMarkers.push(marker);
-                });
-            }
+function setViewportHeight(){
+  document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+}
+setViewportHeight();
+window.addEventListener('resize', setViewportHeight);
+window.addEventListener('orientationchange', setViewportHeight);
 
-            function showMapInfo(title, info) {
-                // Use real newline replacement
-                document.getElementById('map-details-box').innerHTML = `<strong>${title}</strong><br>${info.replace(/\n/g, '<br>')}`;
-            }
+/* If the primary Font Awesome CDN's font file fails to actually load (blocked, offline,
+   ad-blocker, etc.), the icon classes stay on the page but render nothing. This checks
+   whether the font is really available and, if not, loads a second copy from a different
+   CDN as a fallback so icons don't silently disappear. */
+function ensureIconsLoaded(){
+  try{
+    if(document.fonts && document.fonts.check && document.fonts.check('900 16px "Font Awesome 6 Free"')){
+      return; // primary CDN loaded fine
+    }
+  }catch(e){ /* fall through to fallback load */ }
+  if(document.getElementById('fa-fallback-link')) return;
+  const link = document.createElement('link');
+  link.id = 'fa-fallback-link';
+  link.rel = 'stylesheet';
+  link.crossOrigin = 'anonymous';
+  link.href = 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
+  document.head.appendChild(link);
+}
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=> setTimeout(ensureIconsLoaded, 300));
+}
+window.addEventListener('load', ()=> setTimeout(ensureIconsLoaded, 1500));
 
-            function renderFacilityList() {
-                const container = document.getElementById('facility-list-container');
-                container.innerHTML = mapPlaces.map(p => {
-                    const firstLine = p.info.split('\n')[0];
-                    return `<div class="facility-list-row" onclick="focusFacility(${p.id})">
-                  <span class="fl-name"><i class="fa-solid ${p.icon}"></i>${p.name}</span>
-                  <span class="fl-time">${firstLine.replace('Timing: ', '')}</span>
-                </div>`;
-                }).join('');
-            }
+window.onload = function(){
+  setViewportHeight();
+  renderStatusStrip();
+  fetchLiveWeather();
+  setInterval(fetchLiveWeather, 900000);
+  renderPrayerTimes();
+  renderAboutSection();
+  renderAnnouncements();
+  renderEventFilters();
+  renderEvents();
+  initFacilityMap();
+  renderFacilityList();
+  renderDayTabs();
+  renderDining();
+  renderTransport();
+  renderNumbers();
+  renderAdminLists();
+  applyLanguage(currentLang);
+  setInterval(updateCountdown,1000);
+  setInterval(()=>{ document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); },1000);
+  checkDesktopMode();
+  window.addEventListener('resize',checkDesktopMode);
+};
 
-            function focusFacility(id) {
-                const p = mapPlaces.find(pl => pl.id === id);
-                if (!p) return;
-                showMapInfo(p.name, p.info);
-                if (leafletMap) { leafletMap.setView([p.lat, p.lng], 18); }
-            }
+function checkDesktopMode(){
+  if(window.innerWidth>768){
+    document.querySelectorAll('.view').forEach(v=>v.classList.add('active'));
+    if(leafletMap) setTimeout(()=>leafletMap.invalidateSize(),150);
+  }
+  else{ switchTab('home'); }
+}
 
-            function renderDayTabs() {
-                const days = Object.keys(weekMenu);
-                document.getElementById('day-tabs').innerHTML = days.map(d =>
-                    `<div class="day-tab ${d===activeDay?'active':''}" onclick="setDay('${d}')">${d}</div>`
-                ).join('');
-            }
+let lastScrollTop=0;
+function handleScrollBehavior(){
+  if(window.innerWidth>768) return;
+  const c=document.getElementById('main-scroll-container');
+  const nb=document.getElementById('mobile-nav-bar');
+  const st=c.scrollTop, sh=c.scrollHeight, ch=c.clientHeight;
+  const atBottom = st+ch >= sh-15;
+  if(atBottom){nb.classList.remove('nav-hidden');nb.classList.add('nav-visible');}
+  else if(st>lastScrollTop && st>50){nb.classList.remove('nav-visible');nb.classList.add('nav-hidden');}
+  else if(st<lastScrollTop){nb.classList.remove('nav-hidden');nb.classList.add('nav-visible');}
+  lastScrollTop = st<=0?0:st;
+}
 
-            function setDay(d) { activeDay = d;
-                renderDayTabs();
-                renderDining(); }
+function renderStatusStrip(){
+  document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const useManual = manualWeather.override;
+  const temp = useManual ? manualWeather.temp : (liveWeather.loaded ? liveWeather.temp : manualWeather.temp);
+  const cond = useManual ? manualWeather.condition : (liveWeather.loaded ? liveWeather.condition : manualWeather.condition);
+  document.getElementById('strip-temp').innerText = temp;
+  document.getElementById('weather-icon').className = 'fa-solid ' + (weatherIcons[cond] || 'fa-sun');
+}
 
-            function renderDining() {
-                const menu = weekMenu[activeDay];
-                const times = { Breakfast: '04:30 – 08:00', Lunch: '12:00 – 14:00', Dinner: '17:00 – 21:00' };
-                const icons = { Breakfast: 'fa-mug-hot', Lunch: 'fa-bowl-food', Dinner: 'fa-utensils' };
-                document.getElementById('dining-container').innerHTML = Object.keys(menu).map(meal => `
-                <div class="meal-block">
-                  <h5><i class="fa-solid ${icons[meal]}" style="color:var(--amber);"></i> ${meal} <span class="meal-time">· ${times[meal]}</span></h5>
-                  <div class="food-row">${menu[meal].map(item=>`<span class="food-chip">${item}</span>`).join('')}</div>
-                </div>`).join('');
-            }
+function renderPrayerTimes(){
+  const now = new Date();
+  const nowMins = now.getHours()*60+now.getMinutes();
+  let nextIdx = prayerTimes.findIndex(p=>{
+    const [h,m] = p.time.split(':').map(Number);
+    return (h*60+m) > nowMins;
+  });
+  if(nextIdx===-1) nextIdx=0;
+  document.getElementById('next-prayer-pill').innerText = prayerTimes[nextIdx].name+' '+prayerTimes[nextIdx].time;
+  const grid = document.getElementById('prayer-grid');
+  grid.innerHTML = prayerTimes.map((p,i)=>`
+    <div class="prayer-cell ${i===nextIdx?'next':''}">
+      <div class="prayer-name">${p.name}</div>
+      <div class="prayer-time">${p.time}</div>
+    </div>`).join('');
+}
 
-            function renderTransport() {
-                document.getElementById('transport-container').innerHTML = transportSchedule.map(t => `
-                <div class="transport-row">
-                  <div class="t-top">
-                    <h4>${t.name}</h4>
-                    <span class="pill ${t.status==='upcoming'?'pill-amber':'pill-live'}">${t.time}</span>
-                  </div>
-                  <p><i class="fa-solid fa-route"></i> ${t.route}</p>
-                </div>`).join('');
-            }
+/* Best-effort parser for mara.gov.om's prayer calendar page.
+   Its markup isn't publicly documented and the site blocks automated crawling (robots.txt),
+   so this couldn't be verified against the live page — it looks for an English/Arabic prayer
+   name followed by a nearby HH:MM time. If mara.gov.om changes its layout, or this pattern
+   never matched to begin with, attemptPrayerSync() below falls back to the Aladhan API. */
+function parseMaraPrayerTimes(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const text = (doc.body ? doc.body.innerText : html) || '';
+  const labels = {
+    Fajr:['fajr','الفجر'], Dhuhr:['dhuhr','zuhr','الظهر'], Asr:['asr','العصر'],
+    Maghrib:['maghrib','المغرب'], Isha:['isha','العشاء']
+  };
+  const result = {};
+  Object.keys(labels).forEach(key=>{
+    for(const label of labels[key]){
+      const re = new RegExp(label + '[^0-9]{0,25}([0-2]?[0-9][:.][0-5][0-9])', 'i');
+      const m = text.match(re);
+      if(m){ result[key] = m[1].replace('.',':'); break; }
+    }
+  });
+  return result;
+}
 
-            function renderNumbers() {
-                const groups = { emergency: 'Emergency', ops: 'Operations', services: 'Camp Services' };
-                const container = document.getElementById('numbers-container');
-                let html = '';
-                Object.keys(groups).forEach(catKey => {
-                    const items = contactNumbers.filter(n => n.cat === catKey);
-                    if (items.length === 0) return;
-                    html += `<div class="numbers-group"><h5>${groups[catKey]}</h5>`;
-                    items.forEach(n => {
-                        const isEmerg = n.cat === 'emergency';
-                        html += `
-                    <div class="contact-card">
-                      <div class="contact-info">
-                        <div class="contact-icon" style="background:${isEmerg?'var(--red-soft)':'var(--amber-soft)'};color:${isEmerg?'var(--red)':'var(--amber)'};">
-                          <i class="fa-solid ${isEmerg?'fa-hospital':'fa-phone'}"></i>
-                        </div>
-                        <div><h4>${n.title}</h4><p>${n.sub}</p></div>
-                      </div>
-                      <a href="tel:${n.phone}" class="call-btn ${isEmerg?'call-btn-danger':''}"><i class="fa-solid fa-phone"></i></a>
-                    </div>`;
-                    });
-                    html += `</div>`;
-                });
-                container.innerHTML = html;
-            }
+async function attemptPrayerSync(){
+  const targetUrl = 'https://www.mara.gov.om/calendar_page2.asp';
 
-            function pushNewAnnouncement() {
-                const title = document.getElementById('input-notif-title').value.trim();
-                const desc = document.getElementById('input-notif-desc').value.trim();
-                const location = document.getElementById('input-notif-location').value.trim();
-                if (!title || !desc) { triggerToast('Missing Info', 'Please add a title and message.'); return; }
-                const today = new Date().toISOString().split('T')[0];
-                campAnnouncements.unshift({ id: Date.now(), title, desc, date: today, location: location || 'Camp Admin' });
-                document.getElementById('input-notif-title').value = '';
-                document.getElementById('input-notif-desc').value = '';
-                document.getElementById('input-notif-location').value = '';
-                announcementsExpanded = false;
-                renderAnnouncements();
-                renderAdminAnnouncementsList();
-                closeModal('admin-modal');
-                triggerToast('Announcement Pushed', 'Camp broadcast updated successfully.');
-            }
+  // Attempt 1: allorigins.win — no manual opt-in required.
+  try{
+    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+    if(!res.ok) throw new Error('allorigins fetch failed');
+    const html = await res.text();
+    const parsed = parseMaraPrayerTimes(html);
+    if(Object.keys(parsed).length >= 5){
+      applyPrayerFields(parsed);
+      triggerToast('Synced from MARA','Fetched via allorigins.win — review the times below, then Save.');
+      return;
+    }
+    throw new Error('allorigins: could not parse mara.gov.om');
+  }catch(e1){
+    // Attempt 2: cors-anywhere.herokuapp.com — requires the admin to have visited
+    // cors-anywhere.herokuapp.com/corsdemo and clicked "Request temporary access" in THIS
+    // browser first; access expires periodically. It will not work for camp residents' own
+    // devices, only as a manual convenience for whoever is running this sync.
+    try{
+      const res2 = await fetch('https://cors-anywhere.herokuapp.com/' + targetUrl, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      if(res2.status === 403){
+        throw new Error('cors-anywhere: not opted in on this browser');
+      }
+      if(!res2.ok) throw new Error('cors-anywhere fetch failed');
+      const html2 = await res2.text();
+      const parsed2 = parseMaraPrayerTimes(html2);
+      if(Object.keys(parsed2).length >= 5){
+        applyPrayerFields(parsed2);
+        triggerToast('Synced from MARA','Fetched via cors-anywhere — review the times below, then Save.');
+        return;
+      }
+      throw new Error('cors-anywhere: could not parse mara.gov.om');
+    }catch(e2){
+      // Attempt 3: Aladhan — stable structured API, no proxy needed.
+      try{
+        const today = new Date();
+        const dateStr = String(today.getDate()).padStart(2,'0')+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+today.getFullYear();
+        const res3 = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${CAMP_LAT}&longitude=${CAMP_LNG}&method=8`);
+        if(!res3.ok) throw new Error('Aladhan request failed');
+        const data = await res3.json();
+        const t = data.data.timings;
+        const clean = s => s.split(' ')[0];
+        applyPrayerFields({Fajr:clean(t.Fajr), Dhuhr:clean(t.Dhuhr), Asr:clean(t.Asr), Maghrib:clean(t.Maghrib), Isha:clean(t.Isha)});
+        const hint = String(e2).includes('not opted in')
+          ? 'MARA needs a one-time click at cors-anywhere.herokuapp.com/corsdemo on this browser — used Aladhan instead for now.'
+          : 'Could not read mara.gov.om via either proxy — used Aladhan instead.';
+        triggerToast('MARA Unavailable', hint + ' Review below.');
+      }catch(e3){
+        triggerToast('Sync Failed','Could not reach any source — set times manually.');
+      }
+    }
+  }
+}
+function applyPrayerFields(map){
+  prayerTimes.forEach((p,idx)=>{
+    if(map[p.name]) document.getElementById('admin-prayer-'+idx).value = map[p.name];
+  });
+}
+function savePrayerTimes(){
+  prayerTimes.forEach((p,idx)=>{
+    const val = document.getElementById('admin-prayer-'+idx).value;
+    if(val) prayerTimes[idx].time = val;
+  });
+  renderPrayerTimes();
+  triggerToast('Prayer Times Updated','Today\'s prayer schedule saved.');
+}
 
-            function deleteAnnouncement(id) {
-                campAnnouncements = campAnnouncements.filter(a => a.id !== id);
-                renderAnnouncements();
-                renderAdminAnnouncementsList();
-            }
+function formatDate(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'});
+}
 
-            function renderAdminAnnouncementsList() {
-                const container = document.getElementById('admin-announcements-list');
-                const sorted = [...campAnnouncements].sort((a, b) => new Date(b.date) - new Date(a.date));
-                container.innerHTML = sorted.map(a => `
-                <div class="admin-block" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
-                  <div>
-                    <div style="font-size:0.8rem;font-weight:600;">${a.title}</div>
-                    <div style="font-size:0.68rem;color:var(--text-dim);font-family:var(--font-mono);">${formatDate(a.date)} · ${a.location}</div>
-                  </div>
-                  <div class="icon-btn" style="width:32px;height:32px;color:var(--red);" onclick="deleteAnnouncement(${a.id})"><i class="fa-solid fa-trash"></i></div>
-                </div>`).join('');
-            }
+function renderAnnouncements(){
+  const sorted = [...campAnnouncements].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  const visible = sorted.slice(0,4);
+  const rest = sorted.slice(4);
+  const itemHtml = a => `
+    <div class="announcement-item">
+      <h4>${a.title}</h4>
+      <p>${a.desc}</p>
+      <div class="announcement-meta">
+        <span><i class="fa-regular fa-calendar"></i> ${formatDate(a.date)}</span>
+        <span><i class="fa-solid fa-location-dot"></i> ${a.location}</span>
+      </div>
+    </div>`;
+  document.getElementById('announcements-visible').innerHTML = visible.map(itemHtml).join('') || '<p style="font-size:0.78rem;color:var(--text-dim);">No announcements yet.</p>';
+  document.getElementById('announcements-hidden').innerHTML = rest.map(itemHtml).join('');
+  const btn = document.getElementById('announce-expand-btn');
+  if(rest.length>0){
+    btn.style.display='flex';
+    document.getElementById('announce-expand-label').innerText = announcementsExpanded ? 'Show less' : `Show ${rest.length} more`;
+    document.getElementById('announce-expand-icon').style.transform = announcementsExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+  } else {
+    btn.style.display='none';
+  }
+}
+function toggleAnnouncements(){
+  announcementsExpanded = !announcementsExpanded;
+  document.getElementById('announcements-hidden').classList.toggle('expanded', announcementsExpanded);
+  renderAnnouncements();
+  document.getElementById('announcements-hidden').classList.toggle('expanded', announcementsExpanded);
+}
 
-            function renderAdminLists() {
-                const eventsContainer = document.getElementById('admin-events-list');
-                if (eventsContainer) {
-                    let e = '';
-                    campEvents.forEach((ev, idx) => {
-                        e += `<div class="admin-block">
-                    <label>Event Title</label>
-                    <input type="text" class="form-control" value="${ev.title}" onchange="campEvents[${idx}].title=this.value; renderEvents();" style="margin-bottom:6px;">
-                    <label>Location & Time Note</label>
-                    <input type="text" class="form-control" value="${ev.date}" onchange="campEvents[${idx}].date=this.value; renderEvents();" style="margin-bottom:0;">
-                  </div>`;
-                    });
-                    eventsContainer.innerHTML = e;
-                }
-                const placesContainer = document.getElementById('admin-places-list');
-                if (placesContainer) {
-                    let p = '';
-                    mapPlaces.forEach((pl, idx) => {
-                        p += `<div class="admin-block">
-                    <label>Facility Name</label>
-                    <input type="text" class="form-control" value="${pl.name}" onchange="mapPlaces[${idx}].name=this.value; renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
-                    <label>Timing / Info (shown to residents)</label>
-                    <input type="text" class="form-control" value="${pl.info.replace(/\n/g, ' | ')}" onchange="mapPlaces[${idx}].info=this.value.replace(/ \| /g, '\n'); renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
-                    <label>Latitude (map pin only)</label>
-                    <input type="text" class="form-control" value="${pl.lat}" onchange="mapPlaces[${idx}].lat=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:6px;">
-                    <label>Longitude (map pin only)</label>
-                    <input type="text" class="form-control" value="${pl.lng}" onchange="mapPlaces[${idx}].lng=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:0;">
-                  </div>`;
-                    });
-                    placesContainer.innerHTML = p;
-                }
-                const transportContainer = document.getElementById('admin-transport-list');
-                if (transportContainer) {
-                    let t = '';
-                    transportSchedule.forEach((tr, idx) => {
-                        t += `<div class="admin-block">
-                    <label>Shuttle Name</label>
-                    <input type="text" class="form-control" value="${tr.name}" onchange="transportSchedule[${idx}].name=this.value; renderTransport();" style="margin-bottom:6px;">
-                    <label>Route</label>
-                    <input type="text" class="form-control" value="${tr.route}" onchange="transportSchedule[${idx}].route=this.value; renderTransport();" style="margin-bottom:6px;">
-                    <label>Time / Status</label>
-                    <input type="text" class="form-control" value="${tr.time}" onchange="transportSchedule[${idx}].time=this.value; renderTransport();" style="margin-bottom:0;">
-                  </div>`;
-                    });
-                    transportContainer.innerHTML = t;
-                }
-                const numbersContainer = document.getElementById('admin-numbers-list');
-                if (numbersContainer) {
-                    let n = '';
-                    contactNumbers.forEach((num, idx) => {
-                        n += `<div class="admin-block" style="display:flex;gap:8px;">
-                    <input type="text" class="form-control" value="${num.title}" onchange="contactNumbers[${idx}].title=this.value; renderNumbers();" style="margin-bottom:0;flex:2;">
-                    <input type="text" class="form-control" value="${num.phone}" onchange="contactNumbers[${idx}].phone=this.value; renderNumbers();" style="margin-bottom:0;flex:1;">
-                  </div>`;
-                    });
-                    numbersContainer.innerHTML = n;
-                }
-                document.getElementById('input-history').value = aboutData.history.map(h => `${h.title} | ${h.desc}`).join('\n');
-                document.getElementById('input-companies').value = aboutData.companies.join('\n');
-                document.getElementById('input-about-desc').value = aboutData.desc;
-                document.getElementById('input-stat-production').value = aboutData.production;
-                document.getElementById('input-stat-personnel').value = aboutData.personnel;
-                document.getElementById('input-stat-companies').value = aboutData.companies_count;
-                document.getElementById('input-stat-established').value = aboutData.established;
-                renderAdminDayTabs();
-                renderAdminAnnouncementsList();
-                renderAdminPrayerFields();
-            }
+function updateCountdown(){
+  const now=new Date().getTime();
+  const distance = nextEventTimestamp-now;
+  if(distance<0) return;
+  const days=Math.floor(distance/(1000*60*60*24));
+  const hours=Math.floor((distance%(1000*60*60*24))/(1000*60*60));
+  const mins=Math.floor((distance%(1000*60*60))/(1000*60));
+  const secs=Math.floor((distance%(1000*60))/1000);
+  document.getElementById('cd-days').innerText=String(days).padStart(2,'0');
+  document.getElementById('cd-hours').innerText=String(hours).padStart(2,'0');
+  document.getElementById('cd-mins').innerText=String(mins).padStart(2,'0');
+  document.getElementById('cd-secs').innerText=String(secs).padStart(2,'0');
+}
 
-            function renderAdminPrayerFields() {
-                document.getElementById('admin-prayer-fields').innerHTML = prayerTimes.map((p, idx) => `
-                <label>${p.name}</label>
-                <input type="text" class="form-control" id="admin-prayer-${idx}" value="${p.time}">
-              `).join('');
-            }
+function renderAboutSection(){
+  document.getElementById('about-camp-desc').innerText = aboutData.desc;
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-tile"><div class="stat-val">${aboutData.production}</div><div class="stat-lbl">Daily Production</div></div>
+    <div class="stat-tile"><div class="stat-val">${aboutData.personnel}</div><div class="stat-lbl">Camp Personnel</div></div>
+    <div class="stat-tile"><div class="stat-val">${aboutData.companies_count}</div><div class="stat-lbl">Companies On Site</div></div>
+    <div class="stat-tile"><div class="stat-val">${aboutData.established}</div><div class="stat-lbl">Established</div></div>
+  `;
+  document.getElementById('history-container').innerHTML = aboutData.history.map(h=>`
+    <div class="history-item"><div class="history-dot"></div><p><strong>${h.title}</strong>${h.desc}</p></div>
+  `).join('');
+  document.getElementById('companies-container').innerHTML = aboutData.companies.map(c=>`
+    <span class="company-chip"><i class="fa-solid fa-building"></i>${c}</span>
+  `).join('');
+}
 
-            function renderAdminDayTabs() {
-                const days = Object.keys(weekMenu);
-                document.getElementById('admin-day-tabs').innerHTML = days.map(d =>
-                    `<div class="day-tab ${d===adminActiveDay?'active':''}" onclick="setAdminDay('${d}')">${d}</div>`
-                ).join('');
-                renderAdminDiningFields();
-            }
+function renderEventFilters(){
+  const cats = ['All', ...new Set(campEvents.map(e=>e.category))];
+  document.getElementById('event-filters').innerHTML = cats.map(c=>
+    `<div class="filter-chip ${c===activeFilter?'active':''}" onclick="setFilter('${c}')">${c}</div>`
+  ).join('');
+}
+function setFilter(cat){ activeFilter=cat; renderEventFilters(); renderEvents(); }
 
-            function setAdminDay(d) { adminActiveDay = d;
-                renderAdminDayTabs(); }
+function renderEvents(){
+  campEvents.sort((a,b)=>a.timeVal-b.timeVal);
+  if(campEvents.length>0){
+    nextEventTimestamp = campEvents[0].timeVal;
+    document.getElementById('next-event-name').innerText = campEvents[0].title;
+    document.getElementById('next-event-time-desc').innerHTML = `<i class="fa-solid fa-location-dot"></i> ${campEvents[0].location} &bull; <i class="fa-regular fa-clock"></i> ${campEvents[0].date}`;
+    document.getElementById('next-event-tag').innerText = campEvents[0].category;
+  }
+  const list = activeFilter==='All' ? campEvents : campEvents.filter(e=>e.category===activeFilter);
+  document.getElementById('events-container').innerHTML = list.map(ev=>`
+    <div class="event-row">
+      <div class="event-icon"><i class="fa-solid ${ev.icon}"></i></div>
+      <div class="event-body">
+        <h4>${ev.live?'<span class=\"live-dot\"></span>':''}${ev.title}</h4>
+        <div class="meta">
+          <span><i class="fa-regular fa-calendar-days"></i> ${ev.date}</span>
+          <span><i class="fa-solid fa-location-dot"></i> ${ev.location}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
 
-            function renderAdminDiningFields() {
-                const menu = weekMenu[adminActiveDay];
-                document.getElementById('admin-dining-fields').innerHTML = Object.keys(menu).map(meal => `
-                <label>${meal} Items (comma separated)</label>
-                <input type="text" class="form-control" id="admin-meal-${meal}" value="${menu[meal].join(', ')}">
-              `).join('');
-            }
+function switchTab(tabId){
+  if(window.innerWidth>768) return;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+tabId).classList.add('active');
+  document.getElementById('nav-'+tabId).classList.add('active');
+  document.getElementById('main-scroll-container').scrollTop=0;
+  if(tabId==='facility' && leafletMap) setTimeout(()=>leafletMap.invalidateSize(),150);
+}
 
-            function saveDiningDay() {
-                const menu = weekMenu[adminActiveDay];
-                Object.keys(menu).forEach(meal => {
-                    const val = document.getElementById('admin-meal-' + meal).value;
-                    weekMenu[adminActiveDay][meal] = val.split(',').map(s => s.trim()).filter(Boolean);
-                });
-                if (adminActiveDay === activeDay) renderDining();
-                triggerToast('Menu Updated', adminActiveDay + ' menu saved.');
-            }
+let clickCount=0, clickTimer=null;
+function handleLocationClick(){
+  clickCount++;
+  if(clickTimer) clearTimeout(clickTimer);
+  if(clickCount===3){
+    clickCount=0;
+    openModal('admin-modal');
+    triggerToast('Admin Mode','Unlocked Secret Camp Control Panel.');
+  } else {
+    clickTimer=setTimeout(()=>{ clickCount=0; },400);
+  }
+}
 
-            function saveGeneralSettings() {
-                campData.name = document.getElementById('input-camp-name').value;
-                campData.region = document.getElementById('input-camp-region').value;
-                manualWeather.override = document.getElementById('input-weather-override').checked;
-                manualWeather.condition = document.getElementById('input-weather-condition').value;
-                manualWeather.temp = document.getElementById('input-camp-temp').value;
-                document.getElementById('header-location-name').innerText = campData.name;
-                document.getElementById('about-camp-title').innerText = campData.name;
-                document.getElementById('about-camp-region').innerText = campData.region;
-                renderStatusStrip();
-                closeModal('admin-modal');
-                triggerToast('Settings Updated', 'Camp facility details saved.');
-            }
+function openModal(id){ document.getElementById(id).style.display='flex'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
 
-            function saveAboutSettings() {
-                aboutData.desc = document.getElementById('input-about-desc').value;
-                aboutData.production = document.getElementById('input-stat-production').value;
-                aboutData.personnel = document.getElementById('input-stat-personnel').value;
-                aboutData.companies_count = document.getElementById('input-stat-companies').value;
-                aboutData.established = document.getElementById('input-stat-established').value;
-                const histLines = document.getElementById('input-history').value.split('\n').filter(Boolean);
-                aboutData.history = histLines.map(line => {
-                    const [title, ...rest] = line.split('|');
-                    return { title: (title || '').trim(), desc: (rest.join('|') || '').trim() };
-                });
-                const compLines = document.getElementById('input-companies').value.split('\n').filter(Boolean);
-                aboutData.companies = compLines.map(c => c.trim());
-                renderAboutSection();
-                closeModal('admin-modal');
-                triggerToast('Site Info Updated', 'About page content saved.');
-            }
+function switchAdminTab(tab, el){
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.admin-content').forEach(c=>c.style.display='none');
+  el.classList.add('active');
+  document.getElementById('admin-tab-'+tab).style.display='block';
+}
 
-            function triggerToast(title, msg) {
-                const toast = document.getElementById('toast');
-                document.getElementById('toast-title').innerText = title;
-                document.getElementById('toast-body').innerText = msg;
-                toast.style.display = 'block';
-                setTimeout(() => { toast.style.display = 'none'; }, 4000);
-            }
-        </script>
-    </body>
+function initFacilityMap(){
+  if(typeof L === 'undefined'){
+    document.getElementById('leaflet-map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:16px;text-align:center;font-size:0.75rem;color:var(--text-dim);"><span><i class="fa-solid fa-map-location-dot" style="display:block;font-size:1.4rem;margin-bottom:8px;color:var(--text-dim);"></i>Map library failed to load — check your internet connection and reload.</span></div>';
+    return;
+  }
+  leafletMap = L.map('leaflet-map', {zoomControl:false, attributionControl:true}).setView([CAMP_LAT, CAMP_LNG], 16);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
+  }).addTo(leafletMap);
+  L.control.zoom({position:'bottomright'}).addTo(leafletMap);
+  renderMapMarkers();
+}
+
+function renderMapMarkers(){
+  if(!leafletMap) return;
+  leafletMarkers.forEach(m=>leafletMap.removeLayer(m));
+  leafletMarkers = [];
+  mapPlaces.forEach(p=>{
+    const icon = L.divIcon({
+      className:'',
+      html:`<div class="geo-pin" style="background:${p.color};"><i class="fa-solid ${p.icon}"></i></div>`,
+      iconSize:[28,28], iconAnchor:[14,28]
+    });
+    const marker = L.marker([p.lat,p.lng], {icon}).addTo(leafletMap);
+    marker.bindPopup(`<strong>${p.name}</strong><br>${p.info.replace('\n','<br>')}`);
+    marker.on('click', ()=> showMapInfo(p.name,p.info));
+    leafletMarkers.push(marker);
+  });
+}
+
+function showMapInfo(title,info){
+  document.getElementById('map-details-box').innerHTML=`<strong>${title}</strong><br>${info.replace('\n','<br>')}`;
+}
+function renderFacilityList(){
+  const container = document.getElementById('facility-list-container');
+  container.innerHTML = mapPlaces.map(p=>{
+    const firstLine = p.info.split('\n')[0];
+    return `<div class="facility-list-row" onclick="focusFacility(${p.id})">
+      <span class="fl-name"><i class="fa-solid ${p.icon}"></i>${p.name}</span>
+      <span class="fl-time">${firstLine.replace('Timing: ','')}</span>
+    </div>`;
+  }).join('');
+}
+function focusFacility(id){
+  const p = mapPlaces.find(pl=>pl.id===id);
+  if(!p) return;
+  showMapInfo(p.name, p.info);
+  if(leafletMap){ leafletMap.setView([p.lat,p.lng], 18); }
+}
+
+function renderDayTabs(){
+  const days = Object.keys(weekMenu);
+  document.getElementById('day-tabs').innerHTML = days.map(d=>
+    `<div class="day-tab ${d===activeDay?'active':''}" onclick="setDay('${d}')">${d}</div>`
+  ).join('');
+}
+function setDay(d){ activeDay=d; renderDayTabs(); renderDining(); }
+function renderDining(){
+  const menu = weekMenu[activeDay];
+  const times = {Breakfast:'04:30 – 08:00',Lunch:'12:00 – 14:00',Dinner:'17:00 – 21:00'};
+  const icons = {Breakfast:'fa-mug-hot',Lunch:'fa-bowl-food',Dinner:'fa-utensils'};
+  document.getElementById('dining-container').innerHTML = Object.keys(menu).map(meal=>`
+    <div class="meal-block">
+      <h5><i class="fa-solid ${icons[meal]}" style="color:var(--amber);"></i> ${meal} <span class="meal-time">· ${times[meal]}</span></h5>
+      <div class="food-row">${menu[meal].map(item=>`<span class="food-chip">${item}</span>`).join('')}</div>
+    </div>`).join('');
+}
+
+function renderTransport(){
+  document.getElementById('transport-container').innerHTML = transportSchedule.map(t=>`
+    <div class="transport-row">
+      <div class="t-top">
+        <h4>${t.name}</h4>
+        <span class="pill ${t.status==='upcoming'?'pill-amber':'pill-live'}">${t.time}</span>
+      </div>
+      <p><i class="fa-solid fa-route"></i> ${t.route}</p>
+    </div>`).join('');
+}
+
+function renderNumbers(){
+  const groups = {emergency:'Emergency',ops:'Operations',services:'Camp Services'};
+  const container=document.getElementById('numbers-container');
+  let html='';
+  Object.keys(groups).forEach(catKey=>{
+    const items = contactNumbers.filter(n=>n.cat===catKey);
+    if(items.length===0) return;
+    html += `<div class="numbers-group"><h5>${groups[catKey]}</h5>`;
+    items.forEach(n=>{
+      const isEmerg = n.cat==='emergency';
+      html += `
+        <div class="contact-card">
+          <div class="contact-info">
+            <div class="contact-icon" style="background:${isEmerg?'var(--red-soft)':'var(--amber-soft)'};color:${isEmerg?'var(--red)':'var(--amber)'};">
+              <i class="fa-solid ${isEmerg?'fa-hospital':'fa-phone'}"></i>
+            </div>
+            <div><h4>${n.title}</h4><p>${n.sub}</p></div>
+          </div>
+          <a href="tel:${n.phone}" class="call-btn ${isEmerg?'call-btn-danger':''}"><i class="fa-solid fa-phone"></i></a>
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  container.innerHTML = html;
+}
+
+function pushNewAnnouncement(){
+  const title = document.getElementById('input-notif-title').value.trim();
+  const desc = document.getElementById('input-notif-desc').value.trim();
+  const location = document.getElementById('input-notif-location').value.trim();
+  if(!title || !desc) { triggerToast('Missing Info','Please add a title and message.'); return; }
+  const today = new Date().toISOString().split('T')[0];
+  campAnnouncements.unshift({id:Date.now(), title, desc, date:today, location: location || 'Camp Admin'});
+  document.getElementById('input-notif-title').value='';
+  document.getElementById('input-notif-desc').value='';
+  document.getElementById('input-notif-location').value='';
+  announcementsExpanded=false;
+  renderAnnouncements();
+  renderAdminAnnouncementsList();
+  closeModal('admin-modal');
+  triggerToast('Announcement Pushed','Camp broadcast updated successfully.');
+}
+function deleteAnnouncement(id){
+  campAnnouncements = campAnnouncements.filter(a=>a.id!==id);
+  renderAnnouncements();
+  renderAdminAnnouncementsList();
+}
+function renderAdminAnnouncementsList(){
+  const container = document.getElementById('admin-announcements-list');
+  const sorted = [...campAnnouncements].sort((a,b)=> new Date(b.date)-new Date(a.date));
+  container.innerHTML = sorted.map(a=>`
+    <div class="admin-block" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+      <div>
+        <div style="font-size:0.8rem;font-weight:600;">${a.title}</div>
+        <div style="font-size:0.68rem;color:var(--text-dim);font-family:var(--font-mono);">${formatDate(a.date)} · ${a.location}</div>
+      </div>
+      <div class="icon-btn" style="width:32px;height:32px;color:var(--red);" onclick="deleteAnnouncement(${a.id})"><i class="fa-solid fa-trash"></i></div>
+    </div>`).join('');
+}
+
+function renderAdminLists(){
+  const eventsContainer=document.getElementById('admin-events-list');
+  if(eventsContainer){
+    let e='';
+    campEvents.forEach((ev,idx)=>{
+      e+=`<div class="admin-block">
+        <label>Event Title</label>
+        <input type="text" class="form-control" value="${ev.title}" onchange="campEvents[${idx}].title=this.value; renderEvents();" style="margin-bottom:6px;">
+        <label>Location & Time Note</label>
+        <input type="text" class="form-control" value="${ev.date}" onchange="campEvents[${idx}].date=this.value; renderEvents();" style="margin-bottom:0;">
+      </div>`;
+    });
+    eventsContainer.innerHTML=e;
+  }
+  const placesContainer=document.getElementById('admin-places-list');
+  if(placesContainer){
+    let p='';
+    mapPlaces.forEach((pl,idx)=>{
+      p+=`<div class="admin-block">
+        <label>Facility Name</label>
+        <input type="text" class="form-control" value="${pl.name}" onchange="mapPlaces[${idx}].name=this.value; renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
+        <label>Timing / Info (shown to residents)</label>
+        <input type="text" class="form-control" value="${pl.info.replace(/\n/g,' | ')}" onchange="mapPlaces[${idx}].info=this.value.replace(/ \\| /g,'\\n'); renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
+        <label>Latitude (map pin only)</label>
+        <input type="text" class="form-control" value="${pl.lat}" onchange="mapPlaces[${idx}].lat=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:6px;">
+        <label>Longitude (map pin only)</label>
+        <input type="text" class="form-control" value="${pl.lng}" onchange="mapPlaces[${idx}].lng=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:0;">
+      </div>`;
+    });
+    placesContainer.innerHTML=p;
+  }
+  const transportContainer=document.getElementById('admin-transport-list');
+  if(transportContainer){
+    let t='';
+    transportSchedule.forEach((tr,idx)=>{
+      t+=`<div class="admin-block">
+        <label>Shuttle Name</label>
+        <input type="text" class="form-control" value="${tr.name}" onchange="transportSchedule[${idx}].name=this.value; renderTransport();" style="margin-bottom:6px;">
+        <label>Route</label>
+        <input type="text" class="form-control" value="${tr.route}" onchange="transportSchedule[${idx}].route=this.value; renderTransport();" style="margin-bottom:6px;">
+        <label>Time / Status</label>
+        <input type="text" class="form-control" value="${tr.time}" onchange="transportSchedule[${idx}].time=this.value; renderTransport();" style="margin-bottom:0;">
+      </div>`;
+    });
+    transportContainer.innerHTML=t;
+  }
+  const numbersContainer=document.getElementById('admin-numbers-list');
+  if(numbersContainer){
+    let n='';
+    contactNumbers.forEach((num,idx)=>{
+      n+=`<div class="admin-block" style="display:flex;gap:8px;">
+        <input type="text" class="form-control" value="${num.title}" onchange="contactNumbers[${idx}].title=this.value; renderNumbers();" style="margin-bottom:0;flex:2;">
+        <input type="text" class="form-control" value="${num.phone}" onchange="contactNumbers[${idx}].phone=this.value; renderNumbers();" style="margin-bottom:0;flex:1;">
+      </div>`;
+    });
+    numbersContainer.innerHTML=n;
+  }
+  document.getElementById('input-history').value = aboutData.history.map(h=>`${h.title} | ${h.desc}`).join('\n');
+  document.getElementById('input-companies').value = aboutData.companies.join('\n');
+  document.getElementById('input-about-desc').value = aboutData.desc;
+  document.getElementById('input-stat-production').value = aboutData.production;
+  document.getElementById('input-stat-personnel').value = aboutData.personnel;
+  document.getElementById('input-stat-companies').value = aboutData.companies_count;
+  document.getElementById('input-stat-established').value = aboutData.established;
+  document.getElementById('input-owm-key').value = owmApiKey;
+  document.getElementById('input-weather-override').checked = manualWeather.override;
+  document.getElementById('input-weather-condition').value = manualWeather.condition;
+  document.getElementById('input-camp-temp').value = manualWeather.temp;
+  renderAdminDayTabs();
+  renderAdminAnnouncementsList();
+  renderAdminPrayerFields();
+}
+
+function renderAdminPrayerFields(){
+  document.getElementById('admin-prayer-fields').innerHTML = prayerTimes.map((p,idx)=>`
+    <label>${p.name}</label>
+    <input type="text" class="form-control" id="admin-prayer-${idx}" value="${p.time}">
+  `).join('');
+}
+
+function renderAdminDayTabs(){
+  const days = Object.keys(weekMenu);
+  document.getElementById('admin-day-tabs').innerHTML = days.map(d=>
+    `<div class="day-tab ${d===adminActiveDay?'active':''}" onclick="setAdminDay('${d}')">${d}</div>`
+  ).join('');
+  renderAdminDiningFields();
+}
+function setAdminDay(d){ adminActiveDay=d; renderAdminDayTabs(); }
+function renderAdminDiningFields(){
+  const menu = weekMenu[adminActiveDay];
+  document.getElementById('admin-dining-fields').innerHTML = Object.keys(menu).map(meal=>`
+    <label>${meal} Items (comma separated)</label>
+    <input type="text" class="form-control" id="admin-meal-${meal}" value="${menu[meal].join(', ')}">
+  `).join('');
+}
+function saveDiningDay(){
+  const menu = weekMenu[adminActiveDay];
+  Object.keys(menu).forEach(meal=>{
+    const val = document.getElementById('admin-meal-'+meal).value;
+    weekMenu[adminActiveDay][meal] = val.split(',').map(s=>s.trim()).filter(Boolean);
+  });
+  if(adminActiveDay===activeDay) renderDining();
+  triggerToast('Menu Updated', adminActiveDay+' menu saved.');
+}
+
+function saveGeneralSettings(){
+  campData.name=document.getElementById('input-camp-name').value;
+  campData.region=document.getElementById('input-camp-region').value;
+  manualWeather.override = document.getElementById('input-weather-override').checked;
+  manualWeather.condition = document.getElementById('input-weather-condition').value;
+  manualWeather.temp = document.getElementById('input-camp-temp').value;
+  const newKey = document.getElementById('input-owm-key').value.trim();
+  const keyChanged = newKey !== owmApiKey;
+  owmApiKey = newKey;
+  localStorage.setItem('basecamp_owm_key', owmApiKey);
+  document.getElementById('header-location-name').innerText=campData.name;
+  document.getElementById('about-camp-title').innerText=campData.name;
+  document.getElementById('about-camp-region').innerText=campData.region;
+  renderStatusStrip();
+  if(keyChanged) fetchLiveWeather();
+  closeModal('admin-modal');
+  triggerToast('Settings Updated','Camp facility details saved.');
+}
+
+function saveAboutSettings(){
+  aboutData.desc = document.getElementById('input-about-desc').value;
+  aboutData.production = document.getElementById('input-stat-production').value;
+  aboutData.personnel = document.getElementById('input-stat-personnel').value;
+  aboutData.companies_count = document.getElementById('input-stat-companies').value;
+  aboutData.established = document.getElementById('input-stat-established').value;
+  const histLines = document.getElementById('input-history').value.split('\n').filter(Boolean);
+  aboutData.history = histLines.map(line=>{
+    const [title,...rest] = line.split('|');
+    return {title:(title||'').trim(), desc:(rest.join('|')||'').trim()};
+  });
+  const compLines = document.getElementById('input-companies').value.split('\n').filter(Boolean);
+  aboutData.companies = compLines.map(c=>c.trim());
+  renderAboutSection();
+  closeModal('admin-modal');
+  triggerToast('Site Info Updated','About page content saved.');
+}
+
+function triggerToast(title,msg){
+  const toast=document.getElementById('toast');
+  document.getElementById('toast-title').innerText=title;
+  document.getElementById('toast-body').innerText=msg;
+  toast.style.display='block';
+  setTimeout(()=>{toast.style.display='none';},4000);
+}
+</script>
+</body>
 </html>
