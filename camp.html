@@ -210,6 +210,10 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
 .admin-tab{flex:1;text-align:center;padding:8px 6px;font-size:0.62rem;font-weight:700;border-radius:8px;color:var(--text-muted);cursor:pointer;white-space:nowrap;font-family:var(--font-mono);}
 .admin-tab.active{background:var(--amber);color:#1a0d02;}
 .admin-block{background:var(--surface-2);padding:10px;border-radius:10px;margin-bottom:8px;border:1px solid var(--border-soft);}
+.icon-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;}
+.icon-picker-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--border-soft);border-radius:9px;color:var(--text-muted);font-size:0.95rem;cursor:pointer;}
+.icon-picker-btn.selected{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+.facility-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;}
 
 .nav-bar{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;background:rgba(18,24,38,0.92);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:22px;display:flex;justify-content:space-around;padding:9px 0;box-shadow:0 14px 34px rgba(0,0,0,0.75);z-index:50;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease;}
 .nav-bar.nav-hidden{transform:translateY(100px);opacity:0;pointer-events:none;}
@@ -485,6 +489,19 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
 
       <div id="admin-tab-facility" class="admin-content" style="display:none;">
         <p class="note-text">Coordinates position the pin on the map only — they're never shown in the resident-facing facility list, just the name and hours.</p>
+        <div class="section-label">Add New Facility</div>
+        <label>Facility Name</label>
+        <input type="text" id="new-facility-name" class="form-control" placeholder="e.g. Camp Laundry">
+        <label>Icon</label>
+        <div class="icon-picker" id="new-facility-icon-picker"></div>
+        <label>Timing / Info (shown to residents)</label>
+        <input type="text" id="new-facility-info" class="form-control" placeholder="e.g. Timing: 08:00 – 20:00">
+        <label>Latitude</label>
+        <input type="text" id="new-facility-lat" class="form-control" placeholder="e.g. 22.8750">
+        <label>Longitude</label>
+        <input type="text" id="new-facility-lng" class="form-control" placeholder="e.g. 55.3700">
+        <button class="btn-primary" onclick="addNewFacility()">Add Facility</button>
+        <div class="section-label">Existing Facilities</div>
         <div id="admin-places-list"></div>
       </div>
 
@@ -653,6 +670,11 @@ let mapPlaces = [
 ];
 let leafletMap = null;
 let leafletMarkers = [];
+const FACILITY_ICONS = ['fa-utensils','fa-kit-medical','fa-dumbbell','fa-people-group','fa-mosque','fa-bus',
+  'fa-warehouse','fa-building','fa-shirt','fa-broom','fa-droplet','fa-bed','fa-book','fa-gamepad',
+  'fa-futbol','fa-wifi','fa-store','fa-screwdriver-wrench','fa-shield-halved','fa-car','fa-gas-pump','fa-tree'];
+const FACILITY_COLORS = ['#ff7a1a','#f0453d','#2dd4bf','#c9a876','#3b82f6','#a78bfa'];
+let newFacilitySelectedIcon = FACILITY_ICONS[0];
 
 let contactNumbers = [
   {id:1,title:'Camp Medical Clinic',phone:'999',sub:'Emergency Doctor & Ambulance',cat:'emergency'},
@@ -734,6 +756,7 @@ window.onload = function(){
   renderTransport();
   renderNumbers();
   renderAdminLists();
+  renderNewFacilityIconPicker();
   applyLanguage(currentLang);
   setInterval(updateCountdown,1000);
   setInterval(()=>{ document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); },1000);
@@ -1014,9 +1037,12 @@ function initFacilityMap(){
     document.getElementById('leaflet-map').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:16px;text-align:center;font-size:0.75rem;color:var(--text-dim);"><span><i class="fa-solid fa-map-location-dot" style="display:block;font-size:1.4rem;margin-bottom:8px;color:var(--text-dim);"></i>Map library failed to load — check your internet connection and reload.</span></div>';
     return;
   }
-  leafletMap = L.map('leaflet-map', {zoomControl:false, attributionControl:true}).setView([CAMP_LAT, CAMP_LNG], 16);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
+  leafletMap = L.map('leaflet-map', {zoomControl:false, attributionControl:true}).setView([CAMP_LAT, CAMP_LNG], 17);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics', maxZoom:19
+  }).addTo(leafletMap);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom:19, opacity:0.9
   }).addTo(leafletMap);
   L.control.zoom({position:'bottomright'}).addTo(leafletMap);
   renderMapMarkers();
@@ -1148,6 +1174,50 @@ function renderAdminAnnouncementsList(){
     </div>`).join('');
 }
 
+function setFacilityIcon(idx, icon){
+  mapPlaces[idx].icon = icon;
+  renderMapMarkers();
+  renderFacilityList();
+  renderAdminLists();
+}
+function deleteFacility(id){
+  mapPlaces = mapPlaces.filter(p=>p.id!==id);
+  renderMapMarkers();
+  renderFacilityList();
+  renderAdminLists();
+}
+function renderNewFacilityIconPicker(){
+  const el = document.getElementById('new-facility-icon-picker');
+  if(!el) return;
+  el.innerHTML = FACILITY_ICONS.map(ic=>`<div class="icon-picker-btn ${ic===newFacilitySelectedIcon?'selected':''}" onclick="selectNewFacilityIcon('${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('');
+}
+function selectNewFacilityIcon(icon){
+  newFacilitySelectedIcon = icon;
+  renderNewFacilityIconPicker();
+}
+function addNewFacility(){
+  const name = document.getElementById('new-facility-name').value.trim();
+  const info = document.getElementById('new-facility-info').value.trim();
+  const lat = parseFloat(document.getElementById('new-facility-lat').value);
+  const lng = parseFloat(document.getElementById('new-facility-lng').value);
+  if(!name || !info || isNaN(lat) || isNaN(lng)){
+    triggerToast('Missing Info','Please fill in name, info, and valid coordinates.');
+    return;
+  }
+  const color = FACILITY_COLORS[mapPlaces.length % FACILITY_COLORS.length];
+  mapPlaces.push({id:Date.now(), name, icon:newFacilitySelectedIcon, color, lat, lng, info});
+  document.getElementById('new-facility-name').value='';
+  document.getElementById('new-facility-info').value='';
+  document.getElementById('new-facility-lat').value='';
+  document.getElementById('new-facility-lng').value='';
+  newFacilitySelectedIcon = FACILITY_ICONS[0];
+  renderNewFacilityIconPicker();
+  renderMapMarkers();
+  renderFacilityList();
+  renderAdminLists();
+  triggerToast('Facility Added', name+' added to the camp map.');
+}
+
 function renderAdminLists(){
   const eventsContainer=document.getElementById('admin-events-list');
   if(eventsContainer){
@@ -1167,8 +1237,13 @@ function renderAdminLists(){
     let p='';
     mapPlaces.forEach((pl,idx)=>{
       p+=`<div class="admin-block">
-        <label>Facility Name</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="margin:0;">Facility Name</label>
+          <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteFacility(${pl.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+        </div>
         <input type="text" class="form-control" value="${pl.name}" onchange="mapPlaces[${idx}].name=this.value; renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
+        <label>Icon</label>
+        <div class="icon-picker">${FACILITY_ICONS.map(ic=>`<div class="icon-picker-btn ${ic===pl.icon?'selected':''}" onclick="setFacilityIcon(${idx},'${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('')}</div>
         <label>Timing / Info (shown to residents)</label>
         <input type="text" class="form-control" value="${pl.info.replace(/\n/g,' | ')}" onchange="mapPlaces[${idx}].info=this.value.replace(/ \\| /g,'\\n'); renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
         <label>Latitude (map pin only)</label>
