@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Prayer Times Fetcher</title>
+    <style>
+        :root {
+            --primary-color: #0d5c3a;
+            --accent-color: #d4af37;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 5px 0;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #083e27;
+        }
+
+        #status {
+            text-align: center;
+            font-weight: bold;
+            margin: 15px 0;
+            color: #555;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f5f2;
+        }
+
+        .error-msg {
+            color: #d9534f;
+            text-align: center;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>MARA Prayer Times Fetcher</h1>
+        <div class="subtitle">Ministry of Endowments and Religious Affairs (Oman)</div>
+    </header>
+
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="cityId">City ID:</label>
+            <input type="number" id="cityId" value="13" placeholder="13 (Lekhwair)">
+        </div>
+
+        <div class="form-group">
+            <label for="year">Year:</label>
+            <input type="number" id="year" value="2026">
+        </div>
+
+        <div class="form-group">
+            <label for="month">Month:</label>
+            <select id="month">
+                <option value="1">January (1)</option>
+                <option value="2">February (2)</option>
+                <option value="3">March (3)</option>
+                <option value="4">April (4)</option>
+                <option value="5">May (5)</option>
+                <option value="6">June (6)</option>
+                <option value="7">July (7)</option>
+                <option value="8">August (8)</option>
+                <option value="9" selected>September (9)</option>
+                <option value="10">October (10)</option>
+                <option value="11">November (11)</option>
+                <option value="12">December (12)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="day">Day (Optional):</label>
+            <input type="number" id="day" min="1" max="31" placeholder="All Days">
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="fetchBtn" onclick="loadPrayerTimes()">Fetch Schedule</button>
+    </div>
+
+    <div id="status">Select parameters and click "Fetch Schedule".</div>
+
+    <div class="table-wrapper">
+        <table id="prayerTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Day / Date</th>
+                    <th>Fajr</th>
+                    <th>Sunrise</th>
+                    <th>Dhuhr</th>
+                    <th>Asr</th>
+                    <th>Maghrib</th>
+                    <th>Isha</th>
+                </tr>
+            </thead>
+            <tbody id="prayerTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Replace with your actual Cloudflare Worker URL
+    const WORKER_URL = "https://mara-cors-proxy.YOUR_SUBDOMAIN.workers.dev";
+
+    async function loadPrayerTimes() {
+        const statusEl = document.getElementById('status');
+        const tableEl = document.getElementById('prayerTable');
+        const tbodyEl = document.getElementById('prayerTableBody');
+        const btn = document.getElementById('fetchBtn');
+
+        const cityId = document.getElementById('cityId').value.trim();
+        const year = document.getElementById('year').value.trim();
+        const month = document.getElementById('month').value;
+        const day = document.getElementById('day').value.trim();
+
+        if (!cityId || !year || !month) {
+            alert("Please enter valid City ID, Year, and Month.");
+            return;
+        }
+
+        // Build dynamic query parameters
+        const queryParams = new URLSearchParams({
+            CityID: cityId,
+            Month: month,
+            Year: year
+        });
+
+        if (day) {
+            queryParams.append('Day', day);
+        }
+
+        const fetchUrl = `${WORKER_URL}?${queryParams.toString()}`;
+
+        statusEl.innerHTML = "Fetching data via Cloudflare Worker...";
+        statusEl.style.color = "#555";
+        btn.disabled = true;
+        tbodyEl.innerHTML = "";
+
+        try {
+            const response = await fetch(fetchUrl);
+            
+            if (!response.ok) {
+                throw new Error(`Proxy status error: ${response.status}`);
+            }
+
+            const htmlText = await response.text();
+            
+            // Parse HTML response from worker
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+
+            const sourceTable = doc.querySelector('table');
+
+            if (!sourceTable) {
+                throw new Error("Could not find prayer timetable in response.");
+            }
+
+            const rows = sourceTable.querySelectorAll('tr');
+            let rowsParsed = 0;
+
+            rows.forEach((row, index) => {
+                const cols = row.querySelectorAll('td, th');
+                
+                if (cols.length >= 6 && index > 0) {
+                    const tr = document.createElement('tr');
+                    
+                    cols.forEach(col => {
+                        const td = document.createElement('td');
+                        td.textContent = col.textContent.trim();
+                        tr.appendChild(td);
+                    });
+
+                    tbodyEl.appendChild(tr);
+                    rowsParsed++;
+                }
+            });
+
+            if (rowsParsed > 0) {
+                statusEl.innerHTML = `Loaded prayer times for City ID: ${cityId} (${month}/${year}${day ? '/' + day : ''}).`;
+                statusEl.style.color = "#0d5c3a";
+                tableEl.style.display = "table";
+            } else {
+                statusEl.innerHTML = "Received response, but table rows could not be structured.";
+            }
+
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            statusEl.innerHTML = `<span class="error-msg">Failed to retrieve data.<br><small>${error.message}</small></span>`;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
