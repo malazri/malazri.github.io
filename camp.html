@@ -210,10 +210,16 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
 .admin-tab{flex:1;text-align:center;padding:8px 6px;font-size:0.62rem;font-weight:700;border-radius:8px;color:var(--text-muted);cursor:pointer;white-space:nowrap;font-family:var(--font-mono);}
 .admin-tab.active{background:var(--amber);color:#1a0d02;}
 .admin-block{background:var(--surface-2);padding:10px;border-radius:10px;margin-bottom:8px;border:1px solid var(--border-soft);}
-.icon-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;}
-.icon-picker-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--border-soft);border-radius:9px;color:var(--text-muted);font-size:0.95rem;cursor:pointer;}
+.icon-dropdown{margin-bottom:10px;}
+.icon-dropdown-toggle{width:100%;display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);color:var(--text);font-size:0.83rem;cursor:pointer;font-family:var(--font-body);}
+.icon-dropdown-toggle span{display:flex;align-items:center;gap:8px;}
+.icon-dropdown-toggle i.fa-chevron-down{font-size:0.7rem;color:var(--text-dim);transition:transform 0.15s;}
+.icon-picker{display:none;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px;padding:8px;background:var(--surface-3);border-radius:10px;border:1px solid var(--border-soft);}
+.icon-picker.open{display:grid;}
+.icon-picker-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border-soft);border-radius:9px;color:var(--text-muted);font-size:0.95rem;cursor:pointer;}
 .icon-picker-btn.selected{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
 .facility-color-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+#picker-map{width:100%;height:100%;}
 
 .nav-bar{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;background:rgba(18,24,38,0.92);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:22px;display:flex;justify-content:space-around;padding:9px 0;box-shadow:0 14px 34px rgba(0,0,0,0.75);z-index:50;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1),opacity 0.3s ease;}
 .nav-bar.nav-hidden{transform:translateY(100px);opacity:0;pointer-events:none;}
@@ -446,8 +452,9 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
       </div>
 
       <div id="admin-tab-prayer" class="admin-content" style="display:none;">
-        <p class="note-text">Live sync tries mara.gov.om two ways — first via allorigins.win, then via cors-anywhere.herokuapp.com — before falling back to Aladhan (a stable structured API). Note: cors-anywhere's public demo only works in a browser that has already clicked "Request temporary access" at cors-anywhere.herokuapp.com/corsdemo, and that access expires — so it's a manual convenience for whoever runs this sync, not something residents' own devices could rely on. mara.gov.om's page markup also isn't publicly documented and its robots.txt asks bots not to crawl it, so parsing is best-effort. Review the times below before saving — manual edits always win.</p>
+        <p class="note-text">Live sync tries mara.gov.om two ways — first via allorigins.win, then via cors-anywhere.herokuapp.com — before falling back to Aladhan (a stable structured API). I genuinely can't verify mara.gov.om's page markup myself (it blocks automated tools, including mine, from fetching it), so the parser below is a best-effort guess, not something I've confirmed works. The log shows exactly what happens at each step — if it keeps failing, screenshot that log (or better, open the page yourself and paste a snippet of its HTML) and share it so the parser can be fixed against the real markup instead of a guess.</p>
         <button class="btn-secondary" onclick="attemptPrayerSync()"><i class="fa-solid fa-rotate"></i> Sync Prayer Times</button>
+        <div id="prayer-sync-log" class="note-text" style="background:var(--surface-2);border-radius:8px;padding:8px 10px;margin:8px 0;white-space:pre-wrap;font-family:var(--font-mono);display:none;"></div>
         <div id="admin-prayer-fields"></div>
         <button class="btn-primary" onclick="savePrayerTimes()">Save Prayer Times</button>
       </div>
@@ -483,7 +490,17 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
       </div>
 
       <div id="admin-tab-events" class="admin-content" style="display:none;">
-        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage camp events and schedules.</p>
+        <div class="section-label">Add New Event</div>
+        <label>Event Title</label>
+        <input type="text" id="new-event-title" class="form-control" placeholder="e.g. Volleyball Tournament">
+        <label>Category</label>
+        <input type="text" id="new-event-category" class="form-control" placeholder="e.g. Sports">
+        <label>Location & Time Note</label>
+        <input type="text" id="new-event-date" class="form-control" placeholder="e.g. Saturday, 19:00">
+        <label>Location</label>
+        <input type="text" id="new-event-location" class="form-control" placeholder="e.g. Main Sports Ground">
+        <button class="btn-primary" onclick="addNewEvent()">Add Event</button>
+        <div class="section-label">Existing Events</div>
         <div id="admin-events-list"></div>
       </div>
 
@@ -493,13 +510,18 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
         <label>Facility Name</label>
         <input type="text" id="new-facility-name" class="form-control" placeholder="e.g. Camp Laundry">
         <label>Icon</label>
-        <div class="icon-picker" id="new-facility-icon-picker"></div>
+        <div class="icon-dropdown">
+          <button type="button" class="icon-dropdown-toggle" id="new-facility-icon-toggle" onclick="toggleIconDropdown('new-facility-icon-picker')"><span><i class="fa-solid fa-utensils" id="new-facility-icon-preview"></i> Choose Icon</span><i class="fa-solid fa-chevron-down"></i></button>
+          <div class="icon-picker" id="new-facility-icon-picker"></div>
+        </div>
         <label>Timing / Info (shown to residents)</label>
         <input type="text" id="new-facility-info" class="form-control" placeholder="e.g. Timing: 08:00 – 20:00">
-        <label>Latitude</label>
-        <input type="text" id="new-facility-lat" class="form-control" placeholder="e.g. 22.8750">
-        <label>Longitude</label>
-        <input type="text" id="new-facility-lng" class="form-control" placeholder="e.g. 55.3700">
+        <label>Location</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input type="text" id="new-facility-lat" class="form-control" placeholder="Latitude" style="margin-bottom:0;">
+          <input type="text" id="new-facility-lng" class="form-control" placeholder="Longitude" style="margin-bottom:0;">
+        </div>
+        <button class="btn-secondary" onclick="openLocationPicker('new')"><i class="fa-solid fa-map-location-dot"></i> Pick Location on Map</button>
         <button class="btn-primary" onclick="addNewFacility()">Add Facility</button>
         <div class="section-label">Existing Facilities</div>
         <div id="admin-places-list"></div>
@@ -513,14 +535,50 @@ label{display:block;font-size:0.7rem;color:var(--text-muted);margin-bottom:4px;f
       </div>
 
       <div id="admin-tab-transport" class="admin-content" style="display:none;">
-        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage shuttle routes and departure times.</p>
+        <div class="section-label">Add New Shuttle</div>
+        <label>Shuttle Name</label>
+        <input type="text" id="new-transport-name" class="form-control" placeholder="e.g. Weekend Town Run">
+        <label>Route</label>
+        <input type="text" id="new-transport-route" class="form-control" placeholder="e.g. Camp → Ibri Town">
+        <label>Time / Status</label>
+        <input type="text" id="new-transport-time" class="form-control" placeholder="e.g. Sat, 09:00">
+        <button class="btn-primary" onclick="addNewTransport()">Add Shuttle</button>
+        <div class="section-label">Existing Shuttles</div>
         <div id="admin-transport-list"></div>
       </div>
 
       <div id="admin-tab-numbers" class="admin-content" style="display:none;">
-        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:10px;">Manage emergency and helpdesk numbers.</p>
+        <div class="section-label">Add New Contact</div>
+        <label>Title</label>
+        <input type="text" id="new-contact-title" class="form-control" placeholder="e.g. Camp Reception">
+        <label>Phone / Extension</label>
+        <input type="text" id="new-contact-phone" class="form-control" placeholder="e.g. 2402">
+        <label>Subtitle</label>
+        <input type="text" id="new-contact-sub" class="form-control" placeholder="e.g. General Enquiries">
+        <label>Category</label>
+        <select id="new-contact-cat" class="form-control">
+          <option value="emergency">Emergency</option>
+          <option value="ops">Operations</option>
+          <option value="services">Camp Services</option>
+        </select>
+        <button class="btn-primary" onclick="addNewContact()">Add Contact</button>
+        <div class="section-label">Existing Contacts</div>
         <div id="admin-numbers-list"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- LOCATION PICKER MODAL (stacks above the admin modal) -->
+  <div id="location-picker-modal" class="modal-overlay" style="z-index:150;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="location-picker-title"><i class="fa-solid fa-map-location-dot" style="color:var(--amber)"></i> Pick Location</h2>
+        <div class="icon-btn" onclick="closeModal('location-picker-modal')"><i class="fa-solid fa-xmark"></i></div>
+      </div>
+      <p class="note-text">Tap the satellite map to drop a pin, or drag the pin to fine-tune. Coordinates update live below.</p>
+      <div class="map-box" style="height:260px;"><div id="picker-map"></div></div>
+      <div class="map-info-box" id="picker-coords-display" style="text-align:center;font-family:var(--font-mono);">No location selected yet</div>
+      <button class="btn-primary" style="margin-top:12px;" onclick="confirmPickerLocation()">Use This Location</button>
     </div>
   </div>
 
@@ -834,56 +892,79 @@ function parseMaraPrayerTimes(html){
   return result;
 }
 
+function logSync(line){
+  const box = document.getElementById('prayer-sync-log');
+  box.style.display = 'block';
+  box.innerText = (box.innerText ? box.innerText + '\n' : '') + line;
+}
+
 async function attemptPrayerSync(){
   const targetUrl = 'https://www.mara.gov.om/calendar_page2.asp';
+  const logBox = document.getElementById('prayer-sync-log');
+  logBox.innerText = ''; logBox.style.display = 'block';
+  logSync('Starting sync…');
 
   // Attempt 1: allorigins.win — no manual opt-in required.
   try{
+    logSync('→ Trying mara.gov.om via allorigins.win…');
     const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
+    logSync('  allorigins responded: HTTP ' + res.status);
     if(!res.ok) throw new Error('allorigins fetch failed');
     const html = await res.text();
+    logSync('  received ' + html.length + ' characters of HTML');
     const parsed = parseMaraPrayerTimes(html);
+    logSync('  parser matched: ' + (Object.keys(parsed).join(', ') || 'nothing'));
     if(Object.keys(parsed).length >= 5){
       applyPrayerFields(parsed);
+      logSync('✓ Success — all 5 prayer times found. Review below, then Save.');
       triggerToast('Synced from MARA','Fetched via allorigins.win — review the times below, then Save.');
       return;
     }
-    throw new Error('allorigins: could not parse mara.gov.om');
+    throw new Error('allorigins: parser only matched ' + Object.keys(parsed).length + '/5 — mara.gov.om\'s markup likely differs from what the parser expects');
   }catch(e1){
+    logSync('  ✗ ' + e1.message);
     // Attempt 2: cors-anywhere.herokuapp.com — requires the admin to have visited
     // cors-anywhere.herokuapp.com/corsdemo and clicked "Request temporary access" in THIS
     // browser first; access expires periodically. It will not work for camp residents' own
     // devices, only as a manual convenience for whoever is running this sync.
     try{
+      logSync('→ Trying mara.gov.om via cors-anywhere.herokuapp.com…');
       const res2 = await fetch('https://cors-anywhere.herokuapp.com/' + targetUrl, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      logSync('  cors-anywhere responded: HTTP ' + res2.status);
       if(res2.status === 403){
-        throw new Error('cors-anywhere: not opted in on this browser');
+        throw new Error('403 — this browser hasn\'t opted in at cors-anywhere.herokuapp.com/corsdemo yet');
       }
       if(!res2.ok) throw new Error('cors-anywhere fetch failed');
       const html2 = await res2.text();
+      logSync('  received ' + html2.length + ' characters of HTML');
       const parsed2 = parseMaraPrayerTimes(html2);
+      logSync('  parser matched: ' + (Object.keys(parsed2).join(', ') || 'nothing'));
       if(Object.keys(parsed2).length >= 5){
         applyPrayerFields(parsed2);
+        logSync('✓ Success — all 5 prayer times found. Review below, then Save.');
         triggerToast('Synced from MARA','Fetched via cors-anywhere — review the times below, then Save.');
         return;
       }
-      throw new Error('cors-anywhere: could not parse mara.gov.om');
+      throw new Error('cors-anywhere: parser only matched ' + Object.keys(parsed2).length + '/5');
     }catch(e2){
+      logSync('  ✗ ' + e2.message);
       // Attempt 3: Aladhan — stable structured API, no proxy needed.
       try{
+        logSync('→ Falling back to Aladhan API…');
         const today = new Date();
         const dateStr = String(today.getDate()).padStart(2,'0')+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+today.getFullYear();
         const res3 = await fetch(`https://api.aladhan.com/v1/timings/${dateStr}?latitude=${CAMP_LAT}&longitude=${CAMP_LNG}&method=8`);
+        logSync('  Aladhan responded: HTTP ' + res3.status);
         if(!res3.ok) throw new Error('Aladhan request failed');
         const data = await res3.json();
         const t = data.data.timings;
         const clean = s => s.split(' ')[0];
         applyPrayerFields({Fajr:clean(t.Fajr), Dhuhr:clean(t.Dhuhr), Asr:clean(t.Asr), Maghrib:clean(t.Maghrib), Isha:clean(t.Isha)});
-        const hint = String(e2).includes('not opted in')
-          ? 'MARA needs a one-time click at cors-anywhere.herokuapp.com/corsdemo on this browser — used Aladhan instead for now.'
-          : 'Could not read mara.gov.om via either proxy — used Aladhan instead.';
-        triggerToast('MARA Unavailable', hint + ' Review below.');
+        logSync('✓ Used Aladhan instead — MARA could not be read (see log above for why). Review below.');
+        triggerToast('MARA Unavailable','Could not read mara.gov.om — used Aladhan instead. See the log for details.');
       }catch(e3){
+        logSync('  ✗ ' + e3.message);
+        logSync('✗ All three sources failed — set times manually below.');
         triggerToast('Sync Failed','Could not reach any source — set times manually.');
       }
     }
@@ -1174,6 +1255,76 @@ function renderAdminAnnouncementsList(){
     </div>`).join('');
 }
 
+function toggleIconDropdown(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const willOpen = !el.classList.contains('open');
+  document.querySelectorAll('.icon-picker.open').forEach(p=>p.classList.remove('open'));
+  if(willOpen) el.classList.add('open');
+}
+
+/* Shared location-picker modal: used both for adding a new facility and adjusting an
+   existing one. pickerTarget is either 'new' or a mapPlaces array index. */
+let pickerMap = null, pickerMarker = null, pickerLat = null, pickerLng = null, pickerTarget = 'new';
+function openLocationPicker(target){
+  pickerTarget = target;
+  let lat = CAMP_LAT, lng = CAMP_LNG;
+  if(target==='new'){
+    const la = parseFloat(document.getElementById('new-facility-lat').value);
+    const ln = parseFloat(document.getElementById('new-facility-lng').value);
+    if(!isNaN(la)) lat = la;
+    if(!isNaN(ln)) lng = ln;
+    document.getElementById('location-picker-title').innerHTML = '<i class="fa-solid fa-map-location-dot" style="color:var(--amber)"></i> Pick New Facility Location';
+  } else {
+    const pl = mapPlaces[target];
+    lat = pl.lat; lng = pl.lng;
+    document.getElementById('location-picker-title').innerHTML = '<i class="fa-solid fa-map-location-dot" style="color:var(--amber)"></i> Adjust '+pl.name+' Location';
+  }
+  openModal('location-picker-modal');
+  setTimeout(()=>{
+    if(typeof L === 'undefined'){
+      document.getElementById('picker-map').innerHTML = '<div style="padding:16px;font-size:0.75rem;color:var(--text-dim);text-align:center;">Map library unavailable — type coordinates manually instead.</div>';
+      return;
+    }
+    if(!pickerMap){
+      pickerMap = L.map('picker-map', {zoomControl:false}).setView([lat,lng], 17);
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19}).addTo(pickerMap);
+      L.control.zoom({position:'bottomright'}).addTo(pickerMap);
+      pickerMap.on('click', e => placePickerMarker(e.latlng.lat, e.latlng.lng));
+    } else {
+      pickerMap.invalidateSize();
+      pickerMap.setView([lat,lng], 17);
+    }
+    placePickerMarker(lat, lng);
+  }, 150);
+}
+function placePickerMarker(lat, lng){
+  pickerLat = lat; pickerLng = lng;
+  if(pickerMarker){ pickerMarker.setLatLng([lat,lng]); }
+  else{
+    pickerMarker = L.marker([lat,lng], {draggable:true}).addTo(pickerMap);
+    pickerMarker.on('dragend', ()=>{ const p = pickerMarker.getLatLng(); placePickerMarker(p.lat,p.lng); });
+  }
+  document.getElementById('picker-coords-display').innerText = lat.toFixed(6)+', '+lng.toFixed(6);
+}
+function confirmPickerLocation(){
+  if(pickerLat===null || pickerLng===null){
+    triggerToast('No Location Picked','Tap the map first to drop a pin.');
+    return;
+  }
+  if(pickerTarget==='new'){
+    document.getElementById('new-facility-lat').value = pickerLat.toFixed(6);
+    document.getElementById('new-facility-lng').value = pickerLng.toFixed(6);
+  } else {
+    mapPlaces[pickerTarget].lat = pickerLat;
+    mapPlaces[pickerTarget].lng = pickerLng;
+    renderMapMarkers();
+    renderAdminLists();
+  }
+  closeModal('location-picker-modal');
+  triggerToast('Location Set','Coordinates updated.');
+}
+
 function setFacilityIcon(idx, icon){
   mapPlaces[idx].icon = icon;
   renderMapMarkers();
@@ -1190,10 +1341,13 @@ function renderNewFacilityIconPicker(){
   const el = document.getElementById('new-facility-icon-picker');
   if(!el) return;
   el.innerHTML = FACILITY_ICONS.map(ic=>`<div class="icon-picker-btn ${ic===newFacilitySelectedIcon?'selected':''}" onclick="selectNewFacilityIcon('${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('');
+  const preview = document.getElementById('new-facility-icon-preview');
+  if(preview) preview.className = 'fa-solid ' + newFacilitySelectedIcon;
 }
 function selectNewFacilityIcon(icon){
   newFacilitySelectedIcon = icon;
   renderNewFacilityIconPicker();
+  document.getElementById('new-facility-icon-picker').classList.remove('open');
 }
 function addNewFacility(){
   const name = document.getElementById('new-facility-name').value.trim();
@@ -1201,7 +1355,7 @@ function addNewFacility(){
   const lat = parseFloat(document.getElementById('new-facility-lat').value);
   const lng = parseFloat(document.getElementById('new-facility-lng').value);
   if(!name || !info || isNaN(lat) || isNaN(lng)){
-    triggerToast('Missing Info','Please fill in name, info, and valid coordinates.');
+    triggerToast('Missing Info','Please fill in name, info, and a location (type it or pick on map).');
     return;
   }
   const color = FACILITY_COLORS[mapPlaces.length % FACILITY_COLORS.length];
@@ -1218,16 +1372,94 @@ function addNewFacility(){
   triggerToast('Facility Added', name+' added to the camp map.');
 }
 
+function addNewEvent(){
+  const title = document.getElementById('new-event-title').value.trim();
+  const category = document.getElementById('new-event-category').value.trim() || 'Community';
+  const date = document.getElementById('new-event-date').value.trim();
+  const location = document.getElementById('new-event-location').value.trim();
+  if(!title || !date || !location){
+    triggerToast('Missing Info','Please fill in title, date/time, and location.');
+    return;
+  }
+  campEvents.push({id:Date.now(), title, category, date, location, icon:'fa-calendar-days', timeVal:new Date().getTime()+86400000, live:false});
+  document.getElementById('new-event-title').value='';
+  document.getElementById('new-event-category').value='';
+  document.getElementById('new-event-date').value='';
+  document.getElementById('new-event-location').value='';
+  renderEventFilters();
+  renderEvents();
+  renderAdminLists();
+  triggerToast('Event Added', title+' added to the schedule.');
+}
+function deleteEvent(id){
+  campEvents = campEvents.filter(e=>e.id!==id);
+  renderEventFilters();
+  renderEvents();
+  renderAdminLists();
+}
+
+function addNewTransport(){
+  const name = document.getElementById('new-transport-name').value.trim();
+  const route = document.getElementById('new-transport-route').value.trim();
+  const time = document.getElementById('new-transport-time').value.trim();
+  if(!name || !route || !time){
+    triggerToast('Missing Info','Please fill in name, route, and time.');
+    return;
+  }
+  transportSchedule.push({id:Date.now(), name, route, time, status:'scheduled'});
+  document.getElementById('new-transport-name').value='';
+  document.getElementById('new-transport-route').value='';
+  document.getElementById('new-transport-time').value='';
+  renderTransport();
+  renderAdminLists();
+  triggerToast('Shuttle Added', name+' added to the schedule.');
+}
+function deleteTransport(id){
+  transportSchedule = transportSchedule.filter(t=>t.id!==id);
+  renderTransport();
+  renderAdminLists();
+}
+
+function addNewContact(){
+  const title = document.getElementById('new-contact-title').value.trim();
+  const phone = document.getElementById('new-contact-phone').value.trim();
+  const sub = document.getElementById('new-contact-sub').value.trim();
+  const cat = document.getElementById('new-contact-cat').value;
+  if(!title || !phone){
+    triggerToast('Missing Info','Please fill in a title and phone/extension.');
+    return;
+  }
+  contactNumbers.push({id:Date.now(), title, phone, sub, cat});
+  document.getElementById('new-contact-title').value='';
+  document.getElementById('new-contact-phone').value='';
+  document.getElementById('new-contact-sub').value='';
+  renderNumbers();
+  renderAdminLists();
+  triggerToast('Contact Added', title+' added.');
+}
+function deleteContact(id){
+  contactNumbers = contactNumbers.filter(n=>n.id!==id);
+  renderNumbers();
+  renderAdminLists();
+}
+
 function renderAdminLists(){
   const eventsContainer=document.getElementById('admin-events-list');
   if(eventsContainer){
     let e='';
     campEvents.forEach((ev,idx)=>{
       e+=`<div class="admin-block">
-        <label>Event Title</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="margin:0;">Event Title</label>
+          <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteEvent(${ev.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+        </div>
         <input type="text" class="form-control" value="${ev.title}" onchange="campEvents[${idx}].title=this.value; renderEvents();" style="margin-bottom:6px;">
+        <label>Category</label>
+        <input type="text" class="form-control" value="${ev.category}" onchange="campEvents[${idx}].category=this.value; renderEventFilters(); renderEvents();" style="margin-bottom:6px;">
         <label>Location & Time Note</label>
-        <input type="text" class="form-control" value="${ev.date}" onchange="campEvents[${idx}].date=this.value; renderEvents();" style="margin-bottom:0;">
+        <input type="text" class="form-control" value="${ev.date}" onchange="campEvents[${idx}].date=this.value; renderEvents();" style="margin-bottom:6px;">
+        <label>Location</label>
+        <input type="text" class="form-control" value="${ev.location}" onchange="campEvents[${idx}].location=this.value; renderEvents();" style="margin-bottom:0;">
       </div>`;
     });
     eventsContainer.innerHTML=e;
@@ -1243,13 +1475,18 @@ function renderAdminLists(){
         </div>
         <input type="text" class="form-control" value="${pl.name}" onchange="mapPlaces[${idx}].name=this.value; renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
         <label>Icon</label>
-        <div class="icon-picker">${FACILITY_ICONS.map(ic=>`<div class="icon-picker-btn ${ic===pl.icon?'selected':''}" onclick="setFacilityIcon(${idx},'${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('')}</div>
+        <div class="icon-dropdown">
+          <button type="button" class="icon-dropdown-toggle" onclick="toggleIconDropdown('facility-icon-picker-${idx}')"><span><i class="fa-solid ${pl.icon}"></i> Choose Icon</span><i class="fa-solid fa-chevron-down"></i></button>
+          <div class="icon-picker" id="facility-icon-picker-${idx}">${FACILITY_ICONS.map(ic=>`<div class="icon-picker-btn ${ic===pl.icon?'selected':''}" onclick="setFacilityIcon(${idx},'${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('')}</div>
+        </div>
         <label>Timing / Info (shown to residents)</label>
         <input type="text" class="form-control" value="${pl.info.replace(/\n/g,' | ')}" onchange="mapPlaces[${idx}].info=this.value.replace(/ \\| /g,'\\n'); renderMapMarkers(); renderFacilityList();" style="margin-bottom:6px;">
-        <label>Latitude (map pin only)</label>
-        <input type="text" class="form-control" value="${pl.lat}" onchange="mapPlaces[${idx}].lat=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:6px;">
-        <label>Longitude (map pin only)</label>
-        <input type="text" class="form-control" value="${pl.lng}" onchange="mapPlaces[${idx}].lng=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:0;">
+        <label>Location</label>
+        <div style="display:flex;gap:8px;margin-bottom:6px;">
+          <input type="text" class="form-control" value="${pl.lat}" onchange="mapPlaces[${idx}].lat=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:0;">
+          <input type="text" class="form-control" value="${pl.lng}" onchange="mapPlaces[${idx}].lng=parseFloat(this.value); renderMapMarkers();" style="margin-bottom:0;">
+        </div>
+        <button class="btn-secondary" style="margin-bottom:0;" onclick="openLocationPicker(${idx})"><i class="fa-solid fa-map-location-dot"></i> Adjust on Map</button>
       </div>`;
     });
     placesContainer.innerHTML=p;
@@ -1259,7 +1496,10 @@ function renderAdminLists(){
     let t='';
     transportSchedule.forEach((tr,idx)=>{
       t+=`<div class="admin-block">
-        <label>Shuttle Name</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="margin:0;">Shuttle Name</label>
+          <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteTransport(${tr.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+        </div>
         <input type="text" class="form-control" value="${tr.name}" onchange="transportSchedule[${idx}].name=this.value; renderTransport();" style="margin-bottom:6px;">
         <label>Route</label>
         <input type="text" class="form-control" value="${tr.route}" onchange="transportSchedule[${idx}].route=this.value; renderTransport();" style="margin-bottom:6px;">
@@ -1273,9 +1513,15 @@ function renderAdminLists(){
   if(numbersContainer){
     let n='';
     contactNumbers.forEach((num,idx)=>{
-      n+=`<div class="admin-block" style="display:flex;gap:8px;">
-        <input type="text" class="form-control" value="${num.title}" onchange="contactNumbers[${idx}].title=this.value; renderNumbers();" style="margin-bottom:0;flex:2;">
-        <input type="text" class="form-control" value="${num.phone}" onchange="contactNumbers[${idx}].phone=this.value; renderNumbers();" style="margin-bottom:0;flex:1;">
+      n+=`<div class="admin-block">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="margin:0;">Contact</label>
+          <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteContact(${num.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-control" value="${num.title}" onchange="contactNumbers[${idx}].title=this.value; renderNumbers();" style="margin-bottom:0;flex:2;">
+          <input type="text" class="form-control" value="${num.phone}" onchange="contactNumbers[${idx}].phone=this.value; renderNumbers();" style="margin-bottom:0;flex:1;">
+        </div>
       </div>`;
     });
     numbersContainer.innerHTML=n;
