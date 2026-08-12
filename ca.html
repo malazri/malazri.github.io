@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js">
     </script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     <style>
@@ -1734,23 +1733,30 @@
         // ============================================================
         const SUPABASE_URL = 'https://mywcoynuakmfafzgzlzr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15d2NveW51YWttZmFmemd6bHpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NDc3MjUsImV4cCI6MjEwMjEyMzcyNX0.xLWIUEVq2y_90f__QYPaJyPN7KGMqvBT1RfuwC660Ng';
-        const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // ============================================================
         //  GLOBAL STATE
         // ============================================================
-        let currentUser = null; // { email, id }
+        let currentUser = null;
         let isAdmin = false;
+        const PRAYER_ORDER = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+        // ===== CAMP COORDINATES =====
+        const CAMP_LAT = 22.8750;
+        const CAMP_LNG = 55.3700;
+        const CAMP_CITY_ID = 13; // Lekhwair
 
         // Data stores (populated from Supabase)
         let campSettings = null;
         let prayerTimesData = [];
-        let menuData = {}; // { day: { meal: [items] } }
+        let menuData = {};
         let transportData = [];
         let contactsData = [];
         let announcementsData = [];
         let eventsData = [];
         let facilitiesData = [];
+        window._prayerTimes = [];  // FIXED: removed 'let'
 
         // Weather (still fetched from APIs)
         let liveWeather = { temp: null, condition: 'sunny', loaded: false };
@@ -1772,6 +1778,57 @@
         let clickCount = 0,
             clickTimer = null;
         let lastScrollTop = 0;
+        let nextEventTimestamp = Date.now() + 86400000;
+
+        function formatTimeToHM(timeStr) {
+            if (!timeStr) return '';
+            // Split by ':' and take first two parts
+            const parts = timeStr.split(':');
+            if (parts.length >= 2) {
+                return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+            }
+            return timeStr; // fallback
+        }
+        
+        // ============================================================
+        //  LOCAL STORAGE CACHING
+        // ============================================================
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('campAppData');
+            if (!saved) return false;
+            try {
+                const data = JSON.parse(saved);
+                campSettings = data.settings || null;
+                prayerTimesData = data.prayers || [];
+                menuData = data.menu || {};
+                transportData = data.transport || [];
+                contactsData = data.contacts || [];
+                announcementsData = data.announcements || [];
+                eventsData = data.events || [];
+                facilitiesData = data.facilities || [];
+                window._prayerTimes = prayerTimesData.map(p => ({
+                    name: p.name,
+                    time: p.adhan_time,
+                    iqamaOffset: p.iqama_offset
+                }));
+                return true;
+            } catch (_) { return false; }
+        }
+
+        function saveToLocalStorage() {
+            const data = {
+                settings: campSettings,
+                prayers: prayerTimesData,
+                menu: menuData,
+                transport: transportData,
+                contacts: contactsData,
+                announcements: announcementsData,
+                events: eventsData,
+                facilities: facilitiesData,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('campAppData', JSON.stringify(data));
+        }
 
         // Translations (unchanged)
         const translations = {
@@ -1881,7 +1938,7 @@
             const statusEl = document.getElementById('login-status');
             statusEl.innerText = 'Signing in...';
             try {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) throw error;
                 currentUser = data.user;
                 isAdmin = true;
@@ -1891,15 +1948,13 @@
                 document.getElementById('login-status-btn').innerHTML = '<i class="fa-solid fa-user-check"></i>';
                 closeModal('login-modal');
                 triggerToast('Welcome Admin', 'You are now logged in and can make changes.');
-                // Refresh admin lists to enable save buttons (they are already enabled)
-                // No need to re-fetch all data; just enable admin actions.
             } catch (err) {
                 statusEl.innerText = '❌ ' + err.message;
             }
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             currentUser = null;
             isAdmin = false;
             document.querySelector('.logout-btn').style.display = 'none';
@@ -1910,7 +1965,6 @@
 
         function showLoginModal() {
             if (isAdmin) {
-                // If already logged in, just show status or logout option
                 if (confirm('You are logged in as ' + currentUser.email + '. Logout?')) {
                     logout();
                 }
@@ -1922,9 +1976,8 @@
             document.getElementById('login-session-info').innerText = 'Not logged in';
         }
 
-        // Check existing session on load
         async function checkSession() {
-            const { data: { session }, error } = await supabase.auth.getSession();
+            const { data: { session }, error } = await supabaseClient.auth.getSession();
             if (session) {
                 currentUser = session.user;
                 isAdmin = true;
@@ -1938,7 +1991,7 @@
         }
 
         // ============================================================
-        //  DATA FETCHING FROM SUPABASE
+        //  DEFAULT DATA (fallback)
         // ============================================================
         const DEFAULT_CAMP_SETTINGS = {
             camp_name: 'Lekhwair Camp',
@@ -2039,74 +2092,65 @@
                 info: 'Primary assembly point · Main Sports Ground' }
         ];
 
-        // Helper: seed table if empty
-        async function seedTable(tableName, defaultData, idField = 'id') {
-            const { data: existing, error } = await supabase.from(tableName).select('*').limit(1);
-            if (error) {
-                console.warn('Error checking table ' + tableName, error);
-                return;
-            }
+        // ============================================================
+        //  SEED HELPER
+        // ============================================================
+        async function seedTable(tableName, defaultData) {
+            const { data: existing } = await supabaseClient.from(tableName).select('*').limit(1);
             if (!existing || existing.length === 0) {
-                // Insert defaults
                 const toInsert = defaultData.map(item => {
-                    if (idField === 'id' && !item.id) {
-                        // For tables with auto-generated id, we don't set id
-                        const { id, ...rest } = item;
-                        return rest;
-                    }
-                    return item;
+                    const { id, ...rest } = item;
+                    return rest;
                 });
-                const { error: insertErr } = await supabase.from(tableName).insert(toInsert);
-                if (insertErr) console.error('Seed error for ' + tableName, insertErr);
+                await supabaseClient.from(tableName).insert(toInsert);
             }
         }
 
+        // ============================================================
+        //  DATA FETCHING FROM SUPABASE
+        // ============================================================
         async function fetchAllData() {
             try {
-                // Fetch settings
-                const { data: settingsData, error: settingsErr } = await supabase.from('camp_settings').select('*')
-                    .limit(1);
+                // 1. Settings
+                let { data: settingsData, error: settingsErr } = await supabaseClient.from('camp_settings').select('*').limit(1);
                 if (settingsErr) throw settingsErr;
                 if (settingsData && settingsData.length > 0) {
                     campSettings = settingsData[0];
                 } else {
-                    // Insert default
-                    const { data: inserted, error: insErr } = await supabase.from('camp_settings').insert(
-                        DEFAULT_CAMP_SETTINGS).select();
+                    const { data: inserted, error: insErr } = await supabaseClient.from('camp_settings').insert(DEFAULT_CAMP_SETTINGS).select();
                     if (insErr) throw insErr;
                     campSettings = inserted[0];
                 }
 
-                // Fetch prayer times
-                const { data: prayerData, error: prayerErr } = await supabase.from('prayer_times').select('*').order(
-                    'name', { ascending: true });
+                // 2. Prayer times – sort manually
+                let { data: prayerData, error: prayerErr } = await supabaseClient.from('prayer_times').select('*');
                 if (prayerErr) throw prayerErr;
                 if (prayerData && prayerData.length > 0) {
-                    prayerTimesData = prayerData;
+                    prayerTimesData = prayerData.sort((a, b) => PRAYER_ORDER.indexOf(a.name) - PRAYER_ORDER.indexOf(b.name));
                 } else {
-                    await seedTable('prayer_times', DEFAULT_PRAYER_TIMES, 'id');
-                    const { data: refetched } = await supabase.from('prayer_times').select('*').order('name');
-                    prayerTimesData = refetched || [];
+                    await seedTable('prayer_times', DEFAULT_PRAYER_TIMES);
+                    const { data: refetched } = await supabaseClient.from('prayer_times').select('*');
+                    prayerTimesData = (refetched || []).sort((a, b) => PRAYER_ORDER.indexOf(a.name) - PRAYER_ORDER.indexOf(b.name));
                 }
+                window._prayerTimes = prayerTimesData.map(p => ({
+                    name: p.name,
+                    time: p.adhan_time,
+                    iqamaOffset: p.iqama_offset
+                }));
 
-                // Fetch menu
-                const { data: menuRows, error: menuErr } = await supabase.from('menu').select('*');
+                // 3. Menu
+                let { data: menuRows, error: menuErr } = await supabaseClient.from('menu').select('*');
                 if (menuErr) throw menuErr;
                 if (menuRows && menuRows.length > 0) {
-                    // Build menuData object
                     menuData = {};
                     menuRows.forEach(row => {
                         if (!menuData[row.day]) menuData[row.day] = {};
                         menuData[row.day][row.meal] = row.items;
                     });
-                    // Ensure all days exist
                     Object.keys(DEFAULT_MENU).forEach(day => {
-                        if (!menuData[day]) {
-                            menuData[day] = DEFAULT_MENU[day];
-                        }
+                        if (!menuData[day]) menuData[day] = DEFAULT_MENU[day];
                     });
                 } else {
-                    // Insert default menu rows
                     const menuInserts = [];
                     Object.keys(DEFAULT_MENU).forEach(day => {
                         const meals = DEFAULT_MENU[day];
@@ -2114,87 +2158,74 @@
                             menuInserts.push({ day, meal, items: meals[meal] });
                         });
                     });
-                    await supabase.from('menu').insert(menuInserts);
-                    // refetch
-                    const { data: refetchedMenu } = await supabase.from('menu').select('*');
+                    await supabaseClient.from('menu').insert(menuInserts);
+                    const { data: refetched } = await supabaseClient.from('menu').select('*');
                     menuData = {};
-                    refetchedMenu.forEach(row => {
+                    refetched.forEach(row => {
                         if (!menuData[row.day]) menuData[row.day] = {};
                         menuData[row.day][row.meal] = row.items;
                     });
                 }
 
-                // Fetch transport
-                const { data: transportRows, error: transportErr } = await supabase.from('transport').select('*');
+                // 4. Transport
+                let { data: transportRows, error: transportErr } = await supabaseClient.from('transport').select('*');
                 if (transportErr) throw transportErr;
                 if (transportRows && transportRows.length > 0) {
                     transportData = transportRows;
                 } else {
                     await seedTable('transport', DEFAULT_TRANSPORT);
-                    const { data: refetched } = await supabase.from('transport').select('*');
+                    const { data: refetched } = await supabaseClient.from('transport').select('*');
                     transportData = refetched || [];
                 }
 
-                // Fetch contacts
-                const { data: contactRows, error: contactErr } = await supabase.from('contacts').select('*');
+                // 5. Contacts
+                let { data: contactRows, error: contactErr } = await supabaseClient.from('contacts').select('*');
                 if (contactErr) throw contactErr;
                 if (contactRows && contactRows.length > 0) {
                     contactsData = contactRows;
                 } else {
                     await seedTable('contacts', DEFAULT_CONTACTS);
-                    const { data: refetched } = await supabase.from('contacts').select('*');
+                    const { data: refetched } = await supabaseClient.from('contacts').select('*');
                     contactsData = refetched || [];
                 }
 
-                // Fetch announcements
-                const { data: annRows, error: annErr } = await supabase.from('announcements').select('*').order('date',
-                    { ascending: false });
+                // 6. Announcements
+                let { data: annRows, error: annErr } = await supabaseClient.from('announcements').select('*').order('date', { ascending: false });
                 if (annErr) throw annErr;
                 if (annRows && annRows.length > 0) {
                     announcementsData = annRows;
                 } else {
                     await seedTable('announcements', DEFAULT_ANNOUNCEMENTS);
-                    const { data: refetched } = await supabase.from('announcements').select('*').order('date',
-                    { ascending: false });
+                    const { data: refetched } = await supabaseClient.from('announcements').select('*').order('date', { ascending: false });
                     announcementsData = refetched || [];
                 }
 
-                // Fetch events
-                const { data: eventRows, error: eventErr } = await supabase.from('events').select('*').order('timeVal',
-                    { ascending: true });
+                // 7. Events
+                let { data: eventRows, error: eventErr } = await supabaseClient.from('events').select('*').order('timeVal', { ascending: true });
                 if (eventErr) throw eventErr;
                 if (eventRows && eventRows.length > 0) {
                     eventsData = eventRows;
                 } else {
                     await seedTable('events', DEFAULT_EVENTS);
-                    const { data: refetched } = await supabase.from('events').select('*').order('timeVal',
-                    { ascending: true });
+                    const { data: refetched } = await supabaseClient.from('events').select('*').order('timeVal', { ascending: true });
                     eventsData = refetched || [];
                 }
 
-                // Fetch facilities
-                const { data: facilityRows, error: facilityErr } = await supabase.from('facilities').select('*');
+                // 8. Facilities
+                let { data: facilityRows, error: facilityErr } = await supabaseClient.from('facilities').select('*');
                 if (facilityErr) throw facilityErr;
                 if (facilityRows && facilityRows.length > 0) {
                     facilitiesData = facilityRows;
                 } else {
                     await seedTable('facilities', DEFAULT_FACILITIES);
-                    const { data: refetched } = await supabase.from('facilities').select('*');
+                    const { data: refetched } = await supabaseClient.from('facilities').select('*');
                     facilitiesData = refetched || [];
                 }
 
-                // Apply loaded data to UI
-                applySettingsToUI();
-                applyPrayerTimesToUI();
-                applyMenuToUI();
-                applyTransportToUI();
-                applyContactsToUI();
-                applyAnnouncementsToUI();
-                applyEventsToUI();
-                applyFacilitiesToUI();
-
                 // Update weather override from settings
                 if (campSettings) {
+                    owmApiKey = campSettings.owm_api_key || localStorage.getItem('basecamp_owm_key') || '';
+                    document.getElementById('input-owm-key').value = owmApiKey;
                     manualWeather.override = campSettings.weather_override || false;
                     manualWeather.condition = campSettings.weather_condition || 'sunny';
                     manualWeather.temp = campSettings.weather_temp || '42°C';
@@ -2203,17 +2234,46 @@
                     document.getElementById('input-camp-temp').value = manualWeather.temp;
                 }
 
-                // Render all UI components
+                saveToLocalStorage();
+                applySettingsToUI();
+                applyPrayerTimesToUI();
+                applyMenuToUI();
+                applyTransportToUI();
+                applyContactsToUI();
+                applyAnnouncementsToUI();
+                applyEventsToUI();
+                applyFacilitiesToUI();
                 renderAll();
 
             } catch (err) {
-                console.error('Error fetching data:', err);
-                triggerToast('Data Error', 'Could not load data from Supabase. Check console.');
+                console.warn('Supabase fetch failed, using fallback defaults:', err);
+                if (!campSettings) {
+                    campSettings = DEFAULT_CAMP_SETTINGS;
+                    prayerTimesData = DEFAULT_PRAYER_TIMES;
+                    window._prayerTimes = DEFAULT_PRAYER_TIMES.map(p => ({ name: p.name, time: p.adhan_time, iqamaOffset: p.iqama_offset }));
+                    menuData = {};
+                    Object.keys(DEFAULT_MENU).forEach(day => { menuData[day] = DEFAULT_MENU[day]; });
+                    transportData = DEFAULT_TRANSPORT;
+                    contactsData = DEFAULT_CONTACTS;
+                    announcementsData = DEFAULT_ANNOUNCEMENTS;
+                    eventsData = DEFAULT_EVENTS;
+                    facilitiesData = DEFAULT_FACILITIES;
+                    saveToLocalStorage();
+                    applySettingsToUI();
+                    applyPrayerTimesToUI();
+                    applyMenuToUI();
+                    applyTransportToUI();
+                    applyContactsToUI();
+                    applyAnnouncementsToUI();
+                    applyEventsToUI();
+                    applyFacilitiesToUI();
+                    renderAll();
+                }
             }
         }
 
         // ============================================================
-        //  APPLY DATA TO UI (convert database format to UI format)
+        //  APPLY DATA TO UI
         // ============================================================
         function applySettingsToUI() {
             if (!campSettings) return;
@@ -2228,12 +2288,12 @@
             document.getElementById('input-stat-personnel').value = campSettings.personnel || '';
             document.getElementById('input-stat-companies').value = campSettings.companies_count || '';
             document.getElementById('input-stat-established').value = campSettings.established || '';
-            // history and companies are rendered separately
+            const key = campSettings.owm_api_key || '';
+            document.getElementById('input-owm-key').value = key;
+            owmApiKey = key; // update global variable
         }
 
         function applyPrayerTimesToUI() {
-            // Convert to prayerTimes array used by renderPrayerTimes
-            // We'll keep a global variable for the format used by renderPrayerTimes
             window._prayerTimes = prayerTimesData.map(p => ({
                 name: p.name,
                 time: p.adhan_time,
@@ -2244,8 +2304,6 @@
         }
 
         function applyMenuToUI() {
-            // Build menuData from DB rows
-            // Already done in fetchAllData
             renderDayTabs();
             renderDining();
             renderAdminDayTabs();
@@ -2279,7 +2337,7 @@
         }
 
         // ============================================================
-        //  RENDER FUNCTIONS (unchanged from previous, but using data)
+        //  RENDER FUNCTIONS
         // ============================================================
         function renderPrayerTimes() {
             const now = new Date();
@@ -2289,17 +2347,18 @@
                 return (h * 60 + m) > nowMins;
             });
             if (nextIdx === -1) nextIdx = 0;
-
-            document.getElementById('next-prayer-pill').innerText = window._prayerTimes[nextIdx].name + ' ' + window
-                ._prayerTimes[nextIdx].time;
-
+        
+            // Format next prayer time
+            document.getElementById('next-prayer-pill').innerText = 
+                window._prayerTimes[nextIdx].name + ' ' + formatTimeToHM(window._prayerTimes[nextIdx].time);
+        
             const grid = document.getElementById('prayer-grid');
             grid.innerHTML = window._prayerTimes.map((p, i) => {
                 const iqama = computeIqama(p.time, p.iqamaOffset);
                 return `
                     <div class="prayer-cell ${i === nextIdx ? 'next' : ''}">
                         <div class="prayer-name">${p.name}</div>
-                        <div class="prayer-time">${p.time}</div>
+                        <div class="prayer-time">${formatTimeToHM(p.time)}</div>
                         <div class="prayer-iqama">${iqama}</div>
                     </div>
                 `;
@@ -2308,7 +2367,8 @@
 
         function computeIqama(adhanTime, offsetMinutes) {
             if (!adhanTime || offsetMinutes === undefined) return '';
-            const [h, m] = adhanTime.split(':').map(Number);
+            const clean = formatTimeToHM(adhanTime); // ensure HH:MM
+            const [h, m] = clean.split(':').map(Number);
             if (isNaN(h) || isNaN(m)) return '';
             const total = h * 60 + m + offsetMinutes;
             const nh = Math.floor(total / 60) % 24;
@@ -2394,7 +2454,6 @@
                 document.getElementById('next-event-time-desc').innerHTML =
                     `<i class="fa-solid fa-location-dot"></i> ${first.location} &bull; <i class="fa-regular fa-clock"></i> ${first.date}`;
                 document.getElementById('next-event-tag').innerText = first.category;
-                // Update countdown target
                 nextEventTimestamp = first.timeVal;
             }
             const list = activeFilter === 'All' ? sorted : sorted.filter(e => e.category === activeFilter);
@@ -2539,7 +2598,7 @@
         }
 
         // ============================================================
-        //  ADMIN RENDER FUNCTIONS (list + fields)
+        //  ADMIN RENDER FUNCTIONS
         // ============================================================
         function renderAdminPrayerFields() {
             const container = document.getElementById('admin-prayer-fields');
@@ -2550,7 +2609,7 @@
                     <div class="admin-time-row">
                         <div class="admin-time-wrap">
                             <span class="admin-time-label">Adhan</span>
-                            <input type="text" class="form-control" id="admin-prayer-time-${idx}" value="${p.time}" placeholder="HH:MM">
+                            <input type="text" class="form-control" id="admin-prayer-time-${idx}" value="${formatTimeToHM(p.time)}" placeholder="HH:MM">
                         </div>
                         <div class="admin-time-wrap admin-offset-input">
                             <span class="admin-time-label">Offset</span>
@@ -2598,11 +2657,6 @@
         function updateEventField(idx, field, value) {
             if (idx >= 0 && idx < eventsData.length) {
                 eventsData[idx][field] = value;
-                // We'll save later via "Save Events" but for now we just update the local array
-                // We'll implement a save all events button? For simplicity, we'll update on change and save automatically? 
-                // We'll rely on the "Add Event" and delete to refresh list. For edits, we'll use a "Save Events" button? 
-                // Actually we can update on change and call a save function.
-                // For simplicity, we'll add a save button in the admin events tab.
             }
         }
 
@@ -2689,7 +2743,6 @@
             }
         }
 
-        // Admin day tabs for dining
         function renderAdminDayTabs() {
             const days = Object.keys(menuData);
             document.getElementById('admin-day-tabs').innerHTML = days.map(d =>
@@ -2712,11 +2765,8 @@
         // ============================================================
         //  ADMIN ACTIONS (CRUD with Supabase)
         // ============================================================
-        // All actions check isAdmin before proceeding.
-
         async function savePrayerTimes() {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            // Update local _prayerTimes and then push to Supabase
             const updates = [];
             window._prayerTimes.forEach((p, idx) => {
                 const timeInput = document.getElementById('admin-prayer-time-' + idx);
@@ -2726,7 +2776,6 @@
                     const val = parseInt(offsetInput.value);
                     if (!isNaN(val) && val >= 0) p.iqamaOffset = val;
                 }
-                // Find original prayer id
                 const original = prayerTimesData.find(pt => pt.name === p.name);
                 if (original) {
                     updates.push({
@@ -2736,9 +2785,8 @@
                     });
                 }
             });
-            // Update each row
             for (const upd of updates) {
-                const { error } = await supabase.from('prayer_times').update({
+                const { error } = await supabaseClient.from('prayer_times').update({
                     adhan_time: upd.adhan_time,
                     iqama_offset: upd.iqama_offset
                 }).eq('id', upd.id);
@@ -2748,7 +2796,6 @@
                     return;
                 }
             }
-            // Also update local prayerTimesData
             prayerTimesData = prayerTimesData.map(pt => {
                 const upd = updates.find(u => u.id === pt.id);
                 if (upd) {
@@ -2757,6 +2804,7 @@
                 }
                 return pt;
             });
+            saveToLocalStorage();
             renderPrayerTimes();
             triggerToast('Prayer Times Saved', 'Adhan & Iqama offsets updated.');
         }
@@ -2768,7 +2816,7 @@
             const location = document.getElementById('input-notif-location').value.trim();
             if (!title || !description) { triggerToast('Missing Info', 'Please add a title and message.'); return; }
             const today = new Date().toISOString().split('T')[0];
-            const { data, error } = await supabase.from('announcements').insert({
+            const { data, error } = await supabaseClient.from('announcements').insert({
                 title,
                 description,
                 date: today,
@@ -2790,7 +2838,7 @@
 
         async function deleteAnnouncement(id) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            const { error } = await supabase.from('announcements').delete().eq('id', id);
+            const { error } = await supabaseClient.from('announcements').delete().eq('id', id);
             if (error) {
                 triggerToast('Error', 'Failed to delete.');
                 return;
@@ -2810,7 +2858,7 @@
                 triggerToast('Missing Info', 'Please fill in title, date/time, and location.');
                 return;
             }
-            const { data, error } = await supabase.from('events').insert({
+            const { data, error } = await supabaseClient.from('events').insert({
                 title,
                 category,
                 date,
@@ -2838,7 +2886,7 @@
 
         async function deleteEvent(id) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            const { error } = await supabase.from('events').delete().eq('id', id);
+            const { error } = await supabaseClient.from('events').delete().eq('id', id);
             if (error) {
                 triggerToast('Error', 'Failed to delete.');
                 return;
@@ -2860,7 +2908,7 @@
                 return;
             }
             const color = FACILITY_COLORS[facilitiesData.length % FACILITY_COLORS.length];
-            const { data, error } = await supabase.from('facilities').insert({
+            const { data, error } = await supabaseClient.from('facilities').insert({
                 name,
                 icon: newFacilitySelectedIcon,
                 color,
@@ -2889,7 +2937,7 @@
 
         async function deleteFacility(id) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            const { error } = await supabase.from('facilities').delete().eq('id', id);
+            const { error } = await supabaseClient.from('facilities').delete().eq('id', id);
             if (error) {
                 triggerToast('Error', 'Failed to delete.');
                 return;
@@ -2903,8 +2951,7 @@
         function setFacilityIcon(idx, icon) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
             facilitiesData[idx].icon = icon;
-            // Update in DB
-            supabase.from('facilities').update({ icon }).eq('id', facilitiesData[idx].id).then(({ error }) => {
+            supabaseClient.from('facilities').update({ icon }).eq('id', facilitiesData[idx].id).then(({ error }) => {
                 if (error) console.error(error);
             });
             renderMapMarkers();
@@ -2921,7 +2968,7 @@
                 triggerToast('Missing Info', 'Please fill in name, route, and time.');
                 return;
             }
-            const { data, error } = await supabase.from('transport').insert({
+            const { data, error } = await supabaseClient.from('transport').insert({
                 name,
                 route,
                 time,
@@ -2944,7 +2991,7 @@
 
         async function deleteTransport(id) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            const { error } = await supabase.from('transport').delete().eq('id', id);
+            const { error } = await supabaseClient.from('transport').delete().eq('id', id);
             if (error) {
                 triggerToast('Error', 'Failed to delete.');
                 return;
@@ -2964,7 +3011,7 @@
                 triggerToast('Missing Info', 'Please fill in a title and phone/extension.');
                 return;
             }
-            const { data, error } = await supabase.from('contacts').insert({
+            const { data, error } = await supabaseClient.from('contacts').insert({
                 title,
                 phone,
                 subtitle,
@@ -2987,7 +3034,7 @@
 
         async function deleteContact(id) {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
-            const { error } = await supabase.from('contacts').delete().eq('id', id);
+            const { error } = await supabaseClient.from('contacts').delete().eq('id', id);
             if (error) {
                 triggerToast('Error', 'Failed to delete.');
                 return;
@@ -2997,12 +3044,9 @@
             renderAdminContactsList();
         }
 
-        // Dining menu save
         async function saveDiningDay() {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
             const day = adminActiveDay;
-            const mealFields = document.querySelectorAll('#admin-dining-fields .form-control');
-            // Format: id="admin-meal-Breakfast", etc.
             const mealNames = ['Breakfast', 'Lunch', 'Dinner'];
             const items = {};
             mealNames.forEach(meal => {
@@ -3011,9 +3055,8 @@
                     items[meal] = el.value.split(',').map(s => s.trim()).filter(Boolean);
                 }
             });
-            // Update each meal row in DB
             for (const meal of Object.keys(items)) {
-                const { error } = await supabase.from('menu').upsert({
+                const { error } = await supabaseClient.from('menu').upsert({
                     day: day,
                     meal: meal,
                     items: items[meal]
@@ -3024,16 +3067,15 @@
                     return;
                 }
             }
-            // Update local menuData
             if (!menuData[day]) menuData[day] = {};
             Object.keys(items).forEach(meal => {
                 menuData[day][meal] = items[meal];
             });
             if (activeDay === day) renderDining();
+            saveToLocalStorage();
             triggerToast('Menu Updated', day + ' menu saved.');
         }
 
-        // General settings
         async function saveGeneralSettings() {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
             const camp_name = document.getElementById('input-camp-name').value;
@@ -3052,24 +3094,27 @@
                 region,
                 weather_override,
                 weather_condition,
-                weather_temp
+                weather_temp,
+                owm_api_key: newKey   // <-- add this
             };
-            const { error } = await supabase.from('camp_settings').update(updateObj).eq('id', campSettings.id);
+            const { error } = await supabaseClient.from('camp_settings').update(updateObj).eq('id', campSettings.id);
             if (error) {
+                campSettings = { ...campSettings, ...updateObj };
+                owmApiKey = newKey;   // update global
+                localStorage.setItem('basecamp_owm_key', newKey); // optional fallback
                 triggerToast('Error', 'Failed to update settings.');
                 return;
             }
-            // Update local
             campSettings = { ...campSettings, ...updateObj };
             document.getElementById('header-location-name').innerText = camp_name;
             document.getElementById('about-camp-title').innerText = camp_name;
             document.getElementById('about-camp-region').innerText = region;
             renderStatusStrip();
+            saveToLocalStorage();
             closeModal('admin-modal');
             triggerToast('Settings Updated', 'Camp facility details saved.');
         }
 
-        // About settings
         async function saveAboutSettings() {
             if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
             const description = document.getElementById('input-about-desc').value;
@@ -3085,13 +3130,14 @@
             });
             const companies = companiesText.split('\n').filter(Boolean).map(c => c.trim());
             const updateObj = { description, production, personnel, companies_count, established, history, companies };
-            const { error } = await supabase.from('camp_settings').update(updateObj).eq('id', campSettings.id);
+            const { error } = await supabaseClient.from('camp_settings').update(updateObj).eq('id', campSettings.id);
             if (error) {
                 triggerToast('Error', 'Failed to update about.');
                 return;
             }
             campSettings = { ...campSettings, ...updateObj };
             renderAboutSection();
+            saveToLocalStorage();
             closeModal('admin-modal');
             triggerToast('Site Info Updated', 'About page content saved.');
         }
@@ -3192,13 +3238,11 @@
                 document.getElementById('new-facility-lat').value = pickerLat.toFixed(6);
                 document.getElementById('new-facility-lng').value = pickerLng.toFixed(6);
             } else {
-                // Update facility coordinates
                 const pl = facilitiesData[pickerTarget];
                 if (pl) {
                     pl.lat = pickerLat;
                     pl.lng = pickerLng;
-                    // Update DB
-                    supabase.from('facilities').update({ lat: pickerLat, lng: pickerLng }).eq('id', pl.id).then();
+                    supabaseClient.from('facilities').update({ lat: pickerLat, lng: pickerLng }).eq('id', pl.id).then();
                     renderMapMarkers();
                     renderFacilityList();
                     renderAdminFacilitiesList();
@@ -3209,7 +3253,7 @@
         }
 
         // ============================================================
-        //  WEATHER (unchanged)
+        //  WEATHER
         // ============================================================
         function getTimeAwareWeatherIcon(condition, prayerTimes) {
             const now = new Date();
@@ -3351,7 +3395,6 @@
                                     const clean = t.replace('.', ':');
                                     const p = window._prayerTimes.find(p => p.name === name);
                                     if (p) p.time = clean;
-                                    // Also update DB
                                     const dbRow = prayerTimesData.find(pt => pt.name === name);
                                     if (dbRow) {
                                         dbRow.adhan_time = clean;
@@ -3385,16 +3428,15 @@
                     log('✓ Used Aladhan fallback.');
                 }
 
-                // Save fetched adhan times to Supabase
                 for (const pt of prayerTimesData) {
-                    const { error } = await supabase.from('prayer_times').update({
+                    const { error } = await supabaseClient.from('prayer_times').update({
                         adhan_time: pt.adhan_time
                     }).eq('id', pt.id);
                     if (error) {
                         console.error('Update prayer error:', error);
                     }
                 }
-
+                saveToLocalStorage();
                 renderPrayerTimes();
                 renderAdminPrayerFields();
                 log('✓ Prayer times updated in Supabase.');
@@ -3433,8 +3475,6 @@
                 nb.classList.add('nav-visible'); }
             lastScrollTop = st <= 0 ? 0 : st;
         }
-
-        let nextEventTimestamp = Date.now() + 86400000;
 
         function updateCountdown() {
             const now = Date.now();
@@ -3477,30 +3517,51 @@
         // ============================================================
         async function init() {
             await checkSession();
+
+            const hasCache = loadFromLocalStorage();
+            if (hasCache) {
+                applySettingsToUI();
+                applyPrayerTimesToUI();
+                applyMenuToUI();
+                applyTransportToUI();
+                applyContactsToUI();
+                applyAnnouncementsToUI();
+                applyEventsToUI();
+                applyFacilitiesToUI();
+                renderAll();
+            } else {
+                campSettings = DEFAULT_CAMP_SETTINGS;
+                prayerTimesData = DEFAULT_PRAYER_TIMES;
+                window._prayerTimes = DEFAULT_PRAYER_TIMES.map(p => ({ name: p.name, time: p.adhan_time, iqamaOffset: p.iqama_offset }));
+                menuData = {};
+                Object.keys(DEFAULT_MENU).forEach(day => { menuData[day] = DEFAULT_MENU[day]; });
+                transportData = DEFAULT_TRANSPORT;
+                contactsData = DEFAULT_CONTACTS;
+                announcementsData = DEFAULT_ANNOUNCEMENTS;
+                eventsData = DEFAULT_EVENTS;
+                facilitiesData = DEFAULT_FACILITIES;
+                saveToLocalStorage();
+                applySettingsToUI();
+                applyPrayerTimesToUI();
+                applyMenuToUI();
+                applyTransportToUI();
+                applyContactsToUI();
+                applyAnnouncementsToUI();
+                applyEventsToUI();
+                applyFacilitiesToUI();
+                renderAll();
+            }
+
             await fetchAllData();
-            // After data loaded, render all components
-            renderAboutSection(); // relies on campSettings
-            renderStatusStrip();
+
             fetchLiveWeather();
             setInterval(fetchLiveWeather, 900000);
-            renderPrayerTimes();
-            renderAnnouncements();
-            renderEventFilters();
-            renderEvents();
-            initFacilityMap();
-            renderFacilityList();
-            renderDayTabs();
-            renderDining();
-            renderTransport();
-            renderNumbers();
-            renderAdminLists();
-            renderNewFacilityIconPicker();
-            applyLanguage(currentLang);
-            setInterval(updateCountdown, 1000);
             setInterval(() => {
-                document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit',
-                    minute: '2-digit' });
+                document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }, 1000);
+            setInterval(updateCountdown, 1000);
+
+            initFacilityMap();
             checkDesktopMode();
             window.addEventListener('resize', checkDesktopMode);
         }
@@ -3512,7 +3573,6 @@
             } else { switchTab('home'); }
         }
 
-        // Helper to render all admin lists (call after data change)
         function renderAdminLists() {
             renderAdminAnnouncementsList();
             renderAdminEventsList();
@@ -3523,12 +3583,26 @@
             renderAdminPrayerFields();
         }
 
+        function renderAll() {
+            renderPrayerTimes();
+            renderAboutSection();
+            renderAnnouncements();
+            renderEventFilters();
+            renderEvents();
+            renderFacilityList();
+            renderDayTabs();
+            renderDining();
+            renderTransport();
+            renderNumbers();
+            renderAdminLists();
+            renderStatusStrip();
+        }
+
         // ============================================================
         //  START
         // ============================================================
         document.addEventListener('DOMContentLoaded', init);
 
-        // For direct button calls after page load (e.g., onclick)
         window.isAdmin = () => isAdmin;
         window.triggerToast = triggerToast;
         window.openModal = openModal;
@@ -3569,8 +3643,6 @@
         window.updateFacilityField = updateFacilityField;
         window.updateTransportField = updateTransportField;
         window.updateContactField = updateContactField;
-
-        // Re‑render functions exposed
         window.renderPrayerTimes = renderPrayerTimes;
         window.renderAnnouncements = renderAnnouncements;
         window.renderEvents = renderEvents;
