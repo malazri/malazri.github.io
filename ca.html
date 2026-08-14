@@ -1727,10 +1727,9 @@
 
     </div>
 
-
     <script>
         // ============================================================
-        //  SUPABASE CONFIGURATION
+        //  SUPABASE CONFIGURATION - REPLACE WITH YOUR OWN
         // ============================================================
         const SUPABASE_URL = 'https://mywcoynuakmfafzgzlzr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im15d2NveW51YWttZmFmemd6bHpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NDc3MjUsImV4cCI6MjEwMjEyMzcyNX0.xLWIUEVq2y_90f__QYPaJyPN7KGMqvBT1RfuwC660Ng';
@@ -1742,10 +1741,13 @@
         let currentUser = null;
         let isAdmin = false;
         const PRAYER_ORDER = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+        // ===== CAMP COORDINATES =====
         const CAMP_LAT = 22.8750;
         const CAMP_LNG = 55.3700;
-        const CAMP_CITY_ID = 13;
+        const CAMP_CITY_ID = 13; // Lekhwair
 
+        // Data stores (populated from Supabase)
         let campSettings = null;
         let prayerTimesData = [];
         let menuData = {};
@@ -1754,51 +1756,40 @@
         let announcementsData = [];
         let eventsData = [];
         let facilitiesData = [];
-        window._prayerTimes = [];
+        window._prayerTimes = [];  // FIXED: removed 'let'
 
+        // Weather (still fetched from APIs)
         let liveWeather = { temp: null, condition: 'sunny', loaded: false };
         let manualWeather = { temp: '42°C', condition: 'sunny', override: false };
         let owmApiKey = localStorage.getItem('basecamp_owm_key') || '';
 
+        // UI state
         let announcementsExpanded = false;
         let activeFilter = 'All';
         let activeDay = 'Sat';
         let adminActiveDay = 'Sat';
         let leafletMap = null;
         let leafletMarkers = [];
-        let pickerMap = null;
-        let pickerMarker = null;
-        let pickerLat = null;
-        let pickerLng = null;
-        let pickerTarget = 'new';
-        let clickCount = 0; // declared only once
-        let clickTimer = null;
+        let pickerMap = null,
+            pickerMarker = null,
+            pickerLat = null,
+            pickerLng = null,
+            pickerTarget = 'new';
+        let clickCount = 0,
+            clickTimer = null;
         let lastScrollTop = 0;
         let nextEventTimestamp = Date.now() + 86400000;
 
-        // ============================================================
-        //  OMAN TIME HELPERS
-        // ============================================================
-        function getOmanTimeInMinutes() {
-            const now = new Date();
-            const utcHours = now.getUTCHours();
-            const utcMinutes = now.getUTCMinutes();
-            const omanHours = (utcHours + 4) % 24;
-            return omanHours * 60 + utcMinutes;
+        function formatTimeToHM(timeStr) {
+            if (!timeStr) return '';
+            // Split by ':' and take first two parts
+            const parts = timeStr.split(':');
+            if (parts.length >= 2) {
+                return parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0');
+            }
+            return timeStr; // fallback
         }
-
-        function getOmanHour() {
-            const now = new Date();
-            const utcHours = now.getUTCHours();
-            return (utcHours + 4) % 24;
-        }
-
-        function getOmanDate() {
-            const now = new Date();
-            const omanTime = now.toLocaleString('en-US', { timeZone: 'Asia/Muscat' });
-            return new Date(omanTime);
-        }
-
+        
         // ============================================================
         //  LOCAL STORAGE CACHING
         // ============================================================
@@ -1839,9 +1830,7 @@
             localStorage.setItem('campAppData', JSON.stringify(data));
         }
 
-        // ============================================================
-        //  TRANSLATIONS
-        // ============================================================
+        // Translations (unchanged)
         const translations = {
             en: {
                 langBtn: "عربي",
@@ -1902,6 +1891,9 @@
         };
         let currentLang = localStorage.getItem('basecamp_lang') || 'en';
 
+        // ============================================================
+        //  HELPERS & UTILITIES
+        // ============================================================
         function applyLanguage(lang) {
             document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
             document.documentElement.lang = lang;
@@ -1937,7 +1929,7 @@
         window.addEventListener('orientationchange', setViewportHeight);
 
         // ============================================================
-        //  AUTHENTICATION (unchanged)
+        //  AUTHENTICATION
         // ============================================================
         async function login(e) {
             e.preventDefault();
@@ -1999,7 +1991,7 @@
         }
 
         // ============================================================
-        //  DEFAULT DATA
+        //  DEFAULT DATA (fallback)
         // ============================================================
         const DEFAULT_CAMP_SETTINGS = {
             camp_name: 'Lekhwair Camp',
@@ -2101,10 +2093,25 @@
         ];
 
         // ============================================================
-        //  FETCH ALL DATA FROM SUPABASE
+        //  SEED HELPER
+        // ============================================================
+        async function seedTable(tableName, defaultData) {
+            const { data: existing } = await supabaseClient.from(tableName).select('*').limit(1);
+            if (!existing || existing.length === 0) {
+                const toInsert = defaultData.map(item => {
+                    const { id, ...rest } = item;
+                    return rest;
+                });
+                await supabaseClient.from(tableName).insert(toInsert);
+            }
+        }
+
+        // ============================================================
+        //  DATA FETCHING FROM SUPABASE
         // ============================================================
         async function fetchAllData() {
             try {
+                // 1. Settings
                 let { data: settingsData, error: settingsErr } = await supabaseClient.from('camp_settings').select('*').limit(1);
                 if (settingsErr) throw settingsErr;
                 if (settingsData && settingsData.length > 0) {
@@ -2115,25 +2122,23 @@
                     campSettings = inserted[0];
                 }
 
+                // 2. Prayer times – sort manually
                 let { data: prayerData, error: prayerErr } = await supabaseClient.from('prayer_times').select('*');
                 if (prayerErr) throw prayerErr;
                 if (prayerData && prayerData.length > 0) {
                     prayerTimesData = prayerData.sort((a, b) => PRAYER_ORDER.indexOf(a.name) - PRAYER_ORDER.indexOf(b.name));
                 } else {
-                    // seed defaults
-                    const toInsert = DEFAULT_PRAYER_TIMES.map(p => ({ name: p.name, adhan_time: p.adhan_time, iqama_offset: p.iqama_offset }));
-                    await supabaseClient.from('prayer_times').insert(toInsert);
+                    await seedTable('prayer_times', DEFAULT_PRAYER_TIMES);
                     const { data: refetched } = await supabaseClient.from('prayer_times').select('*');
                     prayerTimesData = (refetched || []).sort((a, b) => PRAYER_ORDER.indexOf(a.name) - PRAYER_ORDER.indexOf(b.name));
                 }
-                // Update window._prayerTimes
                 window._prayerTimes = prayerTimesData.map(p => ({
                     name: p.name,
                     time: p.adhan_time,
                     iqamaOffset: p.iqama_offset
                 }));
 
-                // Menu
+                // 3. Menu
                 let { data: menuRows, error: menuErr } = await supabaseClient.from('menu').select('*');
                 if (menuErr) throw menuErr;
                 if (menuRows && menuRows.length > 0) {
@@ -2162,61 +2167,62 @@
                     });
                 }
 
-                // Transport
+                // 4. Transport
                 let { data: transportRows, error: transportErr } = await supabaseClient.from('transport').select('*');
                 if (transportErr) throw transportErr;
                 if (transportRows && transportRows.length > 0) {
                     transportData = transportRows;
                 } else {
-                    await supabaseClient.from('transport').insert(DEFAULT_TRANSPORT);
+                    await seedTable('transport', DEFAULT_TRANSPORT);
                     const { data: refetched } = await supabaseClient.from('transport').select('*');
                     transportData = refetched || [];
                 }
 
-                // Contacts
+                // 5. Contacts
                 let { data: contactRows, error: contactErr } = await supabaseClient.from('contacts').select('*');
                 if (contactErr) throw contactErr;
                 if (contactRows && contactRows.length > 0) {
                     contactsData = contactRows;
                 } else {
-                    await supabaseClient.from('contacts').insert(DEFAULT_CONTACTS);
+                    await seedTable('contacts', DEFAULT_CONTACTS);
                     const { data: refetched } = await supabaseClient.from('contacts').select('*');
                     contactsData = refetched || [];
                 }
 
-                // Announcements
+                // 6. Announcements
                 let { data: annRows, error: annErr } = await supabaseClient.from('announcements').select('*').order('date', { ascending: false });
                 if (annErr) throw annErr;
                 if (annRows && annRows.length > 0) {
                     announcementsData = annRows;
                 } else {
-                    await supabaseClient.from('announcements').insert(DEFAULT_ANNOUNCEMENTS);
+                    await seedTable('announcements', DEFAULT_ANNOUNCEMENTS);
                     const { data: refetched } = await supabaseClient.from('announcements').select('*').order('date', { ascending: false });
                     announcementsData = refetched || [];
                 }
 
-                // Events
+                // 7. Events
                 let { data: eventRows, error: eventErr } = await supabaseClient.from('events').select('*').order('timeVal', { ascending: true });
                 if (eventErr) throw eventErr;
                 if (eventRows && eventRows.length > 0) {
                     eventsData = eventRows;
                 } else {
-                    await supabaseClient.from('events').insert(DEFAULT_EVENTS);
+                    await seedTable('events', DEFAULT_EVENTS);
                     const { data: refetched } = await supabaseClient.from('events').select('*').order('timeVal', { ascending: true });
                     eventsData = refetched || [];
                 }
 
-                // Facilities
+                // 8. Facilities
                 let { data: facilityRows, error: facilityErr } = await supabaseClient.from('facilities').select('*');
                 if (facilityErr) throw facilityErr;
                 if (facilityRows && facilityRows.length > 0) {
                     facilitiesData = facilityRows;
                 } else {
-                    await supabaseClient.from('facilities').insert(DEFAULT_FACILITIES);
+                    await seedTable('facilities', DEFAULT_FACILITIES);
                     const { data: refetched } = await supabaseClient.from('facilities').select('*');
                     facilitiesData = refetched || [];
                 }
 
+                // Update weather override from settings
                 if (campSettings) {
                     owmApiKey = campSettings.owm_api_key || localStorage.getItem('basecamp_owm_key') || '';
                     document.getElementById('input-owm-key').value = owmApiKey;
@@ -2284,7 +2290,7 @@
             document.getElementById('input-stat-established').value = campSettings.established || '';
             const key = campSettings.owm_api_key || '';
             document.getElementById('input-owm-key').value = key;
-            owmApiKey = key;
+            owmApiKey = key; // update global variable
         }
 
         function applyPrayerTimesToUI() {
@@ -2331,36 +2337,30 @@
         }
 
         // ============================================================
-        //  RENDER FUNCTIONS (with debug logging)
+        //  RENDER FUNCTIONS
         // ============================================================
         function renderPrayerTimes() {
-            let times = window._prayerTimes;
-            if (!times || times.length === 0) {
-                times = DEFAULT_PRAYER_TIMES.map(p => ({
-                    name: p.name,
-                    time: p.adhan_time,
-                    iqamaOffset: p.iqama_offset
-                }));
-                window._prayerTimes = times;
-            }
+            // 1. Use Oman time (UTC+4)
+            const now = new Date();
+            const utcHours = now.getUTCHours();
+            const utcMinutes = now.getUTCMinutes();
+            const omanHours = (utcHours + 4) % 24;
+            const nowMins = omanHours * 60 + utcMinutes;
         
-            const nowMins = getOmanTimeInMinutes();
-            const omanDate = getOmanDate();
-            const isFriday = omanDate.getDay() === 5;
+            // 2. Determine if today is Friday (using UTC day – Oman is UTC+4, same day)
+            const isFriday = now.getUTCDay() === 5;
         
-            // Normalise times and convert 12‑hour → 24‑hour for Asr/Maghrib/Isha
-            const displayTimes = times.map(p => {
+            // 3. Convert 12‑hour times to 24‑hour and apply Juma name on Friday
+            const displayTimes = window._prayerTimes.map(p => {
                 let displayName = p.name;
                 if (isFriday && p.name === 'Dhuhr') displayName = 'Juma';
         
-                let timeStr = (p.time || '').trim();
-                const parts = timeStr.split(':');
-                let hour = parseInt(parts[0]);
-                let minute = parseInt(parts[1]);
+                let timeStr = p.time.trim();
+                let [hour, minute] = timeStr.split(':').map(Number);
                 if (isNaN(hour) || isNaN(minute)) {
-                    return { ...p, displayName, time: timeStr };
+                    // If parsing fails, keep original time
+                    return { ...p, displayName, displayTime: timeStr, displayHour: hour, displayMinute: minute };
                 }
-        
                 // Convert 12‑hour to 24‑hour for afternoon/evening prayers
                 if ((p.name === 'Asr' || p.name === 'Maghrib' || p.name === 'Isha') && hour < 12) {
                     hour += 12;
@@ -2368,40 +2368,32 @@
                 if (p.name === 'Dhuhr' && hour < 12) {
                     hour += 12;
                 }
-        
-                const hh = String(hour).padStart(2, '0');
-                const mm = String(minute).padStart(2, '0');
-                const normalisedTime = hh + ':' + mm;
-        
-                return { ...p, displayName, time: normalisedTime };
+                const displayTime = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+                return { ...p, displayName, displayTime, displayHour: hour, displayMinute: minute };
             });
         
-            let nextIdx = -1;
-            displayTimes.forEach((p, i) => {
-                if (!p.time) return;
-                const [h, m] = p.time.split(':').map(Number);
-                if (isNaN(h) || isNaN(m)) return;
-                const prayerMins = h * 60 + m;
-                if (prayerMins >= nowMins && nextIdx === -1) {
-                    nextIdx = i;
-                }
+            // 4. Find the next prayer (first with prayer time >= current Oman time)
+            let nextIdx = displayTimes.findIndex(p => {
+                const prayerMins = p.displayHour * 60 + p.displayMinute;
+                return prayerMins >= nowMins;
             });
             if (nextIdx === -1) nextIdx = 0;
         
+            // 5. Update the "Next Prayer" pill (uses displayName)
             const pill = document.getElementById('next-prayer-pill');
             if (pill) {
-                pill.innerText = displayTimes[nextIdx].displayName + ' ' + displayTimes[nextIdx].time;
+                pill.innerText = displayTimes[nextIdx].displayName + ' ' + displayTimes[nextIdx].displayTime;
             }
         
+            // 6. Render the prayer grid (uses displayName)
             const grid = document.getElementById('prayer-grid');
             if (!grid) return;
-        
             grid.innerHTML = displayTimes.map((p, i) => {
-                const iqama = computeIqama(p.time, p.iqamaOffset);
+                const iqama = computeIqama(p.displayTime, p.iqamaOffset);
                 return `
                     <div class="prayer-cell ${i === nextIdx ? 'next' : ''}">
                         <div class="prayer-name">${p.displayName}</div>
-                        <div class="prayer-time">${p.time}</div>
+                        <div class="prayer-time">${p.displayTime}</div>
                         <div class="prayer-iqama">${iqama}</div>
                     </div>
                 `;
@@ -2410,7 +2402,8 @@
 
         function computeIqama(adhanTime, offsetMinutes) {
             if (!adhanTime || offsetMinutes === undefined) return '';
-            const [h, m] = adhanTime.split(':').map(Number);
+            const clean = formatTimeToHM(adhanTime); // ensure HH:MM
+            const [h, m] = clean.split(':').map(Number);
             if (isNaN(h) || isNaN(m)) return '';
             const total = h * 60 + m + offsetMinutes;
             const nh = Math.floor(total / 60) % 24;
@@ -2418,108 +2411,902 @@
             return String(nh).padStart(2, '0') + ':' + String(nm).padStart(2, '0');
         }
 
-        // ============================================================
-        //  MISSING FUNCTIONS (previously undefined)
-        // ============================================================
-        function handleScrollBehavior() {
-            if (window.innerWidth > 768) return;
-            const c = document.getElementById('main-scroll-container');
-            const nb = document.getElementById('mobile-nav-bar');
-            if (!c || !nb) return;
-            const st = c.scrollTop,
-                sh = c.scrollHeight,
-                ch = c.clientHeight;
-            const atBottom = st + ch >= sh - 15;
-            if (atBottom) {
-                nb.classList.remove('nav-hidden');
-                nb.classList.add('nav-visible');
-            } else if (st > lastScrollTop && st > 50) {
-                nb.classList.remove('nav-visible');
-                nb.classList.add('nav-hidden');
-            } else if (st < lastScrollTop) {
-                nb.classList.remove('nav-hidden');
-                nb.classList.add('nav-visible');
+        function renderAnnouncements() {
+            const sorted = [...announcementsData].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const visible = sorted.slice(0, 4);
+            const rest = sorted.slice(4);
+            const itemHtml = a => `
+                <div class="announcement-item">
+                    <h4>${a.title}</h4>
+                    <p>${a.description}</p>
+                    <div class="announcement-meta">
+                        <span><i class="fa-regular fa-calendar"></i> ${formatDate(a.date)}</span>
+                        <span><i class="fa-solid fa-location-dot"></i> ${a.location}</span>
+                    </div>
+                </div>`;
+            document.getElementById('announcements-visible').innerHTML = visible.map(itemHtml).join('') ||
+                '<p style="font-size:0.78rem;color:var(--text-dim);">No announcements yet.</p>';
+            document.getElementById('announcements-hidden').innerHTML = rest.map(itemHtml).join('');
+            const btn = document.getElementById('announce-expand-btn');
+            if (rest.length > 0) {
+                btn.style.display = 'flex';
+                document.getElementById('announce-expand-label').innerText = announcementsExpanded ? 'Show less' :
+                    `Show ${rest.length} more`;
+                document.getElementById('announce-expand-icon').style.transform = announcementsExpanded ?
+                    'rotate(180deg)' : 'rotate(0deg)';
+            } else {
+                btn.style.display = 'none';
             }
-            lastScrollTop = st <= 0 ? 0 : st;
         }
 
-        // Rest of the functions (renderAnnouncements, renderAboutSection, etc.)
-        // I'll include them all in the final code, but for brevity they are identical to your original.
-        // To save space, I'll refer to your original code for those.
-        // ============================================================
-        //  PLACEHOLDERS (your existing functions remain)
-        // ============================================================
+        function toggleAnnouncements() {
+            announcementsExpanded = !announcementsExpanded;
+            document.getElementById('announcements-hidden').classList.toggle('expanded', announcementsExpanded);
+            renderAnnouncements();
+            document.getElementById('announcements-hidden').classList.toggle('expanded', announcementsExpanded);
+        }
+
         function formatDate(iso) {
             const d = new Date(iso + 'T00:00:00');
             return d.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
         }
 
-        function renderAnnouncements() {
-            // ... your code
+        function renderAboutSection() {
+            if (!campSettings) return;
+            document.getElementById('about-camp-desc').innerText = campSettings.description || '';
+            document.getElementById('stats-grid').innerHTML = `
+                <div class="stat-tile"><div class="stat-val">${campSettings.production || '——'}</div><div class="stat-lbl">Daily Production</div></div>
+                <div class="stat-tile"><div class="stat-val">${campSettings.personnel || '——'}</div><div class="stat-lbl">Camp Personnel</div></div>
+                <div class="stat-tile"><div class="stat-val">${campSettings.companies_count || '——'}</div><div class="stat-lbl">Companies On Site</div></div>
+                <div class="stat-tile"><div class="stat-val">${campSettings.established || '——'}</div><div class="stat-lbl">Established</div></div>
+            `;
+            const history = campSettings.history || [];
+            document.getElementById('history-container').innerHTML = history.map(h => `
+                <div class="history-item"><div class="history-dot"></div><p><strong>${h.title}</strong>${h.desc}</p></div>
+            `).join('');
+            const companies = campSettings.companies || [];
+            document.getElementById('companies-container').innerHTML = companies.map(c => `
+                <span class="company-chip"><i class="fa-solid fa-building"></i>${c}</span>
+            `).join('');
         }
-        function toggleAnnouncements() { /* your code */ }
-        function renderAboutSection() { /* your code */ }
-        function renderEventFilters() { /* your code */ }
-        function setFilter(cat) { /* your code */ }
-        function renderEvents() { /* your code */ }
-        function renderDayTabs() { /* your code */ }
-        function setDay(d) { /* your code */ }
-        function renderDining() { /* your code */ }
-        function renderTransport() { /* your code */ }
-        function renderNumbers() { /* your code */ }
-        function initFacilityMap() { /* your code */ }
-        function renderMapMarkers() { /* your code */ }
-        function showMapInfo(title, info) { /* your code */ }
-        function renderFacilityList() { /* your code */ }
-        function focusFacility(id) { /* your code */ }
-        function renderAdminPrayerFields() { /* your code */ }
-        function renderAdminAnnouncementsList() { /* your code */ }
-        function renderAdminEventsList() { /* your code */ }
-        function renderAdminFacilitiesList() { /* your code */ }
-        function renderAdminTransportList() { /* your code */ }
-        function renderAdminContactsList() { /* your code */ }
-        function renderAdminDayTabs() { /* your code */ }
-        function setAdminDay(d) { /* your code */ }
-        function renderAdminDiningFields() { /* your code */ }
-        function savePrayerTimes() { /* your code */ }
-        function pushNewAnnouncement() { /* your code */ }
-        function deleteAnnouncement(id) { /* your code */ }
-        function addNewEvent() { /* your code */ }
-        function deleteEvent(id) { /* your code */ }
-        function addNewFacility() { /* your code */ }
-        function deleteFacility(id) { /* your code */ }
-        function setFacilityIcon(idx, icon) { /* your code */ }
-        function addNewTransport() { /* your code */ }
-        function deleteTransport(id) { /* your code */ }
-        function addNewContact() { /* your code */ }
-        function deleteContact(id) { /* your code */ }
-        function saveDiningDay() { /* your code */ }
-        function saveGeneralSettings() { /* your code */ }
-        function saveAboutSettings() { /* your code */ }
-        function renderNewFacilityIconPicker() { /* your code */ }
-        function selectNewFacilityIcon(icon) { /* your code */ }
-        function toggleIconDropdown(id) { /* your code */ }
-        function openLocationPicker(target) { /* your code */ }
-        function placePickerMarker(lat, lng) { /* your code */ }
-        function confirmPickerLocation() { /* your code */ }
-        function updateEventField(idx, field, value) { /* your code */ }
-        function updateFacilityField(idx, field, value) { /* your code */ }
-        function updateTransportField(idx, field, value) { /* your code */ }
-        function updateContactField(idx, field, value) { /* your code */ }
-        function renderAdminLists() { /* your code */ }
-        function renderAll() { /* your code */ }
-        function updateCountdown() { /* your code */ }
-        function fetchPrayerTimesFromWorker() { /* your code */ }
+
+        function renderEventFilters() {
+            const cats = ['All', ...new Set(eventsData.map(e => e.category))];
+            document.getElementById('event-filters').innerHTML = cats.map(c =>
+                `<div class="filter-chip ${c === activeFilter ? 'active' : ''}" onclick="setFilter('${c}')">${c}</div>`
+            ).join('');
+        }
+
+        function setFilter(cat) { activeFilter = cat;
+            renderEventFilters();
+            renderEvents(); }
+
+        function renderEvents() {
+            const sorted = [...eventsData].sort((a, b) => a.timeVal - b.timeVal);
+            if (sorted.length > 0) {
+                const first = sorted[0];
+                document.getElementById('next-event-name').innerText = first.title;
+                document.getElementById('next-event-time-desc').innerHTML =
+                    `<i class="fa-solid fa-location-dot"></i> ${first.location} &bull; <i class="fa-regular fa-clock"></i> ${first.date}`;
+                document.getElementById('next-event-tag').innerText = first.category;
+                nextEventTimestamp = first.timeVal;
+            }
+            const list = activeFilter === 'All' ? sorted : sorted.filter(e => e.category === activeFilter);
+            document.getElementById('events-container').innerHTML = list.map(ev => `
+                <div class="event-row">
+                    <div class="event-icon"><i class="fa-solid ${ev.icon || 'fa-calendar-days'}"></i></div>
+                    <div class="event-body">
+                        <h4>${ev.live ? '<span class=\"live-dot\"></span>' : ''}${ev.title}</h4>
+                        <div class="meta">
+                            <span><i class="fa-regular fa-calendar-days"></i> ${ev.date}</span>
+                            <span><i class="fa-solid fa-location-dot"></i> ${ev.location}</span>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function renderDayTabs() {
+            const days = Object.keys(menuData);
+            if (days.length === 0) return;
+            document.getElementById('day-tabs').innerHTML = days.map(d =>
+                `<div class="day-tab ${d === activeDay ? 'active' : ''}" onclick="setDay('${d}')">${d}</div>`
+            ).join('');
+        }
+
+        function setDay(d) { activeDay = d;
+            renderDayTabs();
+            renderDining(); }
+
+        function renderDining() {
+            const dayMenu = menuData[activeDay] || {};
+            const times = { Breakfast: '04:30 – 08:00', Lunch: '12:00 – 14:00', Dinner: '17:00 – 21:00' };
+            const icons = { Breakfast: 'fa-mug-hot', Lunch: 'fa-bowl-food', Dinner: 'fa-utensils' };
+            const meals = Object.keys(dayMenu);
+            document.getElementById('dining-container').innerHTML = meals.map(meal => `
+                <div class="meal-block">
+                    <h5><i class="fa-solid ${icons[meal]}" style="color:var(--amber);"></i> ${meal} <span class="meal-time">· ${times[meal] || ''}</span></h5>
+                    <div class="food-row">${dayMenu[meal].map(item => `<span class="food-chip">${item}</span>`).join('')}</div>
+                </div>`).join('');
+        }
+
+        function renderTransport() {
+            document.getElementById('transport-container').innerHTML = transportData.map(t => `
+                <div class="transport-row">
+                    <div class="t-top">
+                        <h4>${t.name}</h4>
+                        <span class="pill ${t.status === 'upcoming' ? 'pill-amber' : 'pill-live'}">${t.time}</span>
+                    </div>
+                    <p><i class="fa-solid fa-route"></i> ${t.route}</p>
+                </div>`).join('');
+        }
+
+        function renderNumbers() {
+            const groups = { emergency: 'Emergency', ops: 'Operations', services: 'Camp Services' };
+            const container = document.getElementById('numbers-container');
+            let html = '';
+            Object.keys(groups).forEach(catKey => {
+                const items = contactsData.filter(n => n.category === catKey);
+                if (items.length === 0) return;
+                html += `<div class="numbers-group"><h5>${groups[catKey]}</h5>`;
+                items.forEach(n => {
+                    const isEmerg = n.category === 'emergency';
+                    html += `
+                        <div class="contact-card">
+                            <div class="contact-info">
+                                <div class="contact-icon" style="background:${isEmerg ? 'var(--red-soft)' : 'var(--amber-soft)'};color:${isEmerg ? 'var(--red)' : 'var(--amber)'};">
+                                    <i class="fa-solid ${isEmerg ? 'fa-hospital' : 'fa-phone'}"></i>
+                                </div>
+                                <div><h4>${n.title}</h4><p>${n.subtitle}</p></div>
+                            </div>
+                            <a href="tel:${n.phone}" class="call-btn ${isEmerg ? 'call-btn-danger' : ''}"><i class="fa-solid fa-phone"></i></a>
+                        </div>`;
+                });
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        // ============================================================
+        //  MAP & FACILITIES
+        // ============================================================
+        function initFacilityMap() {
+            if (typeof L === 'undefined') {
+                document.getElementById('leaflet-map').innerHTML =
+                    '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:16px;text-align:center;font-size:0.75rem;color:var(--text-dim);"><span><i class="fa-solid fa-map-location-dot" style="display:block;font-size:1.4rem;margin-bottom:8px;color:var(--text-dim);"></i>Map library failed to load — check your internet connection and reload.</span></div>';
+                return;
+            }
+            leafletMap = L.map('leaflet-map', { zoomControl: false, attributionControl: true }).setView([CAMP_LAT,
+                CAMP_LNG
+            ], 17);
+            L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
+                    maxZoom: 19
+                }).addTo(leafletMap);
+            L.tileLayer(
+                'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    opacity: 0.9
+                }).addTo(leafletMap);
+            L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+            renderMapMarkers();
+        }
+
+        function renderMapMarkers() {
+            if (!leafletMap) return;
+            leafletMarkers.forEach(m => leafletMap.removeLayer(m));
+            leafletMarkers = [];
+            facilitiesData.forEach(p => {
+                const icon = L.divIcon({
+                    className: '',
+                    html: `<div class="geo-pin" style="background:${p.color};"><i class="fa-solid ${p.icon}"></i></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28]
+                });
+                const marker = L.marker([p.lat, p.lng], { icon }).addTo(leafletMap);
+                marker.bindPopup(`<strong>${p.name}</strong><br>${p.info.replace('\n','<br>')}`);
+                marker.on('click', () => showMapInfo(p.name, p.info));
+                leafletMarkers.push(marker);
+            });
+        }
+
+        function showMapInfo(title, info) {
+            document.getElementById('map-details-box').innerHTML = `<strong>${title}</strong><br>${info.replace('\n','<br>')}`;
+        }
+
+        function renderFacilityList() {
+            const container = document.getElementById('facility-list-container');
+            container.innerHTML = facilitiesData.map(p => {
+                const firstLine = p.info.split('\n')[0];
+                return `<div class="facility-list-row" onclick="focusFacility(${p.id})">
+                    <span class="fl-name"><i class="fa-solid ${p.icon}"></i>${p.name}</span>
+                    <span class="fl-time">${firstLine.replace('Timing: ','')}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function focusFacility(id) {
+            const p = facilitiesData.find(pl => pl.id === id);
+            if (!p) return;
+            showMapInfo(p.name, p.info);
+            if (leafletMap) { leafletMap.setView([p.lat, p.lng], 18); }
+        }
+
+        // ============================================================
+        //  ADMIN RENDER FUNCTIONS
+        // ============================================================
+        function renderAdminPrayerFields() {
+            const container = document.getElementById('admin-prayer-fields');
+            if (!window._prayerTimes) return;
+            container.innerHTML = window._prayerTimes.map((p, idx) => `
+                <div class="prayer-admin-group">
+                    <span class="prayer-label">${p.name} <small>Adhan · Iqama offset (min)</small></span>
+                    <div class="admin-time-row">
+                        <div class="admin-time-wrap">
+                            <span class="admin-time-label">Adhan</span>
+                            <input type="text" class="form-control" id="admin-prayer-time-${idx}" value="${formatTimeToHM(p.time)}" placeholder="HH:MM">
+                        </div>
+                        <div class="admin-time-wrap admin-offset-input">
+                            <span class="admin-time-label">Offset</span>
+                            <input type="number" class="form-control" id="admin-prayer-offset-${idx}" value="${p.iqamaOffset}" min="0" step="1" placeholder="min">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdminAnnouncementsList() {
+            const container = document.getElementById('admin-announcements-list');
+            const sorted = [...announcementsData].sort((a, b) => new Date(b.date) - new Date(a.date));
+            container.innerHTML = sorted.map(a => `
+                <div class="admin-block" style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                    <div>
+                        <div style="font-size:0.8rem;font-weight:600;">${a.title}</div>
+                        <div style="font-size:0.68rem;color:var(--text-dim);font-family:var(--font-mono);">${formatDate(a.date)} · ${a.location}</div>
+                    </div>
+                    <div class="icon-btn" style="width:32px;height:32px;color:var(--red);" onclick="deleteAnnouncement(${a.id})"><i class="fa-solid fa-trash"></i></div>
+                </div>`).join('');
+        }
+
+        function renderAdminEventsList() {
+            const container = document.getElementById('admin-events-list');
+            let html = '';
+            eventsData.forEach((ev, idx) => {
+                html += `<div class="admin-block">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="margin:0;">Event Title</label>
+                        <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteEvent(${ev.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+                    </div>
+                    <input type="text" class="form-control" value="${ev.title}" onchange="updateEventField(${idx},'title',this.value)" style="margin-bottom:6px;">
+                    <label>Category</label>
+                    <input type="text" class="form-control" value="${ev.category}" onchange="updateEventField(${idx},'category',this.value)" style="margin-bottom:6px;">
+                    <label>Location & Time Note</label>
+                    <input type="text" class="form-control" value="${ev.date}" onchange="updateEventField(${idx},'date',this.value)" style="margin-bottom:6px;">
+                    <label>Location</label>
+                    <input type="text" class="form-control" value="${ev.location}" onchange="updateEventField(${idx},'location',this.value)" style="margin-bottom:0;">
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateEventField(idx, field, value) {
+            if (idx >= 0 && idx < eventsData.length) {
+                eventsData[idx][field] = value;
+            }
+        }
+
+        function renderAdminFacilitiesList() {
+            const container = document.getElementById('admin-places-list');
+            let html = '';
+            facilitiesData.forEach((pl, idx) => {
+                html += `<div class="admin-block">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="margin:0;">Facility Name</label>
+                        <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteFacility(${pl.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+                    </div>
+                    <input type="text" class="form-control" value="${pl.name}" onchange="updateFacilityField(${idx},'name',this.value)" style="margin-bottom:6px;">
+                    <label>Icon</label>
+                    <div class="icon-dropdown">
+                        <button type="button" class="icon-dropdown-toggle" onclick="toggleIconDropdown('facility-icon-picker-${idx}')"><span><i class="fa-solid ${pl.icon}"></i> Choose Icon</span><i class="fa-solid fa-chevron-down"></i></button>
+                        <div class="icon-picker" id="facility-icon-picker-${idx}">${FACILITY_ICONS.map(ic => `<div class="icon-picker-btn ${ic === pl.icon ? 'selected' : ''}" onclick="setFacilityIcon(${idx},'${ic}')"><i class="fa-solid ${ic}"></i></div>`).join('')}</div>
+                    </div>
+                    <label>Timing / Info</label>
+                    <input type="text" class="form-control" value="${pl.info.replace(/\n/g,' | ')}" onchange="updateFacilityField(${idx},'info',this.value.replace(/ \\| /g,'\\n'))" style="margin-bottom:6px;">
+                    <label>Location</label>
+                    <div style="display:flex;gap:8px;margin-bottom:6px;">
+                        <input type="text" class="form-control" value="${pl.lat}" onchange="updateFacilityField(${idx},'lat',parseFloat(this.value))" style="margin-bottom:0;">
+                        <input type="text" class="form-control" value="${pl.lng}" onchange="updateFacilityField(${idx},'lng',parseFloat(this.value))" style="margin-bottom:0;">
+                    </div>
+                    <button class="btn-secondary" style="margin-bottom:0;" onclick="openLocationPicker(${idx})"><i class="fa-solid fa-map-location-dot"></i> Adjust on Map</button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateFacilityField(idx, field, value) {
+            if (idx >= 0 && idx < facilitiesData.length) {
+                facilitiesData[idx][field] = value;
+            }
+        }
+
+        function renderAdminTransportList() {
+            const container = document.getElementById('admin-transport-list');
+            let html = '';
+            transportData.forEach((tr, idx) => {
+                html += `<div class="admin-block">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="margin:0;">Shuttle Name</label>
+                        <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteTransport(${tr.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+                    </div>
+                    <input type="text" class="form-control" value="${tr.name}" onchange="updateTransportField(${idx},'name',this.value)" style="margin-bottom:6px;">
+                    <label>Route</label>
+                    <input type="text" class="form-control" value="${tr.route}" onchange="updateTransportField(${idx},'route',this.value)" style="margin-bottom:6px;">
+                    <label>Time / Status</label>
+                    <input type="text" class="form-control" value="${tr.time}" onchange="updateTransportField(${idx},'time',this.value)" style="margin-bottom:0;">
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateTransportField(idx, field, value) {
+            if (idx >= 0 && idx < transportData.length) {
+                transportData[idx][field] = value;
+            }
+        }
+
+        function renderAdminContactsList() {
+            const container = document.getElementById('admin-numbers-list');
+            let html = '';
+            contactsData.forEach((num, idx) => {
+                html += `<div class="admin-block">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <label style="margin:0;">Contact</label>
+                        <div class="icon-btn" style="width:28px;height:28px;color:var(--red);" onclick="deleteContact(${num.id})"><i class="fa-solid fa-trash" style="font-size:0.8rem;"></i></div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" class="form-control" value="${num.title}" onchange="updateContactField(${idx},'title',this.value)" style="margin-bottom:0;flex:2;">
+                        <input type="text" class="form-control" value="${num.phone}" onchange="updateContactField(${idx},'phone',this.value)" style="margin-bottom:0;flex:1;">
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function updateContactField(idx, field, value) {
+            if (idx >= 0 && idx < contactsData.length) {
+                contactsData[idx][field] = value;
+            }
+        }
+
+        function renderAdminDayTabs() {
+            const days = Object.keys(menuData);
+            document.getElementById('admin-day-tabs').innerHTML = days.map(d =>
+                `<div class="day-tab ${d === adminActiveDay ? 'active' : ''}" onclick="setAdminDay('${d}')">${d}</div>`
+            ).join('');
+            renderAdminDiningFields();
+        }
+
+        function setAdminDay(d) { adminActiveDay = d;
+            renderAdminDayTabs(); }
+
+        function renderAdminDiningFields() {
+            const dayMenu = menuData[adminActiveDay] || {};
+            document.getElementById('admin-dining-fields').innerHTML = Object.keys(dayMenu).map(meal => `
+                <label>${meal} Items (comma separated)</label>
+                <input type="text" class="form-control" id="admin-meal-${meal}" value="${dayMenu[meal].join(', ')}">
+            `).join('');
+        }
+
+        // ============================================================
+        //  ADMIN ACTIONS (CRUD with Supabase)
+        // ============================================================
+        async function savePrayerTimes() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const updates = [];
+            window._prayerTimes.forEach((p, idx) => {
+                const timeInput = document.getElementById('admin-prayer-time-' + idx);
+                const offsetInput = document.getElementById('admin-prayer-offset-' + idx);
+                if (timeInput) p.time = timeInput.value;
+                if (offsetInput) {
+                    const val = parseInt(offsetInput.value);
+                    if (!isNaN(val) && val >= 0) p.iqamaOffset = val;
+                }
+                const original = prayerTimesData.find(pt => pt.name === p.name);
+                if (original) {
+                    updates.push({
+                        id: original.id,
+                        adhan_time: p.time,
+                        iqama_offset: p.iqamaOffset
+                    });
+                }
+            });
+            for (const upd of updates) {
+                const { error } = await supabaseClient.from('prayer_times').update({
+                    adhan_time: upd.adhan_time,
+                    iqama_offset: upd.iqama_offset
+                }).eq('id', upd.id);
+                if (error) {
+                    console.error('Update prayer error:', error);
+                    triggerToast('Error', 'Failed to save prayer times.');
+                    return;
+                }
+            }
+            prayerTimesData = prayerTimesData.map(pt => {
+                const upd = updates.find(u => u.id === pt.id);
+                if (upd) {
+                    pt.adhan_time = upd.adhan_time;
+                    pt.iqama_offset = upd.iqama_offset;
+                }
+                return pt;
+            });
+            saveToLocalStorage();
+            renderPrayerTimes();
+            triggerToast('Prayer Times Saved', 'Adhan & Iqama offsets updated.');
+        }
+
+        async function pushNewAnnouncement() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const title = document.getElementById('input-notif-title').value.trim();
+            const description = document.getElementById('input-notif-desc').value.trim();
+            const location = document.getElementById('input-notif-location').value.trim();
+            if (!title || !description) { triggerToast('Missing Info', 'Please add a title and message.'); return; }
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabaseClient.from('announcements').insert({
+                title,
+                description,
+                date: today,
+                location: location || 'Camp Admin'
+            }).select();
+            if (error) {
+                triggerToast('Error', 'Failed to add announcement.');
+                return;
+            }
+            if (data && data.length > 0) {
+                announcementsData.unshift(data[0]);
+                announcementsExpanded = false;
+                renderAnnouncements();
+                renderAdminAnnouncementsList();
+                closeModal('admin-modal');
+                triggerToast('Announcement Pushed', 'Camp broadcast updated.');
+            }
+        }
+
+        async function deleteAnnouncement(id) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const { error } = await supabaseClient.from('announcements').delete().eq('id', id);
+            if (error) {
+                triggerToast('Error', 'Failed to delete.');
+                return;
+            }
+            announcementsData = announcementsData.filter(a => a.id !== id);
+            renderAnnouncements();
+            renderAdminAnnouncementsList();
+        }
+
+        async function addNewEvent() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const title = document.getElementById('new-event-title').value.trim();
+            const category = document.getElementById('new-event-category').value.trim() || 'Community';
+            const date = document.getElementById('new-event-date').value.trim();
+            const location = document.getElementById('new-event-location').value.trim();
+            if (!title || !date || !location) {
+                triggerToast('Missing Info', 'Please fill in title, date/time, and location.');
+                return;
+            }
+            const { data, error } = await supabaseClient.from('events').insert({
+                title,
+                category,
+                date,
+                location,
+                icon: 'fa-calendar-days',
+                timeVal: Date.now() + 86400000,
+                live: false
+            }).select();
+            if (error) {
+                triggerToast('Error', 'Failed to add event.');
+                return;
+            }
+            if (data && data.length > 0) {
+                eventsData.push(data[0]);
+                renderEventFilters();
+                renderEvents();
+                renderAdminEventsList();
+                document.getElementById('new-event-title').value = '';
+                document.getElementById('new-event-category').value = '';
+                document.getElementById('new-event-date').value = '';
+                document.getElementById('new-event-location').value = '';
+                triggerToast('Event Added', title + ' added to the schedule.');
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const { error } = await supabaseClient.from('events').delete().eq('id', id);
+            if (error) {
+                triggerToast('Error', 'Failed to delete.');
+                return;
+            }
+            eventsData = eventsData.filter(e => e.id !== id);
+            renderEventFilters();
+            renderEvents();
+            renderAdminEventsList();
+        }
+
+        async function addNewFacility() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const name = document.getElementById('new-facility-name').value.trim();
+            const info = document.getElementById('new-facility-info').value.trim();
+            const lat = parseFloat(document.getElementById('new-facility-lat').value);
+            const lng = parseFloat(document.getElementById('new-facility-lng').value);
+            if (!name || !info || isNaN(lat) || isNaN(lng)) {
+                triggerToast('Missing Info', 'Please fill in name, info, and location.');
+                return;
+            }
+            const color = FACILITY_COLORS[facilitiesData.length % FACILITY_COLORS.length];
+            const { data, error } = await supabaseClient.from('facilities').insert({
+                name,
+                icon: newFacilitySelectedIcon,
+                color,
+                lat,
+                lng,
+                info
+            }).select();
+            if (error) {
+                triggerToast('Error', 'Failed to add facility.');
+                return;
+            }
+            if (data && data.length > 0) {
+                facilitiesData.push(data[0]);
+                renderMapMarkers();
+                renderFacilityList();
+                renderAdminFacilitiesList();
+                document.getElementById('new-facility-name').value = '';
+                document.getElementById('new-facility-info').value = '';
+                document.getElementById('new-facility-lat').value = '';
+                document.getElementById('new-facility-lng').value = '';
+                newFacilitySelectedIcon = FACILITY_ICONS[0];
+                renderNewFacilityIconPicker();
+                triggerToast('Facility Added', name + ' added to the camp map.');
+            }
+        }
+
+        async function deleteFacility(id) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const { error } = await supabaseClient.from('facilities').delete().eq('id', id);
+            if (error) {
+                triggerToast('Error', 'Failed to delete.');
+                return;
+            }
+            facilitiesData = facilitiesData.filter(f => f.id !== id);
+            renderMapMarkers();
+            renderFacilityList();
+            renderAdminFacilitiesList();
+        }
+
+        function setFacilityIcon(idx, icon) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            facilitiesData[idx].icon = icon;
+            supabaseClient.from('facilities').update({ icon }).eq('id', facilitiesData[idx].id).then(({ error }) => {
+                if (error) console.error(error);
+            });
+            renderMapMarkers();
+            renderFacilityList();
+            renderAdminFacilitiesList();
+        }
+
+        async function addNewTransport() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const name = document.getElementById('new-transport-name').value.trim();
+            const route = document.getElementById('new-transport-route').value.trim();
+            const time = document.getElementById('new-transport-time').value.trim();
+            if (!name || !route || !time) {
+                triggerToast('Missing Info', 'Please fill in name, route, and time.');
+                return;
+            }
+            const { data, error } = await supabaseClient.from('transport').insert({
+                name,
+                route,
+                time,
+                status: 'scheduled'
+            }).select();
+            if (error) {
+                triggerToast('Error', 'Failed to add shuttle.');
+                return;
+            }
+            if (data && data.length > 0) {
+                transportData.push(data[0]);
+                renderTransport();
+                renderAdminTransportList();
+                document.getElementById('new-transport-name').value = '';
+                document.getElementById('new-transport-route').value = '';
+                document.getElementById('new-transport-time').value = '';
+                triggerToast('Shuttle Added', name + ' added to the schedule.');
+            }
+        }
+
+        async function deleteTransport(id) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const { error } = await supabaseClient.from('transport').delete().eq('id', id);
+            if (error) {
+                triggerToast('Error', 'Failed to delete.');
+                return;
+            }
+            transportData = transportData.filter(t => t.id !== id);
+            renderTransport();
+            renderAdminTransportList();
+        }
+
+        async function addNewContact() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const title = document.getElementById('new-contact-title').value.trim();
+            const phone = document.getElementById('new-contact-phone').value.trim();
+            const subtitle = document.getElementById('new-contact-sub').value.trim();
+            const category = document.getElementById('new-contact-cat').value;
+            if (!title || !phone) {
+                triggerToast('Missing Info', 'Please fill in a title and phone/extension.');
+                return;
+            }
+            const { data, error } = await supabaseClient.from('contacts').insert({
+                title,
+                phone,
+                subtitle,
+                category
+            }).select();
+            if (error) {
+                triggerToast('Error', 'Failed to add contact.');
+                return;
+            }
+            if (data && data.length > 0) {
+                contactsData.push(data[0]);
+                renderNumbers();
+                renderAdminContactsList();
+                document.getElementById('new-contact-title').value = '';
+                document.getElementById('new-contact-phone').value = '';
+                document.getElementById('new-contact-sub').value = '';
+                triggerToast('Contact Added', title + ' added.');
+            }
+        }
+
+        async function deleteContact(id) {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const { error } = await supabaseClient.from('contacts').delete().eq('id', id);
+            if (error) {
+                triggerToast('Error', 'Failed to delete.');
+                return;
+            }
+            contactsData = contactsData.filter(c => c.id !== id);
+            renderNumbers();
+            renderAdminContactsList();
+        }
+
+        async function saveDiningDay() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const day = adminActiveDay;
+            const mealNames = ['Breakfast', 'Lunch', 'Dinner'];
+            const items = {};
+            mealNames.forEach(meal => {
+                const el = document.getElementById('admin-meal-' + meal);
+                if (el) {
+                    items[meal] = el.value.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            });
+            for (const meal of Object.keys(items)) {
+                const { error } = await supabaseClient.from('menu').upsert({
+                    day: day,
+                    meal: meal,
+                    items: items[meal]
+                }, { onConflict: 'day, meal' });
+                if (error) {
+                    console.error('Menu update error:', error);
+                    triggerToast('Error', 'Failed to save menu.');
+                    return;
+                }
+            }
+            if (!menuData[day]) menuData[day] = {};
+            Object.keys(items).forEach(meal => {
+                menuData[day][meal] = items[meal];
+            });
+            if (activeDay === day) renderDining();
+            saveToLocalStorage();
+            triggerToast('Menu Updated', day + ' menu saved.');
+        }
+
+        async function saveGeneralSettings() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const camp_name = document.getElementById('input-camp-name').value;
+            const region = document.getElementById('input-camp-region').value;
+            const weather_override = document.getElementById('input-weather-override').checked;
+            const weather_condition = document.getElementById('input-weather-condition').value;
+            const weather_temp = document.getElementById('input-camp-temp').value;
+            const newKey = document.getElementById('input-owm-key').value.trim();
+            if (newKey !== owmApiKey) {
+                owmApiKey = newKey;
+                localStorage.setItem('basecamp_owm_key', owmApiKey);
+                fetchLiveWeather();
+            }
+            const updateObj = {
+                camp_name,
+                region,
+                weather_override,
+                weather_condition,
+                weather_temp,
+                owm_api_key: newKey   // <-- add this
+            };
+            const { error } = await supabaseClient.from('camp_settings').update(updateObj).eq('id', campSettings.id);
+            if (error) {
+                campSettings = { ...campSettings, ...updateObj };
+                owmApiKey = newKey;   // update global
+                localStorage.setItem('basecamp_owm_key', newKey); // optional fallback
+                triggerToast('Error', 'Failed to update settings.');
+                return;
+            }
+            campSettings = { ...campSettings, ...updateObj };
+            document.getElementById('header-location-name').innerText = camp_name;
+            document.getElementById('about-camp-title').innerText = camp_name;
+            document.getElementById('about-camp-region').innerText = region;
+            renderStatusStrip();
+            saveToLocalStorage();
+            closeModal('admin-modal');
+            triggerToast('Settings Updated', 'Camp facility details saved.');
+        }
+
+        async function saveAboutSettings() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const description = document.getElementById('input-about-desc').value;
+            const production = document.getElementById('input-stat-production').value;
+            const personnel = document.getElementById('input-stat-personnel').value;
+            const companies_count = document.getElementById('input-stat-companies').value;
+            const established = document.getElementById('input-stat-established').value;
+            const historyText = document.getElementById('input-history').value;
+            const companiesText = document.getElementById('input-companies').value;
+            const history = historyText.split('\n').filter(Boolean).map(line => {
+                const [title, ...rest] = line.split('|');
+                return { title: (title || '').trim(), desc: (rest.join('|') || '').trim() };
+            });
+            const companies = companiesText.split('\n').filter(Boolean).map(c => c.trim());
+            const updateObj = { description, production, personnel, companies_count, established, history, companies };
+            const { error } = await supabaseClient.from('camp_settings').update(updateObj).eq('id', campSettings.id);
+            if (error) {
+                triggerToast('Error', 'Failed to update about.');
+                return;
+            }
+            campSettings = { ...campSettings, ...updateObj };
+            renderAboutSection();
+            saveToLocalStorage();
+            closeModal('admin-modal');
+            triggerToast('Site Info Updated', 'About page content saved.');
+        }
+
+        // ============================================================
+        //  OTHER UI HELPERS (map picker, icon picker, etc.)
+        // ============================================================
+        const FACILITY_ICONS = ['fa-utensils', 'fa-kit-medical', 'fa-dumbbell', 'fa-people-group', 'fa-mosque', 'fa-bus',
+            'fa-warehouse', 'fa-building', 'fa-shirt', 'fa-broom', 'fa-droplet', 'fa-bed', 'fa-book', 'fa-gamepad',
+            'fa-futbol', 'fa-wifi', 'fa-store', 'fa-screwdriver-wrench', 'fa-shield-halved', 'fa-car', 'fa-gas-pump',
+            'fa-tree'
+        ];
+        const FACILITY_COLORS = ['#ff7a1a', '#f0453d', '#2dd4bf', '#c9a876', '#3b82f6', '#a78bfa'];
+        let newFacilitySelectedIcon = FACILITY_ICONS[0];
+
+        function renderNewFacilityIconPicker() {
+            const el = document.getElementById('new-facility-icon-picker');
+            if (!el) return;
+            el.innerHTML = FACILITY_ICONS.map(ic =>
+                `<div class="icon-picker-btn ${ic === newFacilitySelectedIcon ? 'selected' : ''}" onclick="selectNewFacilityIcon('${ic}')"><i class="fa-solid ${ic}"></i></div>`
+                ).join('');
+            const preview = document.getElementById('new-facility-icon-preview');
+            if (preview) preview.className = 'fa-solid ' + newFacilitySelectedIcon;
+        }
+
+        function selectNewFacilityIcon(icon) {
+            newFacilitySelectedIcon = icon;
+            renderNewFacilityIconPicker();
+            document.getElementById('new-facility-icon-picker').classList.remove('open');
+        }
+
+        function toggleIconDropdown(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const willOpen = !el.classList.contains('open');
+            document.querySelectorAll('.icon-picker.open').forEach(p => p.classList.remove('open'));
+            if (willOpen) el.classList.add('open');
+        }
+
+        function openLocationPicker(target) {
+            pickerTarget = target;
+            let lat = CAMP_LAT,
+                lng = CAMP_LNG;
+            if (target === 'new') {
+                const la = parseFloat(document.getElementById('new-facility-lat').value);
+                const ln = parseFloat(document.getElementById('new-facility-lng').value);
+                if (!isNaN(la)) lat = la;
+                if (!isNaN(ln)) lng = ln;
+                document.getElementById('location-picker-title').innerHTML =
+                    '<i class="fa-solid fa-map-location-dot" style="color:var(--amber)"></i> Pick New Facility Location';
+            } else {
+                const pl = facilitiesData[target];
+                lat = pl.lat;
+                lng = pl.lng;
+                document.getElementById('location-picker-title').innerHTML =
+                    '<i class="fa-solid fa-map-location-dot" style="color:var(--amber)"></i> Adjust ' + pl.name +
+                    ' Location';
+            }
+            openModal('location-picker-modal');
+            setTimeout(() => {
+                if (typeof L === 'undefined') {
+                    document.getElementById('picker-map').innerHTML =
+                        '<div style="padding:16px;font-size:0.75rem;color:var(--text-dim);text-align:center;">Map library unavailable — type coordinates manually instead.</div>';
+                    return;
+                }
+                if (!pickerMap) {
+                    pickerMap = L.map('picker-map', { zoomControl: false }).setView([lat, lng], 17);
+                    L.tileLayer(
+                        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }
+                        ).addTo(pickerMap);
+                    L.control.zoom({ position: 'bottomright' }).addTo(pickerMap);
+                    pickerMap.on('click', e => placePickerMarker(e.latlng.lat, e.latlng.lng));
+                } else {
+                    pickerMap.invalidateSize();
+                    pickerMap.setView([lat, lng], 17);
+                }
+                placePickerMarker(lat, lng);
+            }, 150);
+        }
+
+        function placePickerMarker(lat, lng) {
+            pickerLat = lat;
+            pickerLng = lng;
+            if (pickerMarker) { pickerMarker.setLatLng([lat, lng]); } else {
+                pickerMarker = L.marker([lat, lng], { draggable: true }).addTo(pickerMap);
+                pickerMarker.on('dragend', () => { const p = pickerMarker.getLatLng();
+                    placePickerMarker(p.lat, p.lng); });
+            }
+            document.getElementById('picker-coords-display').innerText = lat.toFixed(6) + ', ' + lng.toFixed(6);
+        }
+
+        function confirmPickerLocation() {
+            if (pickerLat === null || pickerLng === null) {
+                triggerToast('No Location Picked', 'Tap the map first to drop a pin.');
+                return;
+            }
+            if (pickerTarget === 'new') {
+                document.getElementById('new-facility-lat').value = pickerLat.toFixed(6);
+                document.getElementById('new-facility-lng').value = pickerLng.toFixed(6);
+            } else {
+                const pl = facilitiesData[pickerTarget];
+                if (pl) {
+                    pl.lat = pickerLat;
+                    pl.lng = pickerLng;
+                    supabaseClient.from('facilities').update({ lat: pickerLat, lng: pickerLng }).eq('id', pl.id).then();
+                    renderMapMarkers();
+                    renderFacilityList();
+                    renderAdminFacilitiesList();
+                }
+            }
+            closeModal('location-picker-modal');
+            triggerToast('Location Set', 'Coordinates updated.');
+        }
 
         // ============================================================
         //  WEATHER
         // ============================================================
-        function getTimeAwareWeatherIcon(condition) {
-            const hour = getOmanHour();
-            const isDay = hour >= 6 && hour < 18;
-            if (condition === 'sunny') {
-                return isDay ? 'fa-sun' : 'fa-moon';
-            }
+        function getTimeAwareWeatherIcon(condition, prayerTimes) {
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            let fajrMins = 6 * 60,
+                maghribMins = 18 * 60;
+            prayerTimes.forEach(p => {
+                if (p.name === 'Fajr') {
+                    const [h, m] = p.time.split(':').map(Number);
+                    if (!isNaN(h) && !isNaN(m)) fajrMins = h * 60 + m;
+                }
+                if (p.name === 'Maghrib') {
+                    const [h, m] = p.time.split(':').map(Number);
+                    if (!isNaN(h) && !isNaN(m)) maghribMins = h * 60 + m;
+                }
+            });
+            const isNight = nowMins < fajrMins || nowMins >= maghribMins;
+            if (isNight) return 'fa-moon';
             const map = { sunny: 'fa-sun', cloudy: 'fa-cloud-sun', rain: 'fa-cloud-rain', sand: 'fa-smog' };
             return map[condition] || 'fa-sun';
         }
@@ -2532,7 +3319,7 @@
             const cond = useManual ? manualWeather.condition : (liveWeather.loaded ? liveWeather.condition : manualWeather
                 .condition);
             document.getElementById('strip-temp').innerText = temp;
-            const iconClass = getTimeAwareWeatherIcon(cond);
+            const iconClass = getTimeAwareWeatherIcon(cond, window._prayerTimes || []);
             document.getElementById('weather-icon').className = 'fa-solid ' + iconClass;
         }
 
@@ -2583,7 +3370,120 @@
         }
 
         // ============================================================
-        //  NAVIGATION & INIT
+        //  WORKER FETCH (prayer)
+        // ============================================================
+        const WORKER_URL = "https://prayer-time.3ma-creative.workers.dev/";
+
+        async function fetchPrayerTimesFromWorker() {
+            if (!isAdmin) { triggerToast('Access Denied', 'Please login as admin.'); return; }
+            const logBox = document.getElementById('prayer-sync-log');
+            logBox.innerText = '';
+            logBox.style.display = 'block';
+
+            function log(line) {
+                logBox.innerText = (logBox.innerText ? logBox.innerText + '\n' : '') + line;
+            }
+
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+
+            const url = `${WORKER_URL}?CityID=${CAMP_CITY_ID}&Month=${month}&Year=${year}&Day=${day}`;
+            log(`→ Fetching: ${url}`);
+
+            try {
+                const resp = await fetch(url);
+                log(`  Worker responded: HTTP ${resp.status}`);
+                if (!resp.ok) throw new Error(`Worker error: ${resp.status}`);
+
+                const html = await resp.text();
+                log(`  received ${html.length} chars`);
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const table = doc.querySelector('table');
+                if (!table) throw new Error('No table found in response');
+
+                const rows = table.querySelectorAll('tr');
+                let found = false;
+                rows.forEach((row, idx) => {
+                    if (idx === 0) return;
+                    const cols = row.querySelectorAll('td');
+                    if (cols.length >= 7) {
+                        const dateStr = cols[0].textContent.trim();
+                        const dayMatch = dateStr.match(/\b\d{1,2}\b/);
+                        if (dayMatch && parseInt(dayMatch[0]) === day) {
+                            const times = [
+                                cols[1].textContent.trim(),
+                                cols[2].textContent.trim(),
+                                cols[3].textContent.trim(),
+                                cols[4].textContent.trim(),
+                                cols[5].textContent.trim(),
+                                cols[6].textContent.trim()
+                            ];
+                            const map = { Fajr: 0, Dhuhr: 2, Asr: 3, Maghrib: 4, Isha: 5 };
+                            Object.keys(map).forEach(name => {
+                                const idx2 = map[name];
+                                const t = times[idx2];
+                                if (t && t.match(/\d{1,2}[:.]\d{2}/)) {
+                                    const clean = t.replace('.', ':');
+                                    const p = window._prayerTimes.find(p => p.name === name);
+                                    if (p) p.time = clean;
+                                    const dbRow = prayerTimesData.find(pt => pt.name === name);
+                                    if (dbRow) {
+                                        dbRow.adhan_time = clean;
+                                    }
+                                }
+                            });
+                            found = true;
+                            log(`✓ Found today's row (${dateStr}) — updated adhan times.`);
+                        }
+                    }
+                });
+
+                if (!found) {
+                    log('  Could not find today\'s row — falling back to Aladhan API');
+                    const aladhanUrl =
+                        `https://api.aladhan.com/v1/timings/${String(day).padStart(2,'0')}-${String(month).padStart(2,'0')}-${year}?latitude=${CAMP_LAT}&longitude=${CAMP_LNG}&method=8`;
+                    const alRes = await fetch(aladhanUrl);
+                    if (!alRes.ok) throw new Error('Aladhan failed');
+                    const alData = await alRes.json();
+                    const t = alData.data.timings;
+                    const clean = s => s.split(' ')[0];
+                    const map = { Fajr: 'Fajr', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha' };
+                    Object.keys(map).forEach(k => {
+                        const p = window._prayerTimes.find(p => p.name === k);
+                        if (p && t[k]) {
+                            p.time = clean(t[k]);
+                            const dbRow = prayerTimesData.find(pt => pt.name === k);
+                            if (dbRow) dbRow.adhan_time = clean(t[k]);
+                        }
+                    });
+                    log('✓ Used Aladhan fallback.');
+                }
+
+                for (const pt of prayerTimesData) {
+                    const { error } = await supabaseClient.from('prayer_times').update({
+                        adhan_time: pt.adhan_time
+                    }).eq('id', pt.id);
+                    if (error) {
+                        console.error('Update prayer error:', error);
+                    }
+                }
+                saveToLocalStorage();
+                renderPrayerTimes();
+                renderAdminPrayerFields();
+                log('✓ Prayer times updated in Supabase.');
+                triggerToast('Prayer Times Fetched', 'Today\'s adhan times updated from MARA Worker.');
+            } catch (err) {
+                log(`✗ Error: ${err.message}`);
+                triggerToast('Fetch Failed', 'Could not fetch prayer times. See log for details.');
+            }
+        }
+
+        // ============================================================
+        //  NAVIGATION & MISC
         // ============================================================
         function switchTab(tabId) {
             if (window.innerWidth > 768) return;
@@ -2593,6 +3493,36 @@
             document.getElementById('nav-' + tabId).classList.add('active');
             document.getElementById('main-scroll-container').scrollTop = 0;
             if (tabId === 'facility' && leafletMap) setTimeout(() => leafletMap.invalidateSize(), 150);
+        }
+
+        function handleScrollBehavior() {
+            if (window.innerWidth > 768) return;
+            const c = document.getElementById('main-scroll-container');
+            const nb = document.getElementById('mobile-nav-bar');
+            const st = c.scrollTop,
+                sh = c.scrollHeight,
+                ch = c.clientHeight;
+            const atBottom = st + ch >= sh - 15;
+            if (atBottom) { nb.classList.remove('nav-hidden');
+                nb.classList.add('nav-visible'); } else if (st > lastScrollTop && st > 50) { nb.classList.remove(
+                    'nav-visible');
+                nb.classList.add('nav-hidden'); } else if (st < lastScrollTop) { nb.classList.remove('nav-hidden');
+                nb.classList.add('nav-visible'); }
+            lastScrollTop = st <= 0 ? 0 : st;
+        }
+
+        function updateCountdown() {
+            const now = Date.now();
+            const distance = nextEventTimestamp - now;
+            if (distance < 0) return;
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const mins = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((distance % (1000 * 60)) / 1000);
+            document.getElementById('cd-days').innerText = String(days).padStart(2, '0');
+            document.getElementById('cd-hours').innerText = String(hours).padStart(2, '0');
+            document.getElementById('cd-mins').innerText = String(mins).padStart(2, '0');
+            document.getElementById('cd-secs').innerText = String(secs).padStart(2, '0');
         }
 
         function handleLocationClick() {
@@ -2618,7 +3548,7 @@
         }
 
         // ============================================================
-        //  INIT
+        //  INITIALIZATION
         // ============================================================
         async function init() {
             await checkSession();
@@ -2663,8 +3593,6 @@
             setInterval(fetchLiveWeather, 900000);
             setInterval(() => {
                 document.getElementById('strip-time').innerText = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                renderStatusStrip();
-                renderPrayerTimes();
             }, 1000);
             setInterval(updateCountdown, 1000);
 
@@ -2680,12 +3608,36 @@
             } else { switchTab('home'); }
         }
 
+        function renderAdminLists() {
+            renderAdminAnnouncementsList();
+            renderAdminEventsList();
+            renderAdminFacilitiesList();
+            renderAdminTransportList();
+            renderAdminContactsList();
+            renderAdminDayTabs();
+            renderAdminPrayerFields();
+        }
+
+        function renderAll() {
+            renderPrayerTimes();
+            renderAboutSection();
+            renderAnnouncements();
+            renderEventFilters();
+            renderEvents();
+            renderFacilityList();
+            renderDayTabs();
+            renderDining();
+            renderTransport();
+            renderNumbers();
+            renderAdminLists();
+            renderStatusStrip();
+        }
+
         // ============================================================
         //  START
         // ============================================================
         document.addEventListener('DOMContentLoaded', init);
 
-        // Expose functions globally (needed for onclick attributes)
         window.isAdmin = () => isAdmin;
         window.triggerToast = triggerToast;
         window.openModal = openModal;
@@ -2733,8 +3685,6 @@
         window.renderMapMarkers = renderMapMarkers;
         window.renderStatusStrip = renderStatusStrip;
         window.renderAdminLists = renderAdminLists;
-        // Make sure handleScrollBehavior is also global
-        window.handleScrollBehavior = handleScrollBehavior;
     </script>
 </body>
 </html>
