@@ -1148,6 +1148,14 @@
         document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(resumePos)} ${resumeSource}`;
         document.getElementById('resume-ui').style.display = 'flex';
     }
+    
+    // After computing hist and before video.src = mp4Url;
+if (hist && hist.updated_at) {
+    const date = new Date(hist.updated_at);
+    document.getElementById('meta-date').innerText = date.toLocaleString('ar-EG', { hour12: false });
+} else {
+    document.getElementById('meta-date').innerText = new Date().toLocaleString('ar-EG', { hour12: false });
+}
 
     try {
         // ── Step 1: Fetch the episode/movie page ──
@@ -1244,6 +1252,7 @@
         dbgStep('✅', 'الخطوة 4', `رابط MP4 موجود`, 'ok');
         dbgStep('🎯', 'الرابط النهائي', `<a href="${mp4Url}" target="_blank" style="font-family:monospace; font-size:0.62rem;">${mp4Url}</a>`, 'ok');
 
+        
         // ── Step 5: Load the video ──
         video.src = mp4Url;
         dbgStep('▶️', 'الخطوة 5', 'تم تعيين المصدر للمشغل — جارٍ التشغيل...', 'ok');
@@ -1287,6 +1296,9 @@
             else state.history.push({ episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date().toISOString() });
             document.getElementById('meta-pos').innerText = fmtTime(pos);
 
+            const now = new Date();
+document.getElementById('meta-date').innerText = now.toLocaleString('ar-EG', { hour12: false });
+            
             if (stremio.connected && state.currentSeries && !state.currentLink.includes('/movie/')) {
                 const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
                 if (imdbId) {
