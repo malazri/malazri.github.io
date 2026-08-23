@@ -1081,15 +1081,25 @@
 }
 
     function renderEpisodeList(eps, img) {
-        document.getElementById('episode-list').innerHTML = eps.map(e => {
-            const hist = state.history.find(h => h.episode_link === e.link);
-            const isWatched = hist?.watched;
-            const timeStr = isWatched ? '<span style="color:#4caf50; font-size:0.75rem;">✓ شوهد</span>' : (hist?.last_position > 0 ? fmtTime(hist.last_position) : "");
-            const activeClass = state.currentLink === e.link ? 'active-ep' : '';
-            const watchedStyle = isWatched ? 'opacity:0.55;' : '';
-            return `<div class="ep-item ${activeClass}" style="${watchedStyle}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'><span>${e.title}</span><span class="ep-progress">${timeStr}</span></div>`;
-        }).join('');
-    }
+    const container = document.getElementById('episode-list');
+    let html = '';
+    eps.forEach(e => {
+        // Normalize the episode link to a path for comparison with history
+        const pathKey = normalizeUrl(e.link);
+        const hist = state.history.find(h => h.episode_link === pathKey);
+        const isWatched = hist?.watched;
+        const timeStr = isWatched ? '<span style="color:#4caf50; font-size:0.75rem;">✓ شوهد</span>' : (hist?.last_position > 0 ? fmtTime(hist.last_position) : "");
+        // active class uses the full link or path? We'll compare the current link (path) with the normalized path
+        const activeClass = (state.currentLink === pathKey) ? 'active-ep' : '';
+        const watchedStyle = isWatched ? 'opacity:0.55;' : '';
+        // Pass the full link to fetchAndPlay (still works)
+        html += `<div class="ep-item ${activeClass}" style="${watchedStyle}" onclick='fetchAndPlay(${JSON.stringify({title:e.title, link:e.link, img:img}).replace(/'/g, "&apos;")})'>
+            <span>${e.title}</span>
+            <span class="ep-progress">${timeStr}</span>
+        </div>`;
+    });
+    container.innerHTML = html;
+}
 
     // ══════════════════════════════════════════════════════════
     // fetchAndPlay — WITH DEBUG LOGGING
