@@ -377,14 +377,29 @@
     // Covers all known legacy domains so DB records work regardless of when they were saved
     const OLD_DOMAINS = ["ak.sv", "akwam.com.co", "akwam.me", "akwam.tv", "akwam.in"];
     function normalizeUrl(url) {
-        if (!url) return url;
-        for (const old of OLD_DOMAINS) {
-            if (url.includes(old)) {
-                return url.replace(new RegExp(old.replace('.', '\\.'), 'g'), "akwam.it");
-            }
+    if (!url) return url;
+    // If it's already a relative path, keep it
+    if (url.startsWith('/')) return url;
+
+    try {
+        const parsed = new URL(url);
+        // Only strip domain if it looks like an Akwam path
+        const path = parsed.pathname + parsed.search;
+        if (path.includes('/episode/') || path.includes('/movie/') || path.includes('/download/')) {
+            return path;
+        }
+        // Fallback: if it's an Akwam domain but doesn't match those paths, strip anyway
+        const host = parsed.hostname;
+        if (host.includes('akwam') || host.includes('ak.sv')) {
+            return path;
         }
         return url;
+    } catch {
+        // Regex fallback
+        const match = url.match(/^https?:\/\/[^/]+(\/.*)$/);
+        return match ? match[1] : url;
     }
+}
 
     // ══════════════════════════════════════════════════════════
     // DEBUG PANEL HELPERS
@@ -1004,6 +1019,7 @@
     }
 
     async function handleAction(i) {
+        i.link = normalizeUrl(i.link);  // ← ADD THIS
         state.currentSeries = i;
         if(i.link.includes('/movie/')) {
             document.getElementById('side-panel').classList.add('has-content');
