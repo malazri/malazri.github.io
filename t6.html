@@ -377,25 +377,17 @@
     // Covers all known legacy domains so DB records work regardless of when they were saved
     const OLD_DOMAINS = ["ak.sv", "akwam.com.co", "akwam.me", "akwam.tv", "akwam.in"];
     function normalizeUrl(url) {
-    if (!url) return url;
-    // If it's already a relative path, keep it
-    if (url.startsWith('/')) return url;
-
+    if (!url || url.startsWith('/')) return url;
     try {
         const parsed = new URL(url);
-        // Only strip domain if it looks like an Akwam path
         const path = parsed.pathname + parsed.search;
-        if (path.includes('/episode/') || path.includes('/movie/') || path.includes('/download/')) {
-            return path;
-        }
-        // Fallback: if it's an Akwam domain but doesn't match those paths, strip anyway
         const host = parsed.hostname;
-        if (host.includes('akwam') || host.includes('ak.sv')) {
+        if (host.includes('akwam') || host.includes('ak.sv') || 
+            path.includes('/episode/') || path.includes('/movie/') || path.includes('/download/')) {
             return path;
         }
         return url;
     } catch {
-        // Regex fallback
         const match = url.match(/^https?:\/\/[^/]+(\/.*)$/);
         return match ? match[1] : url;
     }
@@ -980,93 +972,113 @@
     }
 
     async function loadUserHistory() {
-        if(!state.user) return;
-        const { data } = await db.from('watch_history').select('episode_link, last_position, duration, watched, updated_at').eq('user_id', state.user.id);
-        // Normalize any old-domain URLs saved before the domain migration
-        state.history = (data || []).map(r => ({ ...r, episode_link: normalizeUrl(r.episode_link) }));
-    }
+    if(!state.user) return;
+    const { data } = await db.from('watch_history').select('episode_link, last_position, duration, watched, updated_at').eq('user_id', state.user.id);
+    state.history = (data || []).map(r => ({ ...r, episode_link: normalizeUrl(r.episode_link) }));
+}
 
     async function loginWithGoogle() { await db.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } }); }
     async function handleLogout() { await db.auth.signOut(); location.reload(); }
 
     async function startSearch(q, append = false) {
-        if(!q) return;
-        ensureTopVisible();
-        if(!append) {
-            state.searchQuery = q; state.searchPage = 1;
-            document.getElementById('content-search').innerHTML = "";
-            document.getElementById('group-favs').style.display = 'none';
-            document.getElementById('btn-fav').classList.remove('active');
-        }
-        try {
-            var res = await proxyFetch(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`);
-            var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-            var unique = new Map();
-            var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
-            items.forEach(a => {
-                var img = a.querySelector('img');
-                if(img) { var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href'); link = normalizeUrl(link); if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src }); }
-            });
-            var plus = document.getElementById('plus-btn');
-            if(plus) plus.remove();
-            var container = document.getElementById('content-search');
-            var html = Array.from(unique.values()).map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
-            container.innerHTML += html;
-            if(items.length > 0) container.innerHTML += `<div id="plus-btn" class="load-more-card" onclick="loadNextPage()"><i class="fas fa-plus"></i></div>`;
-            document.getElementById('group-search').style.display = 'inline-flex';
-            setTimeout(updateScrollState, 350);
-        } catch(e) { console.error("Search Error:", e); }
+    if(!q) return;
+    ensureTopVisible();
+    if(!append) {
+        state.searchQuery = q; state.searchPage = 1;
+        document.getElementById('content-search').innerHTML = "";
+        document.getElementById('group-favs').style.display = 'none';
+        document.getElementById('btn-fav').classList.remove('active');
     }
+    try {
+        var res = await proxyFetch(`${BASE}/search?q=${state.searchQuery}&page=${state.searchPage}`);
+        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        var unique = new Map();
+        var items = doc.querySelectorAll('a[href*="/movie/"], a[href*="/series/"]');
+        items.forEach(a => {
+            var img = a.querySelector('img');
+            if(img) {
+                // Build full URL – keep domain!
+                var link = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+                // DO NOT normalize here – keep the full URL for fetching
+                if(!unique.has(link)) unique.set(link, { title: img.alt, link: link, img: img.dataset.src || img.src });
+            }
+        });
+        var plus = document.getElementById('plus-btn');
+        if(plus) plus.remove();
+        var container = document.getElementById('content-search');
+        var html = Array.from(unique.values()).map(i => 
+            `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+                <img src="${i.img}"><div class="card-label">${i.title}</div>
+            </div>`
+        ).join('');
+        container.innerHTML += html;
+        if(items.length > 0) container.innerHTML += `<div id="plus-btn" class="load-more-card" onclick="loadNextPage()"><i class="fas fa-plus"></i></div>`;
+        document.getElementById('group-search').style.display = 'inline-flex';
+        setTimeout(updateScrollState, 350);
+    } catch(e) { console.error("Search Error:", e); }
+}
 
     async function handleAction(i) {
-        i.link = normalizeUrl(i.link);  // ← ADD THIS
-        state.currentSeries = i;
-        if(i.link.includes('/movie/')) {
-            document.getElementById('side-panel').classList.add('has-content');
-            document.getElementById('episode-list').innerHTML = "";
-            document.getElementById('series-title').innerText = i.title;
-            document.getElementById('fav-btn').style.display = 'block';
-            updateFavBtnUI();
-            fetchAndPlay(i);
-        } else { loadEpisodes(i); }
-        if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
-    }
-
-    async function loadEpisodes(item) {
-        state.currentSeries = item;
-        document.getElementById('series-title').innerText = item.title;
+    // i.link is a full URL (from search, favorites, etc.)
+    state.currentSeries = { ...i }; // keep full URL
+    if(i.link.includes('/movie/')) {
+        document.getElementById('side-panel').classList.add('has-content');
+        document.getElementById('episode-list').innerHTML = "";
+        document.getElementById('series-title').innerText = i.title;
         document.getElementById('fav-btn').style.display = 'block';
         updateFavBtnUI();
-        if (stremio.connected && !stremio.seriesCache[item.link]) {
-            const match = stremioMatchByTitle(item.title);
-            if (match) {
-                stremio.seriesCache[item.link] = match._id;
-                strToast(`🔗 ربط تلقائي: ${item.title} ← ${match.name}`);
-                if (state.user) {
-                    const { error: mapErr } = await db.from('stremio_series_mapping').upsert({ user_id: state.user.id, aksv_link: item.link, imdb_id: match._id, series_title: item.title }, { onConflict: 'user_id, aksv_link' });
-                    if (mapErr) console.error('[Stremio] Auto-link save failed:', mapErr.message);
-                }
-            }
-        }
-        var res = await proxyFetch(item.link);
-        var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-        var eps = [];
-        doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
-            var l = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
-            l = normalizeUrl(l);
-            if(!eps.find(e => e.link === l)) eps.push({link: l, title: a.innerText.trim()});
-        });
-        if(eps.length > 0) {
-            document.getElementById('side-panel').classList.add('has-content');
-            document.getElementById('ep-wrapper').classList.remove('minimized');
-            document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
-            renderEpisodeList(eps, item.img);
-            const seriesId = stremio.seriesCache[item.link];
-            if (stremio.connected && seriesId) {
-                stremioSyncAllEpisodes(seriesId, eps).then(() => { renderEpisodeList(eps, item.img); });
+        fetchAndPlay(i); // passes full URL
+    } else {
+        loadEpisodes(i); // passes full URL
+    }
+    if(window.innerWidth <= 768) window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+    async function loadEpisodes(item) {
+    state.currentSeries = item; // item.link is full URL
+    document.getElementById('series-title').innerText = item.title;
+    document.getElementById('fav-btn').style.display = 'block';
+    updateFavBtnUI();
+
+    // Stremio auto-link (unchanged)
+    if (stremio.connected && !stremio.seriesCache[item.link]) {
+        const match = stremioMatchByTitle(item.title);
+        if (match) {
+            stremio.seriesCache[item.link] = match._id;
+            strToast(`🔗 ربط تلقائي: ${item.title} ← ${match.name}`);
+            if (state.user) {
+                const { error: mapErr } = await db.from('stremio_series_mapping').upsert({
+                    user_id: state.user.id,
+                    aksv_link: item.link,
+                    imdb_id: match._id,
+                    series_title: item.title
+                }, { onConflict: 'user_id, aksv_link' });
+                if (mapErr) console.error('[Stremio] Auto-link save failed:', mapErr.message);
             }
         }
     }
+
+    var res = await proxyFetch(item.link); // full URL
+    var doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+    var eps = [];
+    doc.querySelectorAll('a[href*="/episode/"]').forEach(a => {
+        var l = a.href.includes('http') ? a.href : BASE + a.getAttribute('href');
+        // Keep full URL – do NOT normalize here
+        if(!eps.find(e => e.link === l)) eps.push({link: l, title: a.innerText.trim()});
+    });
+
+    if(eps.length > 0) {
+        document.getElementById('side-panel').classList.add('has-content');
+        document.getElementById('ep-wrapper').classList.remove('minimized');
+        document.getElementById('list-plus-icon').innerHTML = '<i class="fas fa-minus"></i>';
+        renderEpisodeList(eps, item.img);
+
+        const seriesId = stremio.seriesCache[item.link];
+        if (stremio.connected && seriesId) {
+            stremioSyncAllEpisodes(seriesId, eps).then(() => { renderEpisodeList(eps, item.img); });
+        }
+    }
+}
 
     function renderEpisodeList(eps, img) {
         document.getElementById('episode-list').innerHTML = eps.map(e => {
@@ -1084,8 +1096,10 @@
     // All original logic is preserved. Only dbgStep() calls added.
     // ══════════════════════════════════════════════════════════
     async function fetchAndPlay(item) {
-    // Normalize link (in case of old domain)
-    item = { ...item, link: normalizeUrl(item.link) };
+    // item.link is a full URL – use it directly for fetching
+    const fetchUrl = item.link;
+    // Compute path key for state and Supabase
+    const pathKey = normalizeUrl(fetchUrl);
 
     const top = document.getElementById('top-cont');
     if (!top.classList.contains('hidden')) {
@@ -1093,31 +1107,29 @@
         document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
     }
 
-    state.currentLink = item.link;
+    state.currentLink = pathKey; // store path for history comparison
     document.getElementById('v-title').innerText = item.title;
     document.getElementById('resume-ui').style.display = 'none';
     video.pause();
     video.src = "";
 
-    // ── Debug: start fresh log ──────────────────────────
     const isMovie = item.link.includes('/movie/');
     dbgReset(item.title);
-    dbgStep('🔗', 'الرابط المصدر', `<a href="${item.link}" target="_blank">${item.link}</a>`, '');
+    dbgStep('🔗', 'الرابط المصدر', `<a href="${fetchUrl}" target="_blank">${fetchUrl}</a>`, '');
     dbgStep('🎭', 'النوع', isMovie ? 'فيلم' : 'حلقة مسلسل', 'info');
 
-    // ── Check Stremio progress ──────────────────────────
+    // ── Stremio progress ──
     let stremioTime = null;
     if (stremio.connected && state.currentSeries && !isMovie) {
         const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
         if (imdbId) {
-            const episode = epNumFromUrl(item.link);
-            const videoId = stremioVideoId(imdbId, episode, item.link);
-            stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
+            const episode = epNumFromUrl(pathKey);
+            const videoId = stremioVideoId(imdbId, episode, pathKey);
+            stremioTime = await stremioResolveProgress(pathKey, imdbId, videoId);
         }
     }
 
-    // ── Resume logic ────────────────────────────────────
-    const hist = state.history.find(h => h.episode_link === item.link);
+    const hist = state.history.find(h => h.episode_link === pathKey);
     const resumePos = stremioTime !== null ? stremioTime : (hist?.last_position || 0);
     const resumeSource = stremioTime !== null ? '(Stremio)' : '';
     if (resumePos > 15) {
@@ -1128,9 +1140,9 @@
     }
 
     try {
-        // ── Step 1: Fetch the episode/movie page ─────────
+        // ── Step 1: Fetch the episode/movie page ──
         dbgStep('⏳', 'الخطوة 1', 'جلب صفحة العنصر...', 'warn');
-        const response = await proxyFetch(item.link);
+        const response = await proxyFetch(fetchUrl);
         if (!response.ok) {
             dbgStep('❌', 'الخطوة 1', `فشل HTTP ${response.status} — ${response.statusText}`, 'err');
             setDebugStatus('err');
@@ -1140,13 +1152,10 @@
 
         const html = await response.text();
 
-        // ── Step 2: Extract the download page URL dynamically ─
-        // Look for any link (href) that contains "/download/"
-        // Also try to find it in a data attribute or a plain URL pattern.
+        // ── Step 2: Extract download page URL dynamically ──
         let downloadPageUrl = null;
-        const domain = new URL(item.link).origin; // e.g. https://akwam.ss
+        const domain = new URL(fetchUrl).origin;
 
-        // 2a. Search for <a href=".../download/...">
         const linkMatch = html.match(/href\s*=\s*["']([^"']*\/download\/[^"']+)["']/i);
         if (linkMatch) {
             let raw = linkMatch[1];
@@ -1159,7 +1168,6 @@
             }
         }
 
-        // 2b. If not found, try to find a plain URL pattern like "/download/123/..."
         if (!downloadPageUrl) {
             const urlMatch = html.match(/(?:https?:)?\/\/[^"'\s]*\/download\/\d+\/[^"'\s]*/);
             if (urlMatch) {
@@ -1178,7 +1186,7 @@
 
         dbgStep('✅', 'الخطوة 2', `رابط التحميل: <a href="${downloadPageUrl}" target="_blank">${downloadPageUrl}</a>`, 'ok');
 
-        // ── Step 3: Fetch the download page ──────────────
+        // ── Step 3: Fetch the download page ──
         dbgStep('⏳', 'الخطوة 3', 'جلب صفحة التحميل...', 'warn');
         const dlRes = await proxyFetch(downloadPageUrl);
         if (!dlRes.ok) {
@@ -1190,11 +1198,9 @@
 
         const dlHtml = await dlRes.text();
 
-        // ── Step 4: Extract .mp4 URL ──────────────────────
-        // Look for href="...mp4" or src="...mp4" or a plain URL ending with .mp4
+        // ── Step 4: Extract MP4 URL ──
         let mp4Url = null;
 
-        // 4a. Search for href or src attributes containing .mp4
         const attrMatch = dlHtml.match(/(?:href|src)\s*=\s*["']([^"']*\.mp4[^"']*)["']/i);
         if (attrMatch) {
             let raw = attrMatch[1];
@@ -1207,7 +1213,6 @@
             }
         }
 
-        // 4b. If not found, search for a plain URL ending with .mp4 (maybe in a script or text)
         if (!mp4Url) {
             const urlMatch = dlHtml.match(/(https?:)?\/\/[^"'\s]+\.mp4[^"'\s]*/i);
             if (urlMatch) {
@@ -1220,7 +1225,6 @@
 
         if (!mp4Url) {
             dbgStep('❌', 'الخطوة 4', 'لم يُعثر على رابط .mp4 في صفحة التحميل', 'err');
-            // Check for other video formats as a hint
             const other = dlHtml.match(/\.(m3u8|mkv|avi|webm)/i);
             if (other) dbgStep('🔍', 'بديل محتمل', `وُجد رابط: ${other[0]}`, 'warn');
             setDebugStatus('err');
@@ -1230,7 +1234,7 @@
         dbgStep('✅', 'الخطوة 4', `رابط MP4 موجود`, 'ok');
         dbgStep('🎯', 'الرابط النهائي', `<a href="${mp4Url}" target="_blank" style="font-family:monospace; font-size:0.62rem;">${mp4Url}</a>`, 'ok');
 
-        // ── Step 5: Load the video ────────────────────────
+        // ── Step 5: Load the video ──
         video.src = mp4Url;
         dbgStep('▶️', 'الخطوة 5', 'تم تعيين المصدر للمشغل — جارٍ التشغيل...', 'ok');
         setDebugStatus('ok');
@@ -1254,35 +1258,49 @@
     // ══════════════════════════════════════════════════════════
 
     async function syncProgressToDB() {
-        if(state.user && state.currentLink && !video.paused) {
-            const pos = Math.floor(video.currentTime);
-            if(pos > 5) {
-                const dur = Math.floor(video.duration) || 0;
-                const isWatched = dur > 0 && (pos >= dur - 30);
-                await db.from('watch_history').upsert({ user_id: state.user.id, episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date() }, { onConflict: 'user_id, episode_link' });
-                const hi = state.history.find(h => h.episode_link === state.currentLink);
-                if (hi) { hi.last_position = pos; hi.duration = dur; hi.watched = isWatched; }
-                else state.history.push({ episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date().toISOString() });
-                document.getElementById('meta-pos').innerText = fmtTime(pos);
-                if (stremio.connected && state.currentSeries && !state.currentLink.includes('/movie/')) {
-                    const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
-                    if (imdbId) {
-                        const episode = epNumFromUrl(state.currentLink);
-                        const videoId = stremioVideoId(imdbId, episode, state.currentLink);
-                        await stremioPushProgress(imdbId, videoId, pos);
-                    }
+    if(state.user && state.currentLink && !video.paused) {
+        const pos = Math.floor(video.currentTime);
+        if(pos > 5) {
+            const dur = Math.floor(video.duration) || 0;
+            const isWatched = dur > 0 && (pos >= dur - 30);
+            await db.from('watch_history').upsert({
+                user_id: state.user.id,
+                episode_link: state.currentLink, // already a path
+                last_position: pos,
+                duration: dur,
+                watched: isWatched,
+                updated_at: new Date()
+            }, { onConflict: 'user_id, episode_link' });
+
+            const hi = state.history.find(h => h.episode_link === state.currentLink);
+            if (hi) { hi.last_position = pos; hi.duration = dur; hi.watched = isWatched; }
+            else state.history.push({ episode_link: state.currentLink, last_position: pos, duration: dur, watched: isWatched, updated_at: new Date().toISOString() });
+            document.getElementById('meta-pos').innerText = fmtTime(pos);
+
+            if (stremio.connected && state.currentSeries && !state.currentLink.includes('/movie/')) {
+                const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+                if (imdbId) {
+                    const episode = epNumFromUrl(state.currentLink);
+                    const videoId = stremioVideoId(imdbId, episode, state.currentLink);
+                    await stremioPushProgress(imdbId, videoId, pos);
                 }
             }
         }
     }
+}
 
     async function refreshTop() {
-        if(!state.user) return;
-        const { data: fvs } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
-        state.favs = fvs ? fvs.map(f => ({ ...f.series_data, link: normalizeUrl(f.series_data.link) })) : [];
-        document.getElementById('content-favs').innerHTML = state.favs.map(i => `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'><img src="${i.img}"><div class="card-label">${i.title}</div></div>`).join('');
-        setTimeout(updateScrollState, 500);
-    }
+    if(!state.user) return;
+    const { data: fvs } = await db.from('favorites').select('series_data').eq('user_id', state.user.id);
+    // Store full URL as-is (do not normalize)
+    state.favs = fvs ? fvs.map(f => ({ ...f.series_data })) : [];
+    document.getElementById('content-favs').innerHTML = state.favs.map(i =>
+        `<div class="card" onclick='handleAction(${JSON.stringify(i).replace(/'/g, "&apos;")})'>
+            <img src="${i.img}"><div class="card-label">${i.title}</div>
+        </div>`
+    ).join('');
+    setTimeout(updateScrollState, 500);
+}
 
     async function handleFavoriteAction() {
         if(!state.user) return alert("سجل دخولك أولاً");
