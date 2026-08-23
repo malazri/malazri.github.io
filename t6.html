@@ -1068,131 +1068,173 @@
     // All original logic is preserved. Only dbgStep() calls added.
     // ══════════════════════════════════════════════════════════
     async function fetchAndPlay(item) {
-        // Normalize the link in case it came from an old DB record or cached card
-        item = { ...item, link: normalizeUrl(item.link) };
+    // Normalize link (in case of old domain)
+    item = { ...item, link: normalizeUrl(item.link) };
 
-        const top = document.getElementById('top-cont');
-        if (!top.classList.contains('hidden')) {
-            top.classList.add('hidden');
-            document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
-        }
+    const top = document.getElementById('top-cont');
+    if (!top.classList.contains('hidden')) {
+        top.classList.add('hidden');
+        document.getElementById('manual-toggle-btn').innerHTML = '<i class="fas fa-plus"></i>';
+    }
 
-        state.currentLink = item.link;
-        document.getElementById('v-title').innerText = item.title;
-        document.getElementById('resume-ui').style.display = 'none';
-        video.pause(); video.src = "";
+    state.currentLink = item.link;
+    document.getElementById('v-title').innerText = item.title;
+    document.getElementById('resume-ui').style.display = 'none';
+    video.pause();
+    video.src = "";
 
-        // ── Debug: start fresh log ──────────────────────────
-        const isMovie = item.link.includes('/movie/');
-        dbgReset(item.title);
-        dbgStep('🔗', 'الرابط المصدر', `<a href="${item.link}" target="_blank">${item.link}</a>`, '');
-        dbgStep('🎭', 'النوع', isMovie ? 'فيلم' : 'حلقة مسلسل', 'info');
-        // ───────────────────────────────────────────────────
+    // ── Debug: start fresh log ──────────────────────────
+    const isMovie = item.link.includes('/movie/');
+    dbgReset(item.title);
+    dbgStep('🔗', 'الرابط المصدر', `<a href="${item.link}" target="_blank">${item.link}</a>`, '');
+    dbgStep('🎭', 'النوع', isMovie ? 'فيلم' : 'حلقة مسلسل', 'info');
 
-        // ── Check Stremio progress ──────────────────────────
-        let stremioTime = null;
-        if (stremio.connected && state.currentSeries && !isMovie) {
-            const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
-            if (imdbId) {
-                const episode = epNumFromUrl(item.link);
-                const videoId = stremioVideoId(imdbId, episode, item.link);
-                stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
-            }
-        }
-
-        // ── Resume logic ────────────────────────────────────
-        const hist = state.history.find(h => h.episode_link === item.link);
-        const resumePos = stremioTime !== null ? stremioTime : (hist?.last_position || 0);
-        const resumeSource = stremioTime !== null ? '(Stremio)' : '';
-        if(resumePos > 15) {
-            state.savedPos = resumePos;
-            document.getElementById('meta-pos').innerText = fmtTime(resumePos);
-            document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(resumePos)} ${resumeSource}`;
-            document.getElementById('resume-ui').style.display = 'flex';
-        }
-
-        try {
-            // ── Step 1: Fetch the episode/movie page ─────────
-            dbgStep('⏳', 'الخطوة 1', 'جلب صفحة العنصر...', 'warn');
-            const response = await proxyFetch(item.link);
-
-            if (!response.ok) {
-                dbgStep('❌', 'الخطوة 1', `فشل HTTP ${response.status} — ${response.statusText}`, 'err');
-                setDebugStatus('err'); return;
-            }
-            dbgStep('✅', 'الخطوة 1', `HTTP ${response.status} — تم جلب الصفحة`, 'ok');
-
-            const html = await response.text();
-
-            // ── Step 2: Extract go.akwam link ID ─────────────
-            // Matches all known domain variants: go.akwam.it, go.akwam.com.co, go.ak.sv
-            const idMatch = html.match(/go\.(?:akwam\.it|akwam\.com\.co|ak\.sv)\/link\/([a-zA-Z0-9]+)/);
-            if (!idMatch) {
-                dbgStep('❌', 'الخطوة 2', 'لم يُعثر على go.akwam.it/link/... في الصفحة', 'err');
-                // Show a snippet of what was found to help diagnose
-                const snippet = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
-                dbgStep('🔍', 'محتوى الصفحة', snippet + '...', '');
-                setDebugStatus('err'); return;
-            }
-            const linkId = idMatch[1];
-            dbgStep('✅', 'الخطوة 2', `معرّف الرابط: <span style="color:#fff; font-family:monospace;">${linkId}</span>`, 'ok');
-
-            // ── Step 3: Build download page URL ──────────────
-            const pathSuffix = item.link.split(/\/(movie|episode)\//)[2] || "";
-            const downloadPageUrl = BASE + "/download/" + linkId + "/" + pathSuffix;
-            dbgStep('🔗', 'الخطوة 3', `رابط التحميل: <a href="${downloadPageUrl}" target="_blank">${downloadPageUrl}</a>`, '');
-
-            // ── Step 4: Fetch download page ───────────────────
-            dbgStep('⏳', 'الخطوة 4', 'جلب صفحة التحميل...', 'warn');
-            const dlRes = await proxyFetch(downloadPageUrl);
-
-            if (!dlRes.ok) {
-                dbgStep('❌', 'الخطوة 4', `فشل HTTP ${dlRes.status} — ${dlRes.statusText}`, 'err');
-                setDebugStatus('err'); return;
-            }
-            dbgStep('✅', 'الخطوة 4', `HTTP ${dlRes.status} — تم جلب صفحة التحميل`, 'ok');
-
-            const dlHtml = await dlRes.text();
-
-            // ── Step 5: Extract .mp4 URL ──────────────────────
-            const mp4Match = dlHtml.match(/href="([^"]+\.mp4[^"]*)"/i);
-            if (!mp4Match) {
-                dbgStep('❌', 'الخطوة 5', 'لم يُعثر على رابط .mp4 في صفحة التحميل', 'err');
-                // Check if there's any other video/link hint
-                const anyLink = dlHtml.match(/href="([^"]+\.(m3u8|mkv|avi|webm)[^"]*)"/i);
-                if (anyLink) dbgStep('🔍', 'بديل محتمل', `وُجد رابط: ${anyLink[1]}`, 'warn');
-                else {
-                    const linkHints = [...dlHtml.matchAll(/href="([^"]{10,})"/gi)].slice(0, 5).map(m => m[1]).join('<br>');
-                    if (linkHints) dbgStep('🔍', 'روابط موجودة', linkHints, '');
-                }
-                setDebugStatus('err'); return;
-            }
-
-            // ── Step 6: Resolve final URL ─────────────────────
-            const rawMp4 = mp4Match[1];
-            const finalUrl = rawMp4.startsWith('/') ? BASE + rawMp4 : rawMp4;
-            dbgStep('✅', 'الخطوة 5', `رابط MP4 موجود`, 'ok');
-            dbgStep('🎯', 'الرابط النهائي', `<a href="${finalUrl}" target="_blank" style="font-family:monospace; font-size:0.62rem;">${finalUrl}</a>`, 'ok');
-
-            // ── Step 7: Load video ────────────────────────────
-            video.src = finalUrl;
-            dbgStep('▶️', 'الخطوة 6', 'تم تعيين المصدر للمشغل — جارٍ التشغيل...', 'ok');
-            setDebugStatus('ok');
-
-            if(resumePos <= 15) video.play().catch(e => {
-                dbgStep('⚠️', 'التشغيل', `فشل التشغيل التلقائي: ${e.message}`, 'warn');
-            });
-
-            if(state.currentSeries && !isMovie) {
-                await loadUserHistory();
-                loadEpisodes(state.currentSeries);
-            }
-
-        } catch (err) {
-            dbgStep('❌', 'خطأ غير متوقع', err.message || String(err), 'err');
-            setDebugStatus('err');
+    // ── Check Stremio progress ──────────────────────────
+    let stremioTime = null;
+    if (stremio.connected && state.currentSeries && !isMovie) {
+        const imdbId = await stremioGetImdbId(state.currentSeries.link, state.currentSeries.title);
+        if (imdbId) {
+            const episode = epNumFromUrl(item.link);
+            const videoId = stremioVideoId(imdbId, episode, item.link);
+            stremioTime = await stremioResolveProgress(item.link, imdbId, videoId);
         }
     }
+
+    // ── Resume logic ────────────────────────────────────
+    const hist = state.history.find(h => h.episode_link === item.link);
+    const resumePos = stremioTime !== null ? stremioTime : (hist?.last_position || 0);
+    const resumeSource = stremioTime !== null ? '(Stremio)' : '';
+    if (resumePos > 15) {
+        state.savedPos = resumePos;
+        document.getElementById('meta-pos').innerText = fmtTime(resumePos);
+        document.getElementById('resume-msg').innerText = `توقفت عند ${fmtTime(resumePos)} ${resumeSource}`;
+        document.getElementById('resume-ui').style.display = 'flex';
+    }
+
+    try {
+        // ── Step 1: Fetch the episode/movie page ─────────
+        dbgStep('⏳', 'الخطوة 1', 'جلب صفحة العنصر...', 'warn');
+        const response = await proxyFetch(item.link);
+        if (!response.ok) {
+            dbgStep('❌', 'الخطوة 1', `فشل HTTP ${response.status} — ${response.statusText}`, 'err');
+            setDebugStatus('err');
+            return;
+        }
+        dbgStep('✅', 'الخطوة 1', `HTTP ${response.status} — تم جلب الصفحة`, 'ok');
+
+        const html = await response.text();
+
+        // ── Step 2: Extract the download page URL dynamically ─
+        // Look for any link (href) that contains "/download/"
+        // Also try to find it in a data attribute or a plain URL pattern.
+        let downloadPageUrl = null;
+        const domain = new URL(item.link).origin; // e.g. https://akwam.ss
+
+        // 2a. Search for <a href=".../download/...">
+        const linkMatch = html.match(/href\s*=\s*["']([^"']*\/download\/[^"']+)["']/i);
+        if (linkMatch) {
+            let raw = linkMatch[1];
+            if (raw.startsWith('/')) {
+                downloadPageUrl = domain + raw;
+            } else if (raw.startsWith('http')) {
+                downloadPageUrl = raw;
+            } else {
+                downloadPageUrl = domain + '/' + raw.replace(/^\/+/, '');
+            }
+        }
+
+        // 2b. If not found, try to find a plain URL pattern like "/download/123/..."
+        if (!downloadPageUrl) {
+            const urlMatch = html.match(/(?:https?:)?\/\/[^"'\s]*\/download\/\d+\/[^"'\s]*/);
+            if (urlMatch) {
+                let raw = urlMatch[0];
+                if (raw.startsWith('//')) raw = 'https:' + raw;
+                if (!raw.startsWith('http')) raw = domain + raw;
+                downloadPageUrl = raw;
+            }
+        }
+
+        if (!downloadPageUrl) {
+            dbgStep('❌', 'الخطوة 2', 'لم يُعثر على رابط صفحة التحميل (لا يوجد /download/ في الصفحة)', 'err');
+            setDebugStatus('err');
+            return;
+        }
+
+        dbgStep('✅', 'الخطوة 2', `رابط التحميل: <a href="${downloadPageUrl}" target="_blank">${downloadPageUrl}</a>`, 'ok');
+
+        // ── Step 3: Fetch the download page ──────────────
+        dbgStep('⏳', 'الخطوة 3', 'جلب صفحة التحميل...', 'warn');
+        const dlRes = await proxyFetch(downloadPageUrl);
+        if (!dlRes.ok) {
+            dbgStep('❌', 'الخطوة 3', `فشل HTTP ${dlRes.status} — ${dlRes.statusText}`, 'err');
+            setDebugStatus('err');
+            return;
+        }
+        dbgStep('✅', 'الخطوة 3', `HTTP ${dlRes.status} — تم جلب صفحة التحميل`, 'ok');
+
+        const dlHtml = await dlRes.text();
+
+        // ── Step 4: Extract .mp4 URL ──────────────────────
+        // Look for href="...mp4" or src="...mp4" or a plain URL ending with .mp4
+        let mp4Url = null;
+
+        // 4a. Search for href or src attributes containing .mp4
+        const attrMatch = dlHtml.match(/(?:href|src)\s*=\s*["']([^"']*\.mp4[^"']*)["']/i);
+        if (attrMatch) {
+            let raw = attrMatch[1];
+            if (raw.startsWith('/')) {
+                mp4Url = domain + raw;
+            } else if (raw.startsWith('http')) {
+                mp4Url = raw;
+            } else {
+                mp4Url = domain + '/' + raw.replace(/^\/+/, '');
+            }
+        }
+
+        // 4b. If not found, search for a plain URL ending with .mp4 (maybe in a script or text)
+        if (!mp4Url) {
+            const urlMatch = dlHtml.match(/(https?:)?\/\/[^"'\s]+\.mp4[^"'\s]*/i);
+            if (urlMatch) {
+                let raw = urlMatch[0];
+                if (raw.startsWith('//')) raw = 'https:' + raw;
+                if (!raw.startsWith('http')) raw = domain + raw;
+                mp4Url = raw;
+            }
+        }
+
+        if (!mp4Url) {
+            dbgStep('❌', 'الخطوة 4', 'لم يُعثر على رابط .mp4 في صفحة التحميل', 'err');
+            // Check for other video formats as a hint
+            const other = dlHtml.match(/\.(m3u8|mkv|avi|webm)/i);
+            if (other) dbgStep('🔍', 'بديل محتمل', `وُجد رابط: ${other[0]}`, 'warn');
+            setDebugStatus('err');
+            return;
+        }
+
+        dbgStep('✅', 'الخطوة 4', `رابط MP4 موجود`, 'ok');
+        dbgStep('🎯', 'الرابط النهائي', `<a href="${mp4Url}" target="_blank" style="font-family:monospace; font-size:0.62rem;">${mp4Url}</a>`, 'ok');
+
+        // ── Step 5: Load the video ────────────────────────
+        video.src = mp4Url;
+        dbgStep('▶️', 'الخطوة 5', 'تم تعيين المصدر للمشغل — جارٍ التشغيل...', 'ok');
+        setDebugStatus('ok');
+
+        if (resumePos <= 15) {
+            video.play().catch(e => {
+                dbgStep('⚠️', 'التشغيل', `فشل التشغيل التلقائي: ${e.message}`, 'warn');
+            });
+        }
+
+        if (state.currentSeries && !isMovie) {
+            await loadUserHistory();
+            loadEpisodes(state.currentSeries);
+        }
+
+    } catch (err) {
+        dbgStep('❌', 'خطأ غير متوقع', err.message || String(err), 'err');
+        setDebugStatus('err');
+    }
+}
     // ══════════════════════════════════════════════════════════
 
     async function syncProgressToDB() {
