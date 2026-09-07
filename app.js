@@ -1,594 +1,781 @@
 /**
- * app.js - HSE Induction SPA
- * Handles:
- *  - View switching (User App / Admin Dashboard)
- *  - Rendering slides & quizzes
- *  - Scoring & Digital Pass generation
- *  - localStorage read/write for data & progress
+ * ============================================================================
+ * app.js — HSE Induction App logic
+ * ----------------------------------------------------------------------------
+ * Everything here is vanilla ES6 — no framework, no build step. The whole
+ * app is a single-page app (SPA): we never navigate to a new HTML file, we
+ * just re-render the contents of #app-root based on the value of `state.view`.
+ *
+ * SECTIONS IN THIS FILE
+ *   1. Constants & Storage helpers
+ *   2. Global state
+ *   3. Boot / init
+ *   4. Router (renders whichever view state.view points to)
+ *   5. User App views: welcome, induction flow (slides+quiz), pass
+ *   6. Admin views: PIN gate, dashboard, module editor
+ *   7. Utility / DOM helpers
+ * ============================================================================
  */
 
-(function() {
-  'use strict';
+/* ---------------------------------------------------------------------- *
+ * 1. CONSTANTS & STORAGE HELPERS
+ * ---------------------------------------------------------------------- */
 
-  // ---------- DOM refs ----------
-  const mainView = document.getElementById('mainView');
-  const adminPanel = document.getElementById('adminPanel');
-  const adminToggleBtn = document.getElementById('adminToggleBtn');
-  const adminCloseBtn = document.getElementById('adminCloseBtn');
-  const adminLoginGate = document.getElementById('adminLoginGate');
-  const adminContent = document.getElementById('adminContent');
-  const adminPinInput = document.getElementById('adminPinInput');
-  const adminLoginBtn = document.getElementById('adminLoginBtn');
-  const adminLoginError = document.getElementById('adminLoginError');
-  const adminSaveBtn = document.getElementById('adminSaveBtn');
-  const adminResetBtn = document.getElementById('adminResetBtn');
-  const adminSaveStatus = document.getElementById('adminSaveStatus');
-  const headerFacility = document.getElementById('headerFacility');
+const HSE_DB_KEY = "hse_induction_db_v1";        // holds the editable content (facilities+modules)
+const HSE_RECORDS_KEY = "hse_induction_records"; // holds completed inductions (for a simple admin log)
+const ADMIN_PIN = "1234"; // Prototype-only hardcoded PIN. Replace with real auth before production use.
+const PASS_THRESHOLD = 0.8; // 80% correct required across all quiz questions to earn a Pass
 
-  const PIN = '1234'; // Hardcoded for prototype
-
-  // ---------- State ----------
-  let appData = null;          // Will hold merged data (default + localStorage)
-  let currentFacility = null;  // { id, name }
-  let currentModuleIndex = 0;  // Which module the user is viewing
-  let currentSlideIndex = 0;   // Slide within module
-  let quizAnswers = {};        // { moduleId: selectedOptionIndex }
-  let userName = '';           // Stored for the final pass
-  let inductionComplete = false;
-
-  // ---------- Utility: Load/Save data ----------
-  function loadData() {
-    const stored = localStorage.getItem('hseInductionData');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Merge with defaults to ensure all fields exist
-        appData = mergeDeep(clone(DEFAULT_DATA), parsed);
-      } catch (e) {
-        appData = clone(DEFAULT_DATA);
-      }
-    } else {
-      appData = clone(DEFAULT_DATA);
-    }
-    // Ensure we have at least one facility
-    if (!appData.facilities || appData.facilities.length === 0) {
-      appData.facilities = clone(DEFAULT_DATA.facilities);
-    }
-    // Ensure modules exist
-    if (!appData.modules || appData.modules.length === 0) {
-      appData.modules = clone(DEFAULT_DATA.modules);
-    }
-    saveData();
-  }
-
-  function saveData() {
-    localStorage.setItem('hseInductionData', JSON.stringify(appData));
-  }
-
-  // Deep clone helper
-  function clone(obj) {
-    return JSON.parse(JSON.stringify(obj));
-  }
-
-  // Simple deep merge (overwrites arrays)
-  function mergeDeep(target, source) {
-    const result = clone(target);
-    for (const key in source) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = mergeDeep(result[key] || {}, source[key]);
-      } else {
-        result[key] = clone(source[key]);
-      }
-    }
-    return result;
-  }
-
-  // ---------- Load progress from localStorage ----------
-  function loadProgress() {
-    const prog = localStorage.getItem('hseProgress');
-    if (prog) {
-      try {
-        const p = JSON.parse(prog);
-        currentFacility = p.facility || null;
-        currentModuleIndex = p.moduleIndex || 0;
-        currentSlideIndex = p.slideIndex || 0;
-        quizAnswers = p.quizAnswers || {};
-        userName = p.userName || '';
-        inductionComplete = p.complete || false;
-        return true;
-      } catch (e) { /* ignore */ }
-    }
-    return false;
-  }
-
-  function saveProgress() {
-    const prog = {
-      facility: currentFacility,
-      moduleIndex: currentModuleIndex,
-      slideIndex: currentSlideIndex,
-      quizAnswers: quizAnswers,
-      userName: userName,
-      complete: inductionComplete
-    };
-    localStorage.setItem('hseProgress', JSON.stringify(prog));
-  }
-
-  // ---------- Render: User App ----------
-  function renderApp() {
-    if (!currentFacility) {
-      renderFacilitySelector();
-      return;
-    }
-
-    if (inductionComplete) {
-      renderPass();
-      return;
-    }
-
-    const modules = appData.modules;
-    if (!modules || modules.length === 0) {
-      mainView.innerHTML = '<p class="text-red-500">No modules found.</p>';
-      return;
-    }
-
-    // Clamp index
-    if (currentModuleIndex >= modules.length) currentModuleIndex = modules.length - 1;
-    if (currentModuleIndex < 0) currentModuleIndex = 0;
-
-    const module = modules[currentModuleIndex];
-    const slides = module.slides || [];
-    if (currentSlideIndex >= slides.length) currentSlideIndex = slides.length - 1;
-    if (currentSlideIndex < 0) currentSlideIndex = 0;
-
-    // Build the view
-    let html = `
-      <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-        <!-- Module header -->
-        <div class="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <i class="fas ${module.icon || 'fa-book'} text-amber-400 text-xl"></i>
-            <span class="font-semibold">${module.title}</span>
-          </div>
-          <span class="text-xs bg-blue-700 px-3 py-1 rounded-full">${currentModuleIndex+1} / ${modules.length}</span>
-        </div>
-
-        <!-- Slide content -->
-        <div class="p-5 min-h-[240px]">
-          ${slides[currentSlideIndex]?.content || '<p class="text-gray-500">No content</p>'}
-        </div>
-
-        <!-- Navigation & Quiz -->
-        <div class="px-5 pb-5 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex gap-2">
-            <button class="prev-slide-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition text-sm font-medium" ${currentSlideIndex === 0 ? 'disabled' : ''}>
-              <i class="fas fa-chevron-left"></i> Prev
-            </button>
-            <button class="next-slide-btn bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition text-sm font-medium" ${currentSlideIndex === slides.length - 1 ? 'disabled' : ''}>
-              Next <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
-          <div>
-            <span class="text-xs text-gray-400">Slide ${currentSlideIndex+1}/${slides.length}</span>
-          </div>
-        </div>
-
-        <!-- Quiz (shown only after last slide) -->
-        ${currentSlideIndex === slides.length - 1 ? renderQuiz(module) : ''}
-
-        <!-- Module navigation (prev/next module) -->
-        <div class="px-5 pb-5 flex flex-wrap gap-3 border-t pt-4">
-          <button class="prev-module-btn bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition text-sm font-medium" ${currentModuleIndex === 0 ? 'disabled' : ''}>
-            <i class="fas fa-arrow-left"></i> Previous Module
-          </button>
-          <button class="next-module-btn bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition text-sm font-medium" ${currentModuleIndex === modules.length - 1 ? 'disabled' : ''}>
-            ${currentModuleIndex === modules.length - 1 ? 'Finish & Get Pass' : 'Next Module'} <i class="fas fa-arrow-right"></i>
-          </button>
-        </div>
-      </div>
-    `;
-
-    mainView.innerHTML = html;
-
-    // Attach event listeners
-    attachSlideNav(module);
-    attachModuleNav(module);
-    attachQuizListeners(module);
-
-    // Update header
-    headerFacility.textContent = currentFacility.name || '';
-  }
-
-  // ---------- Render: Facility Selector ----------
-  function renderFacilitySelector() {
-    const facilities = appData.facilities || [];
-    let html = `
-      <div class="text-center py-6">
-        <i class="fas fa-map-pin text-5xl text-blue-700 mb-4"></i>
-        <h1 class="text-2xl font-bold text-blue-900">Select Your Site</h1>
-        <p class="text-gray-500 mt-1 mb-6">Choose your facility to begin the HSE Induction</p>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-    `;
-    facilities.forEach(fac => {
-      html += `
-        <button class="facility-btn bg-white hover:bg-blue-50 border border-blue-200 rounded-xl p-5 shadow-sm transition text-center">
-          <i class="fas fa-building text-blue-600 text-2xl mb-2"></i>
-          <div class="font-medium text-gray-800">${fac.name}</div>
-          <div class="text-xs text-gray-400 mt-1">Click to start</div>
-        </button>
-      `;
-    });
-    html += `</div></div>`;
-    mainView.innerHTML = html;
-
-    // Attach facility listeners
-    document.querySelectorAll('.facility-btn').forEach((btn, idx) => {
-      btn.addEventListener('click', () => {
-        const fac = facilities[idx];
-        if (!fac) return;
-        currentFacility = { id: fac.id, name: fac.name };
-        currentModuleIndex = 0;
-        currentSlideIndex = 0;
-        quizAnswers = {};
-        inductionComplete = false;
-        userName = prompt('Enter your full name for the induction pass:', userName || '');
-        if (userName === null) userName = '';
-        saveProgress();
-        renderApp();
-      });
-    });
-  }
-
-  // ---------- Render Quiz ----------
-  function renderQuiz(module) {
-    const quiz = module.quiz;
-    if (!quiz) return '';
-    const selected = quizAnswers[module.id] !== undefined ? quizAnswers[module.id] : -1;
-    let html = `
-      <div class="border-t border-gray-200 px-5 pt-4 pb-2">
-        <p class="font-semibold text-gray-800 mb-2"><i class="fas fa-question-circle text-amber-500 mr-2"></i>${quiz.question}</p>
-        <div class="space-y-2">
-    `;
-    quiz.options.forEach((opt, idx) => {
-      const checked = selected === idx ? 'checked' : '';
-      html += `
-        <label class="flex items-start gap-3 bg-gray-50 hover:bg-gray-100 p-3 rounded-lg cursor-pointer transition">
-          <input type="radio" name="quiz_${module.id}" value="${idx}" ${checked} class="mt-1 quiz-radio" data-module="${module.id}" data-opt="${idx}" />
-          <span class="text-sm">${opt}</span>
-        </label>
-      `;
-    });
-    html += `</div></div>`;
-    return html;
-  }
-
-  // ---------- Attach Slide Navigation ----------
-  function attachSlideNav(module) {
-    const prevBtn = mainView.querySelector('.prev-slide-btn');
-    const nextBtn = mainView.querySelector('.next-slide-btn');
-    if (prevBtn) {
-      prevBtn.addEventListener('click', () => {
-        if (currentSlideIndex > 0) {
-          currentSlideIndex--;
-          saveProgress();
-          renderApp();
-        }
-      });
-    }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        const slides = module.slides || [];
-        if (currentSlideIndex < slides.length - 1) {
-          currentSlideIndex++;
-          saveProgress();
-          renderApp();
-        }
-      });
-    }
-  }
-
-  // ---------- Attach Module Navigation ----------
-  function attachModuleNav(module) {
-    const prevMod = mainView.querySelector('.prev-module-btn');
-    const nextMod = mainView.querySelector('.next-module-btn');
-    const modules = appData.modules;
-
-    if (prevMod) {
-      prevMod.addEventListener('click', () => {
-        if (currentModuleIndex > 0) {
-          currentModuleIndex--;
-          currentSlideIndex = 0;
-          saveProgress();
-          renderApp();
-        }
-      });
-    }
-
-    if (nextMod) {
-      nextMod.addEventListener('click', () => {
-        // Check if quiz is answered for current module
-        const quiz = module.quiz;
-        if (quiz && quizAnswers[module.id] === undefined) {
-          alert('Please answer the quiz question before moving to the next module.');
-          return;
-        }
-        if (currentModuleIndex < modules.length - 1) {
-          currentModuleIndex++;
-          currentSlideIndex = 0;
-          saveProgress();
-          renderApp();
-        } else {
-          // All modules done
-          inductionComplete = true;
-          saveProgress();
-          renderApp();
-        }
-      });
-    }
-  }
-
-  // ---------- Attach Quiz Listeners ----------
-  function attachQuizListeners(module) {
-    const radios = mainView.querySelectorAll('.quiz-radio');
-    radios.forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        const modId = radio.dataset.module;
-        const opt = parseInt(radio.dataset.opt, 10);
-        quizAnswers[modId] = opt;
-        saveProgress();
-        // re-render to show selection (optional)
-        // We'll just update state, but we could re-render to reflect checked state
-      });
-    });
-  }
-
-  // ---------- Render Digital Pass ----------
-  function renderPass() {
-    // Calculate score
-    let total = 0;
-    let correct = 0;
-    appData.modules.forEach(mod => {
-      if (mod.quiz) {
-        total++;
-        const userAns = quizAnswers[mod.id];
-        if (userAns !== undefined && userAns === mod.quiz.correct) {
-          correct++;
-        }
-      }
-    });
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const passed = score >= 70;
-
-    const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    const facilityName = currentFacility?.name || 'Unknown';
-
-    let html = `
-      <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100">
-        <div class="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-6 py-8 text-center">
-          <i class="fas fa-certificate text-5xl text-amber-400 mb-2"></i>
-          <h2 class="text-2xl font-bold">HSE Induction Pass</h2>
-          <p class="text-sm opacity-80">Oil & Gas Division</p>
-        </div>
-        <div class="p-6 space-y-4">
-          <div class="flex justify-between border-b pb-2">
-            <span class="text-gray-500">Name</span>
-            <span class="font-medium">${userName || '—'}</span>
-          </div>
-          <div class="flex justify-between border-b pb-2">
-            <span class="text-gray-500">Facility</span>
-            <span class="font-medium">${facilityName}</span>
-          </div>
-          <div class="flex justify-between border-b pb-2">
-            <span class="text-gray-500">Date</span>
-            <span class="font-medium">${date}</span>
-          </div>
-          <div class="flex justify-between border-b pb-2">
-            <span class="text-gray-500">Score</span>
-            <span class="font-bold ${passed ? 'text-green-600' : 'text-red-600'}">${score}% (${correct}/${total})</span>
-          </div>
-          <div class="text-center mt-4">
-            <span class="inline-block px-6 py-2 rounded-full text-sm font-bold ${passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-              ${passed ? '✅ PASSED' : '❌ NOT PASSED — Please review'}
-            </span>
-          </div>
-        </div>
-        <div class="px-6 pb-6 flex flex-wrap gap-3">
-          <button id="resetInductionBtn" class="bg-gray-200 hover:bg-gray-300 px-5 py-2 rounded-lg transition text-sm font-medium">
-            <i class="fas fa-rotate-left"></i> Restart Induction
-          </button>
-          <button id="printPassBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg transition text-sm font-medium">
-            <i class="fas fa-print"></i> Print / Save PDF
-          </button>
-        </div>
-      </div>
-    `;
-    mainView.innerHTML = html;
-
-    document.getElementById('resetInductionBtn')?.addEventListener('click', () => {
-      inductionComplete = false;
-      currentModuleIndex = 0;
-      currentSlideIndex = 0;
-      quizAnswers = {};
-      saveProgress();
-      renderApp();
-    });
-
-    document.getElementById('printPassBtn')?.addEventListener('click', () => {
-      window.print();
-    });
-  }
-
-  // ---------- Admin: Render Dashboard ----------
-  function renderAdmin() {
-    const container = document.getElementById('adminModulesContainer');
-    if (!container) return;
-    let html = '';
-    appData.modules.forEach((mod, idx) => {
-      html += `
-        <div class="border border-gray-200 rounded-xl mb-4 overflow-hidden">
-          <div class="bg-gray-50 px-4 py-3 flex items-center justify-between cursor-pointer admin-toggle" data-target="mod-${idx}">
-            <div class="flex items-center gap-3">
-              <i class="fas ${mod.icon || 'fa-book'} text-blue-600"></i>
-              <span class="font-medium">${mod.title}</span>
-            </div>
-            <i class="fas fa-chevron-down text-gray-400"></i>
-          </div>
-          <div id="mod-${idx}" class="admin-module-content px-4 py-3 hidden border-t">
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700">Module Title</label>
-              <input type="text" class="admin-mod-title w-full border rounded-lg px-3 py-2 text-sm" value="${mod.title}" data-idx="${idx}" />
-            </div>
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700">Slides (JSON array)</label>
-              <textarea class="admin-slides w-full border rounded-lg px-3 py-2 text-sm font-mono h-32" data-idx="${idx}">${JSON.stringify(mod.slides, null, 2)}</textarea>
-            </div>
-            <div class="mb-3">
-              <label class="block text-sm font-medium text-gray-700">Quiz</label>
-              <textarea class="admin-quiz w-full border rounded-lg px-3 py-2 text-sm font-mono h-24" data-idx="${idx}">${JSON.stringify(mod.quiz, null, 2)}</textarea>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-    container.innerHTML = html;
-
-    // Toggle accordion
-    document.querySelectorAll('.admin-toggle').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const targetId = btn.dataset.target;
-        const content = document.getElementById(targetId);
-        if (content) {
-          content.classList.toggle('hidden');
-        }
-      });
-    });
-
-    // Show first module expanded
-    const firstContent = document.getElementById('mod-0');
-    if (firstContent) firstContent.classList.remove('hidden');
-  }
-
-  // ---------- Admin: Save changes ----------
-  function saveAdminChanges() {
+/** Read the content DB from localStorage, seeding it from DEFAULT_DATA on first run. */
+function loadDB() {
+  const raw = localStorage.getItem(HSE_DB_KEY);
+  if (raw) {
     try {
-      const modTitles = document.querySelectorAll('.admin-mod-title');
-      const modSlides = document.querySelectorAll('.admin-slides');
-      const modQuizzes = document.querySelectorAll('.admin-quiz');
-
-      modTitles.forEach((input, idx) => {
-        if (appData.modules[idx]) {
-          appData.modules[idx].title = input.value.trim() || appData.modules[idx].title;
-        }
-      });
-
-      modSlides.forEach((textarea, idx) => {
-        if (appData.modules[idx]) {
-          try {
-            const parsed = JSON.parse(textarea.value);
-            appData.modules[idx].slides = parsed;
-          } catch (e) {
-            // keep existing
-          }
-        }
-      });
-
-      modQuizzes.forEach((textarea, idx) => {
-        if (appData.modules[idx]) {
-          try {
-            const parsed = JSON.parse(textarea.value);
-            appData.modules[idx].quiz = parsed;
-          } catch (e) {
-            // keep existing
-          }
-        }
-      });
-
-      saveData();
-      adminSaveStatus.textContent = '✅ Saved successfully!';
-      setTimeout(() => { adminSaveStatus.textContent = ''; }, 3000);
-      // Re-render user app to reflect changes
-      renderApp();
+      return JSON.parse(raw);
     } catch (e) {
-      adminSaveStatus.textContent = '❌ Error saving. Check JSON syntax.';
-      console.error(e);
+      console.warn("Corrupt HSE DB in localStorage, falling back to defaults.", e);
+    }
+  }
+  // Deep-clone the default data so we never accidentally mutate the seed object
+  const seeded = JSON.parse(JSON.stringify(window.DEFAULT_DATA));
+  saveDB(seeded);
+  return seeded;
+}
+
+/** Persist the content DB back to localStorage. Called any time Admin saves an edit. */
+function saveDB(db) {
+  localStorage.setItem(HSE_DB_KEY, JSON.stringify(db));
+}
+
+/** Append a completed induction record (for the Admin "Recent Completions" list). */
+function saveRecord(record) {
+  const records = JSON.parse(localStorage.getItem(HSE_RECORDS_KEY) || "[]");
+  records.unshift(record); // newest first
+  localStorage.setItem(HSE_RECORDS_KEY, JSON.stringify(records.slice(0, 100))); // cap at 100
+}
+
+function loadRecords() {
+  return JSON.parse(localStorage.getItem(HSE_RECORDS_KEY) || "[]");
+}
+
+/* ---------------------------------------------------------------------- *
+ * 2. GLOBAL STATE
+ * ---------------------------------------------------------------------- */
+
+const state = {
+  db: null,              // { facilities: [...], modules: [...] } — loaded on boot
+  view: "welcome",       // which top-level screen is active
+  isAdmin: false,        // whether the admin dashboard is unlocked this session
+
+  // --- induction-in-progress state ---
+  user: { name: "", facilityId: null },
+  activeModules: [],     // modules filtered for the chosen facility, in order
+  moduleIndex: 0,        // which module we're currently on
+  cardIndex: 0,          // which slide *within* the current module (quiz cards come after slides)
+  answers: {},           // { [questionId]: selectedIndex }
+  score: { correct: 0, total: 0 },
+
+  // --- admin editor state ---
+  adminSelectedModuleId: null
+};
+
+/* ---------------------------------------------------------------------- *
+ * 3. BOOT / INIT
+ * ---------------------------------------------------------------------- */
+
+document.addEventListener("DOMContentLoaded", () => {
+  state.db = loadDB();
+  render();
+
+  // Hidden admin entry point: tapping the small gear icon in the header
+  document.getElementById("admin-entry-btn").addEventListener("click", () => {
+    state.view = state.isAdmin ? "admin-dashboard" : "admin-login";
+    render();
+  });
+
+  document.getElementById("app-title-btn").addEventListener("click", () => {
+    // Tapping the app title always returns to the User App welcome screen
+    resetInductionState();
+    state.view = "welcome";
+    render();
+  });
+});
+
+function resetInductionState() {
+  state.user = { name: "", facilityId: null };
+  state.activeModules = [];
+  state.moduleIndex = 0;
+  state.cardIndex = 0;
+  state.answers = {};
+  state.score = { correct: 0, total: 0 };
+}
+
+/* ---------------------------------------------------------------------- *
+ * 4. ROUTER
+ * ---------------------------------------------------------------------- */
+
+function render() {
+  const root = document.getElementById("app-root");
+  root.innerHTML = ""; // clear previous view
+
+  // Toggle a body class so CSS can widen the container for the desktop admin view
+  document.body.classList.toggle("admin-mode", state.view.startsWith("admin"));
+
+  switch (state.view) {
+    case "welcome":
+      root.appendChild(renderWelcome());
+      break;
+    case "flow":
+      root.appendChild(renderFlow());
+      break;
+    case "pass":
+      root.appendChild(renderPass());
+      break;
+    case "admin-login":
+      root.appendChild(renderAdminLogin());
+      break;
+    case "admin-dashboard":
+      root.appendChild(renderAdminDashboard());
+      break;
+    default:
+      root.appendChild(renderWelcome());
+  }
+}
+
+/* ---------------------------------------------------------------------- *
+ * 5a. USER APP — Welcome / facility selector
+ * ---------------------------------------------------------------------- */
+
+function renderWelcome() {
+  const wrap = el("div", "view-welcome fade-in");
+
+  wrap.innerHTML = `
+    <div class="hazard-strip"></div>
+    <div class="px-5 pt-8 pb-6 text-center">
+      <i class="fa-solid fa-hard-hat text-5xl text-hse-yellow drop-shadow"></i>
+      <h1 class="font-display text-2xl mt-3 text-slate-900">HSE Induction</h1>
+      <p class="text-slate-500 mt-1 text-sm">Complete this induction before entering site</p>
+    </div>
+
+    <div class="px-5">
+      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Your full name</label>
+      <input id="input-name" type="text" placeholder="e.g. Ahmed Al-Balushi"
+        class="w-full border border-slate-300 rounded-lg px-4 py-3 mb-5 text-base focus:outline-none focus:ring-2 focus:ring-hse-yellow" />
+
+      <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Select your facility</label>
+      <div id="facility-list" class="space-y-3 mb-6"></div>
+
+      <button id="start-btn" disabled
+        class="w-full bg-slate-300 text-white font-semibold py-3 rounded-lg transition-colors text-base">
+        Start Induction
+      </button>
+    </div>
+  `;
+
+  const facilityList = wrap.querySelector("#facility-list");
+  state.db.facilities.forEach(facility => {
+    const card = el("button", "facility-card");
+    card.type = "button";
+    card.dataset.facilityId = facility.id;
+    card.innerHTML = `
+      <i class="fa-solid ${facility.icon} text-xl text-slate-700 w-8"></i>
+      <div class="text-left flex-1">
+        <div class="font-semibold text-slate-900">${escapeHTML(facility.name)}</div>
+        <div class="text-xs text-slate-500">${escapeHTML(facility.description)}</div>
+      </div>
+      <i class="fa-solid fa-circle-check check-icon"></i>
+    `;
+    card.addEventListener("click", () => {
+      state.user.facilityId = facility.id;
+      wrap.querySelectorAll(".facility-card").forEach(c => c.classList.remove("selected"));
+      card.classList.add("selected");
+      validateWelcomeForm();
+    });
+    facilityList.appendChild(card);
+  });
+
+  const nameInput = wrap.querySelector("#input-name");
+  nameInput.addEventListener("input", () => {
+    state.user.name = nameInput.value.trim();
+    validateWelcomeForm();
+  });
+
+  function validateWelcomeForm() {
+    const startBtn = wrap.querySelector("#start-btn");
+    const ready = state.user.name.length > 1 && !!state.user.facilityId;
+    startBtn.disabled = !ready;
+    startBtn.classList.toggle("bg-slate-300", !ready);
+    startBtn.classList.toggle("bg-hse-yellow", ready);
+    startBtn.classList.toggle("text-slate-900", ready);
+    startBtn.classList.toggle("shadow-lg", ready);
+  }
+
+  wrap.querySelector("#start-btn").addEventListener("click", () => {
+    beginInduction();
+  });
+
+  return wrap;
+}
+
+/** Build the ordered list of modules that apply to the chosen facility, then start the flow. */
+function beginInduction() {
+  state.activeModules = state.db.modules.filter(
+    m => m.facilities.includes("all") || m.facilities.includes(state.user.facilityId)
+  );
+  state.moduleIndex = 0;
+  state.cardIndex = 0;
+  state.answers = {};
+  state.score = { correct: 0, total: 0 };
+  state.view = "flow";
+  render();
+}
+
+/* ---------------------------------------------------------------------- *
+ * 5b. USER APP — Induction flow (slide cards + quiz cards, module by module)
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Each module is presented as: [slide, slide, ..., quizQ, quizQ, ...]
+ * state.cardIndex walks through that combined list for the CURRENT module.
+ * When we run off the end of a module's cards, we advance to the next module.
+ * When we run off the end of the last module, we go to the Pass screen.
+ */
+function renderFlow() {
+  const module = state.activeModules[state.moduleIndex];
+  const totalCards = module.slides.length + module.quiz.length;
+  const isQuizCard = state.cardIndex >= module.slides.length;
+
+  const wrap = el("div", "view-flow fade-in");
+
+  // --- Progress bar: overall progress across ALL modules, not just this one ---
+  const totalModuleCount = state.activeModules.length;
+  const overallProgress =
+    ((state.moduleIndex + (state.cardIndex + 1) / totalCards) / totalModuleCount) * 100;
+
+  wrap.innerHTML = `
+    <div class="progress-track">
+      <div class="progress-fill" style="width:${overallProgress}%"></div>
+    </div>
+    <div class="px-5 pt-4 pb-2 flex items-center justify-between">
+      <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        Module ${state.moduleIndex + 1} of ${totalModuleCount}
+      </span>
+      <span class="text-xs font-semibold text-slate-400">${escapeHTML(module.title)}</span>
+    </div>
+    <div id="card-slot" class="px-5 pb-28"></div>
+    <div id="flow-nav" class="flow-nav"></div>
+  `;
+
+  const cardSlot = wrap.querySelector("#card-slot");
+  const nav = wrap.querySelector("#flow-nav");
+
+  if (!isQuizCard) {
+    const slide = module.slides[state.cardIndex];
+    cardSlot.appendChild(renderSlideCard(slide));
+    nav.innerHTML = `
+      <button id="nav-back" class="nav-btn-secondary">Back</button>
+      <button id="nav-next" class="nav-btn-primary">Continue</button>
+    `;
+    wireNav(wrap, () => moveCard(-1), () => moveCard(1));
+  } else {
+    const question = module.quiz[state.cardIndex - module.slides.length];
+    cardSlot.appendChild(renderQuizCard(question));
+    nav.innerHTML = `
+      <button id="nav-back" class="nav-btn-secondary">Back</button>
+      <button id="nav-next" class="nav-btn-primary" disabled>Continue</button>
+    `;
+    wireNav(wrap, () => moveCard(-1), () => moveCard(1));
+
+    // Enable "Continue" only once the user has answered this question
+    if (state.answers[question.id] !== undefined) {
+      wrap.querySelector("#nav-next").disabled = false;
     }
   }
 
-  // ---------- Admin: Reset to defaults ----------
-  function resetToDefaults() {
-    if (confirm('Reset all content to factory defaults? Your current progress will be kept.')) {
-      appData = clone(DEFAULT_DATA);
-      saveData();
-      renderAdmin();
-      renderApp();
-      adminSaveStatus.textContent = '↩️ Reset to default content.';
-      setTimeout(() => { adminSaveStatus.textContent = ''; }, 3000);
-    }
+  // Disable "Back" entirely on the very first card of the very first module
+  if (state.moduleIndex === 0 && state.cardIndex === 0) {
+    wrap.querySelector("#nav-back").disabled = true;
+    wrap.querySelector("#nav-back").classList.add("invisible");
   }
 
-  // ---------- Admin Login ----------
-  function adminLogin() {
-    const entered = adminPinInput.value.trim();
-    if (entered === PIN) {
-      adminLoginGate.classList.add('hidden');
-      adminContent.classList.remove('hidden');
-      renderAdmin();
-      adminPinInput.value = '';
-      adminLoginError.classList.add('hidden');
+  return wrap;
+}
+
+function wireNav(wrap, onBack, onNext) {
+  wrap.querySelector("#nav-back").addEventListener("click", onBack);
+  wrap.querySelector("#nav-next").addEventListener("click", onNext);
+}
+
+function renderSlideCard(slide) {
+  const card = el("div", `content-card ${slide.alert === "critical" ? "content-card-critical" : ""}`);
+  card.innerHTML = `
+    <div class="content-card-icon">
+      <i class="fa-solid ${slide.icon}"></i>
+    </div>
+    ${slide.alert === "critical" ? `<div class="critical-tag"><i class="fa-solid fa-triangle-exclamation"></i> Critical</div>` : ""}
+    <h2 class="font-display text-xl mt-3 mb-2 text-slate-900">${escapeHTML(slide.heading)}</h2>
+    <p class="text-slate-600 leading-relaxed text-[15px]">${escapeHTML(slide.body)}</p>
+  `;
+  return card;
+}
+
+function renderQuizCard(question) {
+  const card = el("div", "content-card");
+  const selected = state.answers[question.id];
+
+  card.innerHTML = `
+    <div class="content-card-icon quiz-icon"><i class="fa-solid fa-circle-question"></i></div>
+    <div class="critical-tag quiz-tag"><i class="fa-solid fa-clipboard-list"></i> Knowledge Check</div>
+    <h2 class="font-display text-lg mt-3 mb-4 text-slate-900">${escapeHTML(question.question)}</h2>
+    <div class="space-y-2" id="option-list"></div>
+    <p id="answer-feedback" class="text-sm mt-3 font-medium hidden"></p>
+  `;
+
+  const optionList = card.querySelector("#option-list");
+  question.options.forEach((optionText, idx) => {
+    const btn = el("button", "quiz-option");
+    btn.type = "button";
+    btn.innerHTML = `<span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span>
+      <span>${escapeHTML(optionText)}</span>`;
+
+    // If this question was already answered (e.g. user hit Back then forward again), show state
+    if (selected !== undefined) {
+      btn.disabled = true;
+      if (idx === question.correctIndex) btn.classList.add("correct");
+      else if (idx === selected) btn.classList.add("incorrect");
+    }
+
+    btn.addEventListener("click", () => submitAnswer(question, idx, card));
+    optionList.appendChild(btn);
+  });
+
+  if (selected !== undefined) {
+    showAnswerFeedback(card, selected === question.correctIndex);
+  }
+
+  return card;
+}
+
+function submitAnswer(question, chosenIndex, card) {
+  // Only score a question the first time it's answered
+  const alreadyAnswered = state.answers[question.id] !== undefined;
+  state.answers[question.id] = chosenIndex;
+
+  if (!alreadyAnswered) {
+    state.score.total += 1;
+    if (chosenIndex === question.correctIndex) state.score.correct += 1;
+  }
+
+  // Lock in the visual state of all options
+  card.querySelectorAll(".quiz-option").forEach((btn, idx) => {
+    btn.disabled = true;
+    if (idx === question.correctIndex) btn.classList.add("correct");
+    else if (idx === chosenIndex) btn.classList.add("incorrect");
+  });
+
+  showAnswerFeedback(card, chosenIndex === question.correctIndex);
+
+  // Unlock the Continue button now that this card has an answer
+  const nextBtn = document.getElementById("nav-next");
+  if (nextBtn) nextBtn.disabled = false;
+}
+
+function showAnswerFeedback(card, isCorrect) {
+  const feedback = card.querySelector("#answer-feedback");
+  feedback.classList.remove("hidden");
+  feedback.textContent = isCorrect
+    ? "Correct — well noted."
+    : "Not quite — the correct answer is highlighted above.";
+  feedback.classList.add(isCorrect ? "text-green-700" : "text-red-700");
+}
+
+/** Move forward/back through cards, crossing module boundaries and finishing to the Pass screen. */
+function moveCard(direction) {
+  const module = state.activeModules[state.moduleIndex];
+  const totalCards = module.slides.length + module.quiz.length;
+  const nextCardIndex = state.cardIndex + direction;
+
+  if (nextCardIndex < 0) {
+    // Move to the previous module's last card
+    if (state.moduleIndex === 0) return; // already at the very start
+    state.moduleIndex -= 1;
+    const prevModule = state.activeModules[state.moduleIndex];
+    state.cardIndex = prevModule.slides.length + prevModule.quiz.length - 1;
+  } else if (nextCardIndex >= totalCards) {
+    // Move to the next module, or finish the induction
+    if (state.moduleIndex + 1 >= state.activeModules.length) {
+      finishInduction();
+      return;
+    }
+    state.moduleIndex += 1;
+    state.cardIndex = 0;
+  } else {
+    state.cardIndex = nextCardIndex;
+  }
+  render();
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+function finishInduction() {
+  const pct = state.score.total ? state.score.correct / state.score.total : 0;
+  const passed = pct >= PASS_THRESHOLD;
+  const facility = state.db.facilities.find(f => f.id === state.user.facilityId);
+
+  saveRecord({
+    name: state.user.name,
+    facility: facility ? facility.name : state.user.facilityId,
+    date: new Date().toISOString(),
+    score: state.score.correct,
+    total: state.score.total,
+    percent: Math.round(pct * 100),
+    passed
+  });
+
+  state.view = "pass";
+  render();
+}
+
+/* ---------------------------------------------------------------------- *
+ * 5c. USER APP — Digital Pass
+ * ---------------------------------------------------------------------- */
+
+function renderPass() {
+  const facility = state.db.facilities.find(f => f.id === state.user.facilityId);
+  const pct = state.score.total ? Math.round((state.score.correct / state.score.total) * 100) : 0;
+  const passed = pct / 100 >= PASS_THRESHOLD;
+  const today = new Date();
+  const dateStr = today.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+  const wrap = el("div", "view-pass fade-in px-5 pt-8 pb-10");
+
+  wrap.innerHTML = `
+    <div class="text-center mb-6">
+      <i class="fa-solid ${passed ? "fa-circle-check text-green-600" : "fa-circle-xmark text-red-600"} text-5xl"></i>
+      <h1 class="font-display text-2xl mt-3 text-slate-900">${passed ? "Induction Complete" : "Induction Not Passed"}</h1>
+      <p class="text-slate-500 text-sm mt-1">
+        ${passed
+          ? "You've met the minimum standard required for site access."
+          : `A score of ${Math.round(PASS_THRESHOLD * 100)}% or higher is required. Please retake the induction.`}
+      </p>
+    </div>
+
+    <div class="hse-pass-card ${passed ? "" : "hse-pass-card-fail"}">
+      <div class="hse-pass-header">
+        <span>HSE INDUCTION PASS</span>
+        <i class="fa-solid fa-hard-hat"></i>
+      </div>
+      <div class="hse-pass-body">
+        <div class="hse-pass-row"><span>Name</span><strong>${escapeHTML(state.user.name)}</strong></div>
+        <div class="hse-pass-row"><span>Facility</span><strong>${escapeHTML(facility ? facility.name : "—")}</strong></div>
+        <div class="hse-pass-row"><span>Date issued</span><strong>${dateStr}</strong></div>
+        <div class="hse-pass-row"><span>Score</span><strong>${state.score.correct}/${state.score.total} (${pct}%)</strong></div>
+        <div class="hse-pass-row"><span>Status</span><strong class="${passed ? "text-green-700" : "text-red-700"}">${passed ? "PASSED" : "NOT PASSED"}</strong></div>
+      </div>
+      <div class="hse-pass-footer">Valid for site access · Present on request</div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button id="print-pass-btn" class="nav-btn-secondary flex-1"><i class="fa-solid fa-print mr-2"></i>Print</button>
+      <button id="restart-btn" class="nav-btn-primary flex-1">${passed ? "Done" : "Retake Induction"}</button>
+    </div>
+  `;
+
+  wrap.querySelector("#print-pass-btn").addEventListener("click", () => window.print());
+  wrap.querySelector("#restart-btn").addEventListener("click", () => {
+    if (passed) {
+      resetInductionState();
+      state.view = "welcome";
     } else {
-      adminLoginError.classList.remove('hidden');
+      // Retake: keep name/facility, reset progress and score
+      state.moduleIndex = 0;
+      state.cardIndex = 0;
+      state.answers = {};
+      state.score = { correct: 0, total: 0 };
+      state.view = "flow";
     }
-  }
+    render();
+  });
 
-  // ---------- Admin Panel open/close ----------
-  function openAdmin() {
-    adminPanel.classList.remove('hidden');
-    // If already logged in, show content
-    if (adminContent.classList.contains('hidden') === false) {
-      renderAdmin();
-    }
-  }
+  return wrap;
+}
 
-  function closeAdmin() {
-    adminPanel.classList.add('hidden');
-    adminLoginGate.classList.remove('hidden');
-    adminContent.classList.add('hidden');
-    adminLoginError.classList.add('hidden');
-    adminPinInput.value = '';
-  }
+/* ---------------------------------------------------------------------- *
+ * 6a. ADMIN — PIN gate
+ * ---------------------------------------------------------------------- */
 
-  // ---------- Init ----------
-  function init() {
-    loadData();
-    const hasProgress = loadProgress();
+function renderAdminLogin() {
+  const wrap = el("div", "view-admin-login fade-in px-5 pt-16 text-center");
+  wrap.innerHTML = `
+    <i class="fa-solid fa-lock text-4xl text-slate-400"></i>
+    <h1 class="font-display text-xl mt-4 text-slate-900">Admin Access</h1>
+    <p class="text-slate-500 text-sm mt-1 mb-6">Enter the PIN to manage induction content</p>
+    <input id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••"
+      class="w-40 mx-auto block text-center tracking-[0.5em] text-xl border border-slate-300 rounded-lg px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-hse-yellow" />
+    <p id="pin-error" class="text-red-600 text-sm mb-4 hidden">Incorrect PIN. Try again.</p>
+    <button id="pin-submit" class="nav-btn-primary px-8">Unlock</button>
+    <p class="text-xs text-slate-400 mt-8">Prototype PIN: ${ADMIN_PIN} &nbsp;(replace with real auth before production)</p>
+  `;
 
-    // If we have a facility and progress, render app, else show selector
-    if (hasProgress && currentFacility) {
-      renderApp();
+  const submit = () => {
+    const val = wrap.querySelector("#pin-input").value;
+    if (val === ADMIN_PIN) {
+      state.isAdmin = true;
+      state.view = "admin-dashboard";
+      render();
     } else {
-      // Ensure we start fresh
-      currentFacility = null;
-      currentModuleIndex = 0;
-      currentSlideIndex = 0;
-      quizAnswers = {};
-      inductionComplete = false;
-      saveProgress();
-      renderFacilitySelector();
+      wrap.querySelector("#pin-error").classList.remove("hidden");
     }
+  };
 
-    // ----- Admin event listeners -----
-    adminToggleBtn.addEventListener('click', openAdmin);
-    adminCloseBtn.addEventListener('click', closeAdmin);
-    adminLoginBtn.addEventListener('click', adminLogin);
-    adminPinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLogin(); });
-    adminSaveBtn.addEventListener('click', saveAdminChanges);
-    adminResetBtn.addEventListener('click', resetToDefaults);
+  wrap.querySelector("#pin-submit").addEventListener("click", submit);
+  wrap.querySelector("#pin-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") submit();
+  });
 
-    // Click outside panel to close (optional)
-    adminPanel.addEventListener('click', (e) => {
-      if (e.target === adminPanel) closeAdmin();
+  return wrap;
+}
+
+/* ---------------------------------------------------------------------- *
+ * 6b. ADMIN — Dashboard (module list + editor + facilities + records)
+ * ---------------------------------------------------------------------- */
+
+function renderAdminDashboard() {
+  const wrap = el("div", "view-admin fade-in");
+
+  wrap.innerHTML = `
+    <div class="admin-header">
+      <div>
+        <h1 class="font-display text-xl text-slate-900">Admin Dashboard</h1>
+        <p class="text-slate-500 text-sm">Edit induction content — changes save to this browser's local storage</p>
+      </div>
+      <button id="admin-logout" class="nav-btn-secondary">Log out</button>
+    </div>
+
+    <div class="admin-layout">
+      <div class="admin-sidebar">
+        <h3 class="admin-section-title">Modules</h3>
+        <div id="module-nav-list" class="space-y-1"></div>
+        <button id="add-module-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add module</button>
+
+        <h3 class="admin-section-title mt-6">Facilities</h3>
+        <div id="facility-nav-list" class="space-y-1"></div>
+        <button id="add-facility-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add facility</button>
+
+        <h3 class="admin-section-title mt-6">Recent Completions</h3>
+        <div id="records-list" class="text-xs text-slate-500 space-y-2 max-h-48 overflow-y-auto"></div>
+      </div>
+
+      <div id="admin-main" class="admin-main"></div>
+    </div>
+  `;
+
+  wrap.querySelector("#admin-logout").addEventListener("click", () => {
+    state.isAdmin = false;
+    state.view = "welcome";
+    render();
+  });
+
+  // --- Module nav list ---
+  const moduleNavList = wrap.querySelector("#module-nav-list");
+  state.db.modules.forEach(m => {
+    const item = el("button", "admin-nav-item" + (state.adminSelectedModuleId === m.id ? " active" : ""));
+    item.innerHTML = `<i class="fa-solid ${m.icon}"></i> <span>${escapeHTML(m.title)}</span>`;
+    item.addEventListener("click", () => {
+      state.adminSelectedModuleId = m.id;
+      render();
+    });
+    moduleNavList.appendChild(item);
+  });
+  wrap.querySelector("#add-module-btn").addEventListener("click", () => {
+    const newModule = {
+      id: "mod-" + Date.now(),
+      title: "New Module",
+      icon: "fa-file-circle-plus",
+      facilities: ["all"],
+      slides: [{ id: "slide-" + Date.now(), heading: "New Slide", icon: "fa-circle-info", body: "Edit this slide's content." }],
+      quiz: []
+    };
+    state.db.modules.push(newModule);
+    saveDB(state.db);
+    state.adminSelectedModuleId = newModule.id;
+    render();
+  });
+
+  // --- Facilities nav list ---
+  const facilityNavList = wrap.querySelector("#facility-nav-list");
+  state.db.facilities.forEach(f => {
+    const item = el("div", "admin-nav-item admin-nav-item-static");
+    item.innerHTML = `
+      <i class="fa-solid ${f.icon}"></i>
+      <span class="flex-1">${escapeHTML(f.name)}</span>
+      <button class="admin-delete-icon" title="Remove facility"><i class="fa-solid fa-trash"></i></button>
+    `;
+    item.querySelector(".admin-delete-icon").addEventListener("click", () => {
+      if (!confirm(`Remove facility "${f.name}"? This does not delete modules.`)) return;
+      state.db.facilities = state.db.facilities.filter(x => x.id !== f.id);
+      saveDB(state.db);
+      render();
+    });
+    facilityNavList.appendChild(item);
+  });
+  wrap.querySelector("#add-facility-btn").addEventListener("click", () => {
+    const name = prompt("New facility name:");
+    if (!name) return;
+    state.db.facilities.push({
+      id: "facility-" + Date.now(),
+      name,
+      description: "New facility",
+      icon: "fa-location-dot"
+    });
+    saveDB(state.db);
+    render();
+  });
+
+  // --- Records list ---
+  const recordsList = wrap.querySelector("#records-list");
+  const records = loadRecords();
+  if (records.length === 0) {
+    recordsList.innerHTML = `<p class="italic text-slate-400">No completions recorded yet.</p>`;
+  } else {
+    records.slice(0, 15).forEach(r => {
+      const row = el("div", "admin-record-row");
+      row.innerHTML = `
+        <div class="font-semibold text-slate-700">${escapeHTML(r.name)}</div>
+        <div>${escapeHTML(r.facility)} · ${r.percent}% · <span class="${r.passed ? "text-green-600" : "text-red-600"}">${r.passed ? "Passed" : "Failed"}</span></div>
+        <div class="text-slate-400">${new Date(r.date).toLocaleString()}</div>
+      `;
+      recordsList.appendChild(row);
     });
   }
 
-  // Run
-  document.addEventListener('DOMContentLoaded', init);
-})();
+  // --- Main editor panel ---
+  const mainPanel = wrap.querySelector("#admin-main");
+  const selectedModule = state.db.modules.find(m => m.id === state.adminSelectedModuleId) || state.db.modules[0];
+  if (selectedModule) {
+    state.adminSelectedModuleId = selectedModule.id;
+    mainPanel.appendChild(renderModuleEditor(selectedModule));
+  } else {
+    mainPanel.innerHTML = `<p class="text-slate-400 italic">No modules yet — add one from the sidebar.</p>`;
+  }
+
+  return wrap;
+}
+
+function renderModuleEditor(module) {
+  const panel = el("div", "module-editor");
+
+  panel.innerHTML = `
+    <div class="editor-row">
+      <label>Module title</label>
+      <input id="edit-title" type="text" value="${escapeAttr(module.title)}" />
+    </div>
+    <div class="editor-row">
+      <label>Font Awesome icon class (e.g. fa-hard-hat)</label>
+      <input id="edit-icon" type="text" value="${escapeAttr(module.icon)}" />
+    </div>
+    <div class="editor-row">
+      <label>Applies to facilities</label>
+      <div id="edit-facilities" class="flex flex-wrap gap-3"></div>
+    </div>
+
+    <div class="editor-row">
+      <label>Slides (JSON array — heading, body, icon, optional alert:"critical")</label>
+      <textarea id="edit-slides" rows="10" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
+    </div>
+
+    <div class="editor-row">
+      <label>Quiz questions (JSON array — question, options[], correctIndex)</label>
+      <textarea id="edit-quiz" rows="10" class="json-textarea">${escapeHTML(JSON.stringify(module.quiz, null, 2))}</textarea>
+    </div>
+
+    <p id="editor-error" class="text-red-600 text-sm hidden mb-3"></p>
+
+    <div class="flex gap-3">
+      <button id="save-module-btn" class="nav-btn-primary"><i class="fa-solid fa-floppy-disk mr-2"></i>Save changes</button>
+      <button id="delete-module-btn" class="nav-btn-danger"><i class="fa-solid fa-trash mr-2"></i>Delete module</button>
+    </div>
+  `;
+
+  // Facility checkboxes (plus an "all" option)
+  const facilitiesWrap = panel.querySelector("#edit-facilities");
+  const allOptions = [{ id: "all", name: "All facilities" }, ...window.__hseAdminFacilityOptions()];
+  allOptions.forEach(opt => {
+    const checked = module.facilities.includes(opt.id);
+    const label = el("label", "facility-checkbox");
+    label.innerHTML = `<input type="checkbox" value="${escapeAttr(opt.id)}" ${checked ? "checked" : ""} /> ${escapeHTML(opt.name)}`;
+    facilitiesWrap.appendChild(label);
+  });
+
+  panel.querySelector("#save-module-btn").addEventListener("click", () => {
+    const errorEl = panel.querySelector("#editor-error");
+    errorEl.classList.add("hidden");
+    try {
+      const newSlides = JSON.parse(panel.querySelector("#edit-slides").value);
+      const newQuiz = JSON.parse(panel.querySelector("#edit-quiz").value);
+      const selectedFacilities = Array.from(facilitiesWrap.querySelectorAll("input:checked")).map(cb => cb.value);
+
+      if (!Array.isArray(newSlides) || !Array.isArray(newQuiz)) {
+        throw new Error("Slides and quiz must both be JSON arrays.");
+      }
+
+      module.title = panel.querySelector("#edit-title").value.trim() || module.title;
+      module.icon = panel.querySelector("#edit-icon").value.trim() || module.icon;
+      module.slides = newSlides;
+      module.quiz = newQuiz;
+      module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
+
+      saveDB(state.db);
+      flashSaved(panel);
+    } catch (e) {
+      errorEl.textContent = "Could not save — check your JSON syntax. (" + e.message + ")";
+      errorEl.classList.remove("hidden");
+    }
+  });
+
+  panel.querySelector("#delete-module-btn").addEventListener("click", () => {
+    if (!confirm(`Delete module "${module.title}"? This cannot be undone.`)) return;
+    state.db.modules = state.db.modules.filter(m => m.id !== module.id);
+    saveDB(state.db);
+    state.adminSelectedModuleId = state.db.modules.length ? state.db.modules[0].id : null;
+    render();
+  });
+
+  return panel;
+}
+
+// Small helper so renderModuleEditor can read the current facility list without a circular import
+window.__hseAdminFacilityOptions = () => state.db.facilities.map(f => ({ id: f.id, name: f.name }));
+
+function flashSaved(container) {
+  const btn = container.querySelector("#save-module-btn");
+  const original = btn.innerHTML;
+  btn.innerHTML = `<i class="fa-solid fa-check mr-2"></i>Saved`;
+  btn.classList.add("save-flash");
+  setTimeout(() => {
+    btn.innerHTML = original;
+    btn.classList.remove("save-flash");
+  }, 1400);
+}
+
+/* ---------------------------------------------------------------------- *
+ * 7. UTILITY / DOM HELPERS
+ * ---------------------------------------------------------------------- */
+
+/** Shorthand for document.createElement + className assignment. */
+function el(tag, className) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  return e;
+}
+
+/** Escape text for safe insertion into innerHTML (prevents admin-entered content from injecting markup). */
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = String(str ?? "");
+  return div.innerHTML;
+}
+
+/** Escape text for safe insertion into an HTML attribute value. */
+function escapeAttr(str) {
+  return String(str ?? "").replace(/"/g, "&quot;");
+}
