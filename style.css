@@ -1,199 +1,496 @@
-/* style.css - Custom styles for HSE Induction App */
+/* ============================================================================
+   style.css — Custom styles layered on top of Tailwind utility classes
+   ----------------------------------------------------------------------------
+   Design direction: real HSE site signage, not a generic SaaS card kit.
+     Navy      #0F1B2B  — header / dark surfaces
+     Safety Y  #F2B705  — primary accent (hazard yellow), CTAs, progress
+     Alert Red #C53030  — Stop Work / critical content / fail states
+     Success G #2F855A  — pass states, correct answers
+     Off-white #F7F5F0  — page background
+     Steel     #4A5568  — secondary text / borders
+   Typography: Barlow Condensed for display/headings (industrial signage
+   feel), Barlow for body copy. Both loaded via Google Fonts in index.html.
+   ============================================================================ */
 
-/* ---------- Base / Reset ---------- */
-* {
-  box-sizing: border-box;
+:root {
+  --hse-navy: #0f1b2b;
+  --hse-yellow: #f2b705;
+  --hse-red: #c53030;
+  --hse-green: #2f855a;
+  --hse-offwhite: #f7f5f0;
+  --hse-steel: #4a5568;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: #f8fafc;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--hse-offwhite);
+  font-family: "Barlow", ui-sans-serif, system-ui, sans-serif;
+  color: #1a202c;
 }
 
-/* ---------- Smooth transitions for SPA views ---------- */
-#mainView {
-  transition: opacity 0.25s ease;
+.font-display {
+  font-family: "Barlow Condensed", "Barlow", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
-#mainView > * {
-  animation: fadeSlide 0.3s ease-out;
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-@keyframes fadeSlide {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Visible keyboard focus everywhere, for accessibility */
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--hse-yellow);
+  outline-offset: 2px;
 }
 
-/* ---------- Card / Slide styling ---------- */
-.bg-white.rounded-2xl {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+/* ---------------------------------------------------------------------- *
+ * App shell
+ * ---------------------------------------------------------------------- */
+
+#app-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #fff;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.06);
+  position: relative;
 }
 
-/* Quiz radio labels – improve touch target */
-.quiz-radio {
-  width: 1.2rem;
-  height: 1.2rem;
-  accent-color: #2563eb;
+body.admin-mode #app-shell {
+  max-width: 1180px;
+}
+
+.app-header {
+  background: var(--hse-navy);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.app-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  background: none;
+  border: none;
+  color: #fff;
   cursor: pointer;
 }
 
-/* Slide content – basic typography */
-#mainView ul {
-  list-style: disc;
-  padding-left: 1.5rem;
-  margin: 0.5rem 0;
+.app-header .brand i { color: var(--hse-yellow); }
+
+.admin-gear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1.1rem;
+  padding: 0.4rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.admin-gear-btn:hover { color: var(--hse-yellow); }
+
+/* Repeating diagonal hazard stripe — used as a thin accent divider */
+.hazard-strip {
+  height: 8px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--hse-yellow) 0 14px,
+    var(--hse-navy) 14px 28px
+  );
 }
 
-#mainView li {
+/* ---------------------------------------------------------------------- *
+ * Welcome screen
+ * ---------------------------------------------------------------------- */
+
+.facility-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.6rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  text-align: left;
+}
+.facility-card .check-icon { opacity: 0; color: var(--hse-green); transition: opacity 0.15s ease; }
+.facility-card.selected {
+  border-color: var(--hse-yellow);
+  background: #fffbea;
+}
+.facility-card.selected .check-icon { opacity: 1; }
+
+/* ---------------------------------------------------------------------- *
+ * Induction flow — progress bar + content cards
+ * ---------------------------------------------------------------------- */
+
+.progress-track {
+  height: 6px;
+  width: 100%;
+  background: #e2e8f0;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--hse-yellow);
+  transition: width 0.3s ease;
+}
+
+.content-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem 1.25rem;
+  margin-top: 0.75rem;
+  box-shadow: 0 2px 10px rgba(15, 27, 43, 0.05);
+}
+
+.content-card-critical {
+  border-left: 5px solid var(--hse-red);
+}
+
+.content-card-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.6rem;
+  background: var(--hse-navy);
+  color: var(--hse-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+}
+.content-card-icon.quiz-icon {
+  background: #fffbea;
+  color: var(--hse-navy);
+  border: 2px solid var(--hse-yellow);
+}
+
+.critical-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--hse-red);
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  margin-top: 0.75rem;
+}
+.critical-tag.quiz-tag {
+  color: var(--hse-navy);
+  background: #fffbea;
+  border-color: var(--hse-yellow);
+}
+
+/* Quiz options */
+.quiz-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.55rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  font-size: 0.92rem;
+}
+.quiz-option:hover:not(:disabled) { border-color: var(--hse-yellow); }
+.quiz-option:disabled { cursor: default; }
+.quiz-option-letter {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #edf2f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--hse-steel);
+}
+.quiz-option.correct {
+  border-color: var(--hse-green);
+  background: #f0fff4;
+}
+.quiz-option.correct .quiz-option-letter { background: var(--hse-green); color: #fff; }
+.quiz-option.incorrect {
+  border-color: var(--hse-red);
+  background: #fff5f5;
+}
+.quiz-option.incorrect .quiz-option-letter { background: var(--hse-red); color: #fff; }
+
+/* Bottom nav bar for the flow screen */
+.flow-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem calc(0.85rem + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  z-index: 20;
+}
+
+.nav-btn-primary, .nav-btn-secondary, .nav-btn-danger {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 0.55rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  border: none;
+}
+.nav-btn-primary {
+  background: var(--hse-navy);
+  color: #fff;
+}
+.nav-btn-primary:disabled { opacity: 0.4; cursor: default; }
+.nav-btn-primary:hover:not(:disabled) { background: #16263c; }
+.nav-btn-secondary {
+  background: #edf2f7;
+  color: #2d3748;
+}
+.nav-btn-secondary:hover { background: #e2e8f0; }
+.nav-btn-danger {
+  background: #fff5f5;
+  color: var(--hse-red);
+  border: 1px solid #fed7d7;
+}
+.nav-btn-danger:hover { background: #fed7d7; }
+
+/* ---------------------------------------------------------------------- *
+ * Digital pass card
+ * ---------------------------------------------------------------------- */
+
+.hse-pass-card {
+  border-radius: 0.9rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 27, 43, 0.12);
+}
+.hse-pass-card-fail { filter: grayscale(0.3); }
+
+.hse-pass-header {
+  background: var(--hse-navy);
+  color: var(--hse-yellow);
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  padding: 0.8rem 1.1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hse-pass-body {
+  background: #fff;
+  padding: 1.1rem;
+}
+.hse-pass-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-size: 0.92rem;
+}
+.hse-pass-row:last-child { border-bottom: none; }
+.hse-pass-row span { color: var(--hse-steel); }
+
+.hse-pass-footer {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--hse-yellow) 0 10px,
+    var(--hse-navy) 10px 20px
+  );
+  color: transparent;
+  text-align: center;
+  font-size: 0.6rem;
+  padding: 0.35rem;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Admin dashboard (desktop-optimized)
+ * ---------------------------------------------------------------------- */
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+}
+
+@media (max-width: 720px) {
+  .admin-layout { grid-template-columns: 1fr; }
+}
+
+.admin-sidebar {
+  border-right: 1px solid #e2e8f0;
+  padding: 1.1rem;
+  min-height: 60vh;
+}
+
+.admin-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--hse-steel);
+  margin-bottom: 0.5rem;
+}
+
+.admin-nav-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  color: #2d3748;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.admin-nav-item:hover { background: #f7f5f0; }
+.admin-nav-item.active { background: #fffbea; color: var(--hse-navy); font-weight: 600; }
+.admin-nav-item-static { cursor: default; }
+.admin-nav-item-static:hover { background: none; }
+
+.admin-delete-icon {
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  cursor: pointer;
+  padding: 0.2rem;
+}
+.admin-delete-icon:hover { color: var(--hse-red); }
+
+.admin-add-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--hse-steel);
+  border: 1px dashed #cbd5e0;
+  border-radius: 0.4rem;
+  padding: 0.45rem;
+  background: none;
+  cursor: pointer;
+  margin-top: 0.3rem;
+}
+.admin-add-btn:hover { border-color: var(--hse-yellow); color: var(--hse-navy); }
+
+.admin-record-row {
+  border-bottom: 1px solid #edf2f7;
+  padding: 0.35rem 0;
+}
+
+.admin-main {
+  padding: 1.5rem;
+}
+
+.module-editor .editor-row { margin-bottom: 1.1rem; }
+.module-editor label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--hse-steel);
   margin-bottom: 0.3rem;
 }
-
-/* ---------- Admin Panel ---------- */
-#adminPanel {
-  backdrop-filter: blur(4px);
+.module-editor input[type="text"] {
+  width: 100%;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
 }
-
-.admin-module-content textarea {
-  font-size: 0.85rem;
+.json-textarea {
+  width: 100%;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.45rem;
+  padding: 0.75rem;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.8rem;
   line-height: 1.5;
-  background: #f9fafb;
-  transition: border-color 0.2s;
+  background: #0f1b2b;
+  color: #e2e8f0;
 }
 
-.admin-module-content textarea:focus {
-  border-color: #3b82f6;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+.facility-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  background: #f7f5f0;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
 }
 
-.admin-toggle {
-  cursor: pointer;
-  user-select: none;
+.save-flash { background: var(--hse-green) !important; }
+
+/* ---------------------------------------------------------------------- *
+ * Animations
+ * ---------------------------------------------------------------------- */
+
+.fade-in {
+  animation: fadeInUp 0.25s ease both;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.admin-toggle:hover {
-  background-color: #f1f5f9;
-}
+/* ---------------------------------------------------------------------- *
+ * Print styles — used by the "Print" button on the Digital Pass screen
+ * ---------------------------------------------------------------------- */
 
-.admin-toggle .fa-chevron-down {
-  transition: transform 0.2s;
-}
-
-.admin-toggle[aria-expanded="true"] .fa-chevron-down {
-  transform: rotate(180deg);
-}
-
-/* ---------- Facility Selector Buttons ---------- */
-.facility-btn {
-  transition: all 0.2s ease;
-}
-
-.facility-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-}
-
-.facility-btn:active {
-  transform: scale(0.97);
-}
-
-/* ---------- Digital Pass ---------- */
-#mainView .bg-gradient-to-r {
-  background-image: linear-gradient(135deg, #1e3a8a, #1e40af);
-}
-
-/* Print styles – make pass look good on paper */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  #mainView,
-  #mainView * {
-    visibility: visible;
-  }
-  #mainView {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 1.5rem;
-    background: white;
-  }
-  #appHeader,
-  footer,
-  #adminToggleBtn,
-  #resetInductionBtn,
-  #printPassBtn {
+  .app-header, .hazard-strip, .flow-nav, #admin-entry-btn,
+  #print-pass-btn, #restart-btn {
     display: none !important;
   }
-  .bg-white.rounded-2xl {
-    box-shadow: none !important;
-    border: 1px solid #ddd;
-    border-radius: 8px !important;
-  }
-  .bg-gradient-to-r {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-}
-
-/* ---------- Mobile first adjustments ---------- */
-@media (max-width: 640px) {
-  #mainView .flex-wrap {
-    gap: 0.5rem;
-  }
-  .admin-module-content textarea {
-    height: 100px !important;
-  }
-  /* Larger touch targets */
-  button,
-  .facility-btn,
-  .quiz-radio + span {
-    touch-action: manipulation;
-  }
-  .bg-white.rounded-2xl {
-    border-radius: 1rem;
-  }
-}
-
-/* ---------- Utility overrides for Tailwind ---------- */
-.bg-blue-900 {
-  background-color: #1e3a8a;
-}
-.text-amber-400 {
-  color: #fbbf24;
-}
-
-/* Disabled button styling */
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Admin panel PIN input */
-#adminPinInput {
-  letter-spacing: 0.25em;
-}
-
-/* ---------- Scrollable module content (if needed) ---------- */
-.admin-module-content {
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-/* ---------- Print pass button icon margin ---------- */
-#printPassBtn .fas {
-  margin-right: 0.4rem;
-}
-
-/* ---------- Header facility name animation ---------- */
-#headerFacility {
-  transition: opacity 0.2s;
+  body { background: #fff; }
 }
