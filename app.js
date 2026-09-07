@@ -1,17 +1,17 @@
 /**
  * ============================================================================
- * app.js — HSE Induction App logic
+ * app.js — Site & HSE Induction App logic
  * ----------------------------------------------------------------------------
- * Everything here is vanilla ES6 — no framework, no build step. The whole
- * app is a single-page app (SPA): we never navigate to a new HTML file, we
- * just re-render the contents of #app-root based on the value of `state.view`.
+ * Pure vanilla ES6 — no framework, no build step. The app is a single-page
+ * app (SPA): #app-root is repeatedly cleared and re-rendered based on
+ * state.view, and never navigates to a different HTML file.
  *
  * SECTIONS IN THIS FILE
  *   1. Constants & Storage helpers
  *   2. Global state
  *   3. Boot / init
- *   4. Router (renders whichever view state.view points to)
- *   5. User App views: welcome, induction flow (slides+quiz), pass
+ *   4. Router
+ *   5. User App views: welcome, induction flow (info/map/quiz slides), pass
  *   6. Admin views: PIN gate, dashboard, module editor
  *   7. Utility / DOM helpers
  * ============================================================================
@@ -21,10 +21,10 @@
  * 1. CONSTANTS & STORAGE HELPERS
  * ---------------------------------------------------------------------- */
 
-const HSE_DB_KEY = "hse_induction_db_v1";        // holds the editable content (facilities+modules)
-const HSE_RECORDS_KEY = "hse_induction_records"; // holds completed inductions (for a simple admin log)
+const HSE_DB_KEY = "hse_induction_db_v2";        // editable content (facilities + modules)
+const HSE_RECORDS_KEY = "hse_induction_records_v2"; // completed inductions, for the Admin log
 const ADMIN_PIN = "1234"; // Prototype-only hardcoded PIN. Replace with real auth before production use.
-const PASS_THRESHOLD = 0.8; // 80% correct required across all quiz questions to earn a Pass
+const PASS_THRESHOLD = 0.8; // 80% correct across all quiz slides required to earn a Pass
 
 /** Read the content DB from localStorage, seeding it from DEFAULT_DATA on first run. */
 function loadDB() {
@@ -36,22 +36,19 @@ function loadDB() {
       console.warn("Corrupt HSE DB in localStorage, falling back to defaults.", e);
     }
   }
-  // Deep-clone the default data so we never accidentally mutate the seed object
-  const seeded = JSON.parse(JSON.stringify(window.DEFAULT_DATA));
+  const seeded = JSON.parse(JSON.stringify(window.DEFAULT_DATA)); // deep clone the seed
   saveDB(seeded);
   return seeded;
 }
 
-/** Persist the content DB back to localStorage. Called any time Admin saves an edit. */
 function saveDB(db) {
   localStorage.setItem(HSE_DB_KEY, JSON.stringify(db));
 }
 
-/** Append a completed induction record (for the Admin "Recent Completions" list). */
 function saveRecord(record) {
   const records = JSON.parse(localStorage.getItem(HSE_RECORDS_KEY) || "[]");
   records.unshift(record); // newest first
-  localStorage.setItem(HSE_RECORDS_KEY, JSON.stringify(records.slice(0, 100))); // cap at 100
+  localStorage.setItem(HSE_RECORDS_KEY, JSON.stringify(records.slice(0, 100)));
 }
 
 function loadRecords() {
@@ -64,16 +61,17 @@ function loadRecords() {
 
 const state = {
   db: null,              // { facilities: [...], modules: [...] } — loaded on boot
-  view: "welcome",       // which top-level screen is active
-  isAdmin: false,        // whether the admin dashboard is unlocked this session
+  view: "welcome",
+  isAdmin: false,
 
   // --- induction-in-progress state ---
   user: { name: "", facilityId: null },
-  activeModules: [],     // modules filtered for the chosen facility, in order
-  moduleIndex: 0,        // which module we're currently on
-  cardIndex: 0,          // which slide *within* the current module (quiz cards come after slides)
-  answers: {},           // { [questionId]: selectedIndex }
+  activeModules: [],     // modules filtered for the chosen facility, in presented order
+  moduleIndex: 0,
+  slideIndex: 0,         // index into activeModules[moduleIndex].slides
+  answers: {},           // { [quizSlideId]: selectedIndex }
   score: { correct: 0, total: 0 },
+  activeHighlightId: null, // which map pin is currently selected (per map slide render)
 
   // --- admin editor state ---
   adminSelectedModuleId: null
@@ -87,14 +85,12 @@ document.addEventListener("DOMContentLoaded", () => {
   state.db = loadDB();
   render();
 
-  // Hidden admin entry point: tapping the small gear icon in the header
   document.getElementById("admin-entry-btn").addEventListener("click", () => {
     state.view = state.isAdmin ? "admin-dashboard" : "admin-login";
     render();
   });
 
   document.getElementById("app-title-btn").addEventListener("click", () => {
-    // Tapping the app title always returns to the User App welcome screen
     resetInductionState();
     state.view = "welcome";
     render();
@@ -105,7 +101,7 @@ function resetInductionState() {
   state.user = { name: "", facilityId: null };
   state.activeModules = [];
   state.moduleIndex = 0;
-  state.cardIndex = 0;
+  state.slideIndex = 0;
   state.answers = {};
   state.score = { correct: 0, total: 0 };
 }
@@ -116,29 +112,16 @@ function resetInductionState() {
 
 function render() {
   const root = document.getElementById("app-root");
-  root.innerHTML = ""; // clear previous view
-
-  // Toggle a body class so CSS can widen the container for the desktop admin view
+  root.innerHTML = "";
   document.body.classList.toggle("admin-mode", state.view.startsWith("admin"));
 
   switch (state.view) {
-    case "welcome":
-      root.appendChild(renderWelcome());
-      break;
-    case "flow":
-      root.appendChild(renderFlow());
-      break;
-    case "pass":
-      root.appendChild(renderPass());
-      break;
-    case "admin-login":
-      root.appendChild(renderAdminLogin());
-      break;
-    case "admin-dashboard":
-      root.appendChild(renderAdminDashboard());
-      break;
-    default:
-      root.appendChild(renderWelcome());
+    case "welcome": root.appendChild(renderWelcome()); break;
+    case "flow": root.appendChild(renderFlow()); break;
+    case "pass": root.appendChild(renderPass()); break;
+    case "admin-login": root.appendChild(renderAdminLogin()); break;
+    case "admin-dashboard": root.appendChild(renderAdminDashboard()); break;
+    default: root.appendChild(renderWelcome());
   }
 }
 
@@ -153,7 +136,7 @@ function renderWelcome() {
     <div class="hazard-strip"></div>
     <div class="px-5 pt-8 pb-6 text-center">
       <i class="fa-solid fa-hard-hat text-5xl text-hse-yellow drop-shadow"></i>
-      <h1 class="font-display text-2xl mt-3 text-slate-900">HSE Induction</h1>
+      <h1 class="font-display text-2xl mt-3 text-slate-900">Site &amp; HSE Induction</h1>
       <p class="text-slate-500 mt-1 text-sm">Complete this induction before entering site</p>
     </div>
 
@@ -210,10 +193,7 @@ function renderWelcome() {
     startBtn.classList.toggle("shadow-lg", ready);
   }
 
-  wrap.querySelector("#start-btn").addEventListener("click", () => {
-    beginInduction();
-  });
-
+  wrap.querySelector("#start-btn").addEventListener("click", beginInduction);
   return wrap;
 }
 
@@ -223,7 +203,7 @@ function beginInduction() {
     m => m.facilities.includes("all") || m.facilities.includes(state.user.facilityId)
   );
   state.moduleIndex = 0;
-  state.cardIndex = 0;
+  state.slideIndex = 0;
   state.answers = {};
   state.score = { correct: 0, total: 0 };
   state.view = "flow";
@@ -231,31 +211,20 @@ function beginInduction() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 5b. USER APP — Induction flow (slide cards + quiz cards, module by module)
+ * 5b. USER APP — Induction flow (info / map / quiz slides, module by module)
  * ---------------------------------------------------------------------- */
 
-/**
- * Each module is presented as: [slide, slide, ..., quizQ, quizQ, ...]
- * state.cardIndex walks through that combined list for the CURRENT module.
- * When we run off the end of a module's cards, we advance to the next module.
- * When we run off the end of the last module, we go to the Pass screen.
- */
 function renderFlow() {
   const module = state.activeModules[state.moduleIndex];
-  const totalCards = module.slides.length + module.quiz.length;
-  const isQuizCard = state.cardIndex >= module.slides.length;
-
-  const wrap = el("div", "view-flow fade-in");
-
-  // --- Progress bar: overall progress across ALL modules, not just this one ---
+  const slide = module.slides[state.slideIndex];
+  const totalSlides = module.slides.length;
   const totalModuleCount = state.activeModules.length;
   const overallProgress =
-    ((state.moduleIndex + (state.cardIndex + 1) / totalCards) / totalModuleCount) * 100;
+    ((state.moduleIndex + (state.slideIndex + 1) / totalSlides) / totalModuleCount) * 100;
 
+  const wrap = el("div", "view-flow fade-in");
   wrap.innerHTML = `
-    <div class="progress-track">
-      <div class="progress-fill" style="width:${overallProgress}%"></div>
-    </div>
+    <div class="progress-track"><div class="progress-fill" style="width:${overallProgress}%"></div></div>
     <div class="px-5 pt-4 pb-2 flex items-center justify-between">
       <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
         Module ${state.moduleIndex + 1} of ${totalModuleCount}
@@ -263,55 +232,40 @@ function renderFlow() {
       <span class="text-xs font-semibold text-slate-400">${escapeHTML(module.title)}</span>
     </div>
     <div id="card-slot" class="px-5 pb-28"></div>
-    <div id="flow-nav" class="flow-nav"></div>
+    <div id="flow-nav" class="flow-nav">
+      <button id="nav-back" class="nav-btn-secondary">Back</button>
+      <button id="nav-next" class="nav-btn-primary">Continue</button>
+    </div>
   `;
 
   const cardSlot = wrap.querySelector("#card-slot");
-  const nav = wrap.querySelector("#flow-nav");
 
-  if (!isQuizCard) {
-    const slide = module.slides[state.cardIndex];
-    cardSlot.appendChild(renderSlideCard(slide));
-    nav.innerHTML = `
-      <button id="nav-back" class="nav-btn-secondary">Back</button>
-      <button id="nav-next" class="nav-btn-primary">Continue</button>
-    `;
-    wireNav(wrap, () => moveCard(-1), () => moveCard(1));
-  } else {
-    const question = module.quiz[state.cardIndex - module.slides.length];
-    cardSlot.appendChild(renderQuizCard(question));
-    nav.innerHTML = `
-      <button id="nav-back" class="nav-btn-secondary">Back</button>
-      <button id="nav-next" class="nav-btn-primary" disabled>Continue</button>
-    `;
-    wireNav(wrap, () => moveCard(-1), () => moveCard(1));
-
-    // Enable "Continue" only once the user has answered this question
-    if (state.answers[question.id] !== undefined) {
-      wrap.querySelector("#nav-next").disabled = false;
-    }
+  if (slide.type === "info") {
+    cardSlot.appendChild(renderInfoSlide(slide));
+  } else if (slide.type === "map") {
+    cardSlot.appendChild(renderMapSlide(slide));
+  } else if (slide.type === "quiz") {
+    cardSlot.appendChild(renderQuizSlide(slide));
+    const nextBtn = wrap.querySelector("#nav-next");
+    nextBtn.disabled = state.answers[slide.id] === undefined;
   }
 
-  // Disable "Back" entirely on the very first card of the very first module
-  if (state.moduleIndex === 0 && state.cardIndex === 0) {
-    wrap.querySelector("#nav-back").disabled = true;
-    wrap.querySelector("#nav-back").classList.add("invisible");
+  wrap.querySelector("#nav-back").addEventListener("click", () => moveSlide(-1));
+  wrap.querySelector("#nav-next").addEventListener("click", () => moveSlide(1));
+
+  if (state.moduleIndex === 0 && state.slideIndex === 0) {
+    const backBtn = wrap.querySelector("#nav-back");
+    backBtn.disabled = true;
+    backBtn.classList.add("invisible");
   }
 
   return wrap;
 }
 
-function wireNav(wrap, onBack, onNext) {
-  wrap.querySelector("#nav-back").addEventListener("click", onBack);
-  wrap.querySelector("#nav-next").addEventListener("click", onNext);
-}
-
-function renderSlideCard(slide) {
+function renderInfoSlide(slide) {
   const card = el("div", `content-card ${slide.alert === "critical" ? "content-card-critical" : ""}`);
   card.innerHTML = `
-    <div class="content-card-icon">
-      <i class="fa-solid ${slide.icon}"></i>
-    </div>
+    <div class="content-card-icon"><i class="fa-solid ${slide.icon}"></i></div>
     ${slide.alert === "critical" ? `<div class="critical-tag"><i class="fa-solid fa-triangle-exclamation"></i> Critical</div>` : ""}
     <h2 class="font-display text-xl mt-3 mb-2 text-slate-900">${escapeHTML(slide.heading)}</h2>
     <p class="text-slate-600 leading-relaxed text-[15px]">${escapeHTML(slide.body)}</p>
@@ -319,63 +273,104 @@ function renderSlideCard(slide) {
   return card;
 }
 
-function renderQuizCard(question) {
+function renderMapSlide(slide) {
+  const card = el("div", "content-card map-card");
+  card.innerHTML = `
+    <div class="content-card-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+    <h2 class="font-display text-xl mt-3 mb-1 text-slate-900">${escapeHTML(slide.heading)}</h2>
+    <p class="text-slate-500 text-sm mb-3">${escapeHTML(slide.body || "")}</p>
+    <div class="map-frame">
+      <img src="${escapeAttr(slide.imageUrl)}" alt="${escapeAttr(slide.heading)}" class="map-image" />
+      <div class="map-pins"></div>
+    </div>
+    <div id="map-detail" class="map-detail">
+      <i class="fa-solid fa-hand-pointer"></i> Tap a marker or a location below to see details.
+    </div>
+    <div class="map-legend"></div>
+  `;
+
+  const pinsLayer = card.querySelector(".map-pins");
+  const legend = card.querySelector(".map-legend");
+  const detail = card.querySelector("#map-detail");
+
+  function showHighlight(h) {
+    state.activeHighlightId = h.id;
+    card.querySelectorAll(".map-pin, .map-legend-item").forEach(node => {
+      node.classList.toggle("active", node.dataset.highlightId === h.id);
+    });
+    detail.innerHTML = `<strong>${escapeHTML(h.label)}</strong><br>${escapeHTML(h.description)}`;
+  }
+
+  slide.highlights.forEach(h => {
+    const pin = el("button", "map-pin");
+    pin.type = "button";
+    pin.dataset.highlightId = h.id;
+    pin.style.top = h.top;
+    pin.style.left = h.left;
+    pin.innerHTML = `<i class="fa-solid ${h.icon}"></i>`;
+    pin.addEventListener("click", () => showHighlight(h));
+    pinsLayer.appendChild(pin);
+
+    const legendItem = el("button", "map-legend-item");
+    legendItem.type = "button";
+    legendItem.dataset.highlightId = h.id;
+    legendItem.innerHTML = `<i class="fa-solid ${h.icon}"></i> <span>${escapeHTML(h.label)}</span>`;
+    legendItem.addEventListener("click", () => showHighlight(h));
+    legend.appendChild(legendItem);
+  });
+
+  return card;
+}
+
+function renderQuizSlide(slide) {
   const card = el("div", "content-card");
-  const selected = state.answers[question.id];
+  const selected = state.answers[slide.id];
 
   card.innerHTML = `
     <div class="content-card-icon quiz-icon"><i class="fa-solid fa-circle-question"></i></div>
     <div class="critical-tag quiz-tag"><i class="fa-solid fa-clipboard-list"></i> Knowledge Check</div>
-    <h2 class="font-display text-lg mt-3 mb-4 text-slate-900">${escapeHTML(question.question)}</h2>
+    <h2 class="font-display text-lg mt-3 mb-4 text-slate-900">${escapeHTML(slide.question)}</h2>
     <div class="space-y-2" id="option-list"></div>
     <p id="answer-feedback" class="text-sm mt-3 font-medium hidden"></p>
   `;
 
   const optionList = card.querySelector("#option-list");
-  question.options.forEach((optionText, idx) => {
+  slide.options.forEach((optionText, idx) => {
     const btn = el("button", "quiz-option");
     btn.type = "button";
-    btn.innerHTML = `<span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span>
-      <span>${escapeHTML(optionText)}</span>`;
+    btn.innerHTML = `<span class="quiz-option-letter">${String.fromCharCode(65 + idx)}</span><span>${escapeHTML(optionText)}</span>`;
 
-    // If this question was already answered (e.g. user hit Back then forward again), show state
     if (selected !== undefined) {
       btn.disabled = true;
-      if (idx === question.correctIndex) btn.classList.add("correct");
+      if (idx === slide.correctIndex) btn.classList.add("correct");
       else if (idx === selected) btn.classList.add("incorrect");
     }
 
-    btn.addEventListener("click", () => submitAnswer(question, idx, card));
+    btn.addEventListener("click", () => submitAnswer(slide, idx, card));
     optionList.appendChild(btn);
   });
 
-  if (selected !== undefined) {
-    showAnswerFeedback(card, selected === question.correctIndex);
-  }
-
+  if (selected !== undefined) showAnswerFeedback(card, selected === slide.correctIndex);
   return card;
 }
 
-function submitAnswer(question, chosenIndex, card) {
-  // Only score a question the first time it's answered
-  const alreadyAnswered = state.answers[question.id] !== undefined;
-  state.answers[question.id] = chosenIndex;
+function submitAnswer(slide, chosenIndex, card) {
+  const alreadyAnswered = state.answers[slide.id] !== undefined;
+  state.answers[slide.id] = chosenIndex;
 
   if (!alreadyAnswered) {
     state.score.total += 1;
-    if (chosenIndex === question.correctIndex) state.score.correct += 1;
+    if (chosenIndex === slide.correctIndex) state.score.correct += 1;
   }
 
-  // Lock in the visual state of all options
   card.querySelectorAll(".quiz-option").forEach((btn, idx) => {
     btn.disabled = true;
-    if (idx === question.correctIndex) btn.classList.add("correct");
+    if (idx === slide.correctIndex) btn.classList.add("correct");
     else if (idx === chosenIndex) btn.classList.add("incorrect");
   });
 
-  showAnswerFeedback(card, chosenIndex === question.correctIndex);
+  showAnswerFeedback(card, chosenIndex === slide.correctIndex);
 
-  // Unlock the Continue button now that this card has an answer
   const nextBtn = document.getElementById("nav-next");
   if (nextBtn) nextBtn.disabled = false;
 }
@@ -383,41 +378,36 @@ function submitAnswer(question, chosenIndex, card) {
 function showAnswerFeedback(card, isCorrect) {
   const feedback = card.querySelector("#answer-feedback");
   feedback.classList.remove("hidden");
-  feedback.textContent = isCorrect
-    ? "Correct — well noted."
-    : "Not quite — the correct answer is highlighted above.";
+  feedback.textContent = isCorrect ? "Correct — well noted." : "Not quite — the correct answer is highlighted above.";
   feedback.classList.add(isCorrect ? "text-green-700" : "text-red-700");
 }
 
-/** Move forward/back through cards, crossing module boundaries and finishing to the Pass screen. */
-function moveCard(direction) {
+/** Move forward/back through slides, crossing module boundaries and finishing to the Pass screen. */
+function moveSlide(direction) {
   const module = state.activeModules[state.moduleIndex];
-  const totalCards = module.slides.length + module.quiz.length;
-  const nextCardIndex = state.cardIndex + direction;
+  const totalSlides = module.slides.length;
+  const nextIndex = state.slideIndex + direction;
 
-  if (nextCardIndex < 0) {
-    // Move to the previous module's last card
-    if (state.moduleIndex === 0) return; // already at the very start
+  if (nextIndex < 0) {
+    if (state.moduleIndex === 0) return;
     state.moduleIndex -= 1;
-    const prevModule = state.activeModules[state.moduleIndex];
-    state.cardIndex = prevModule.slides.length + prevModule.quiz.length - 1;
-  } else if (nextCardIndex >= totalCards) {
-    // Move to the next module, or finish the induction
+    state.slideIndex = state.activeModules[state.moduleIndex].slides.length - 1;
+  } else if (nextIndex >= totalSlides) {
     if (state.moduleIndex + 1 >= state.activeModules.length) {
       finishInduction();
       return;
     }
     state.moduleIndex += 1;
-    state.cardIndex = 0;
+    state.slideIndex = 0;
   } else {
-    state.cardIndex = nextCardIndex;
+    state.slideIndex = nextIndex;
   }
   render();
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 
 function finishInduction() {
-  const pct = state.score.total ? state.score.correct / state.score.total : 0;
+  const pct = state.score.total ? state.score.correct / state.score.total : 1;
   const passed = pct >= PASS_THRESHOLD;
   const facility = state.db.facilities.find(f => f.id === state.user.facilityId);
 
@@ -441,13 +431,11 @@ function finishInduction() {
 
 function renderPass() {
   const facility = state.db.facilities.find(f => f.id === state.user.facilityId);
-  const pct = state.score.total ? Math.round((state.score.correct / state.score.total) * 100) : 0;
+  const pct = state.score.total ? Math.round((state.score.correct / state.score.total) * 100) : 100;
   const passed = pct / 100 >= PASS_THRESHOLD;
-  const today = new Date();
-  const dateStr = today.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const dateStr = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
   const wrap = el("div", "view-pass fade-in px-5 pt-8 pb-10");
-
   wrap.innerHTML = `
     <div class="text-center mb-6">
       <i class="fa-solid ${passed ? "fa-circle-check text-green-600" : "fa-circle-xmark text-red-600"} text-5xl"></i>
@@ -460,10 +448,7 @@ function renderPass() {
     </div>
 
     <div class="hse-pass-card ${passed ? "" : "hse-pass-card-fail"}">
-      <div class="hse-pass-header">
-        <span>HSE INDUCTION PASS</span>
-        <i class="fa-solid fa-hard-hat"></i>
-      </div>
+      <div class="hse-pass-header"><span>INDUCTION PASS</span><i class="fa-solid fa-hard-hat"></i></div>
       <div class="hse-pass-body">
         <div class="hse-pass-row"><span>Name</span><strong>${escapeHTML(state.user.name)}</strong></div>
         <div class="hse-pass-row"><span>Facility</span><strong>${escapeHTML(facility ? facility.name : "—")}</strong></div>
@@ -486,9 +471,8 @@ function renderPass() {
       resetInductionState();
       state.view = "welcome";
     } else {
-      // Retake: keep name/facility, reset progress and score
       state.moduleIndex = 0;
-      state.cardIndex = 0;
+      state.slideIndex = 0;
       state.answers = {};
       state.score = { correct: 0, total: 0 };
       state.view = "flow";
@@ -528,10 +512,7 @@ function renderAdminLogin() {
   };
 
   wrap.querySelector("#pin-submit").addEventListener("click", submit);
-  wrap.querySelector("#pin-input").addEventListener("keydown", e => {
-    if (e.key === "Enter") submit();
-  });
-
+  wrap.querySelector("#pin-input").addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
   return wrap;
 }
 
@@ -553,8 +534,12 @@ function renderAdminDashboard() {
 
     <div class="admin-layout">
       <div class="admin-sidebar">
-        <h3 class="admin-section-title">Modules</h3>
-        <div id="module-nav-list" class="space-y-1"></div>
+        <h3 class="admin-section-title">Part A — Site Orientation</h3>
+        <div id="module-nav-orientation" class="space-y-1"></div>
+
+        <h3 class="admin-section-title mt-4">Part B — HSE</h3>
+        <div id="module-nav-hse" class="space-y-1"></div>
+
         <button id="add-module-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add module</button>
 
         <h3 class="admin-section-title mt-6">Facilities</h3>
@@ -575,25 +560,24 @@ function renderAdminDashboard() {
     render();
   });
 
-  // --- Module nav list ---
-  const moduleNavList = wrap.querySelector("#module-nav-list");
+  // --- Module nav lists, split by category ---
+  const orientationNav = wrap.querySelector("#module-nav-orientation");
+  const hseNav = wrap.querySelector("#module-nav-hse");
   state.db.modules.forEach(m => {
     const item = el("button", "admin-nav-item" + (state.adminSelectedModuleId === m.id ? " active" : ""));
     item.innerHTML = `<i class="fa-solid ${m.icon}"></i> <span>${escapeHTML(m.title)}</span>`;
-    item.addEventListener("click", () => {
-      state.adminSelectedModuleId = m.id;
-      render();
-    });
-    moduleNavList.appendChild(item);
+    item.addEventListener("click", () => { state.adminSelectedModuleId = m.id; render(); });
+    (m.category === "hse" ? hseNav : orientationNav).appendChild(item);
   });
+
   wrap.querySelector("#add-module-btn").addEventListener("click", () => {
     const newModule = {
       id: "mod-" + Date.now(),
       title: "New Module",
       icon: "fa-file-circle-plus",
+      category: "orientation",
       facilities: ["all"],
-      slides: [{ id: "slide-" + Date.now(), heading: "New Slide", icon: "fa-circle-info", body: "Edit this slide's content." }],
-      quiz: []
+      slides: [{ type: "info", id: "slide-" + Date.now(), heading: "New Slide", icon: "fa-circle-info", body: "Edit this slide's content." }]
     };
     state.db.modules.push(newModule);
     saveDB(state.db);
@@ -621,12 +605,7 @@ function renderAdminDashboard() {
   wrap.querySelector("#add-facility-btn").addEventListener("click", () => {
     const name = prompt("New facility name:");
     if (!name) return;
-    state.db.facilities.push({
-      id: "facility-" + Date.now(),
-      name,
-      description: "New facility",
-      icon: "fa-location-dot"
-    });
+    state.db.facilities.push({ id: "facility-" + Date.now(), name, description: "New facility", icon: "fa-location-dot" });
     saveDB(state.db);
     render();
   });
@@ -669,9 +648,18 @@ function renderModuleEditor(module) {
       <label>Module title</label>
       <input id="edit-title" type="text" value="${escapeAttr(module.title)}" />
     </div>
-    <div class="editor-row">
-      <label>Font Awesome icon class (e.g. fa-hard-hat)</label>
-      <input id="edit-icon" type="text" value="${escapeAttr(module.icon)}" />
+    <div class="editor-row-inline">
+      <div class="flex-1">
+        <label>Font Awesome icon class (e.g. fa-hard-hat)</label>
+        <input id="edit-icon" type="text" value="${escapeAttr(module.icon)}" />
+      </div>
+      <div class="flex-1">
+        <label>Category</label>
+        <select id="edit-category">
+          <option value="orientation" ${module.category === "orientation" ? "selected" : ""}>Site Orientation (Part A)</option>
+          <option value="hse" ${module.category === "hse" ? "selected" : ""}>HSE (Part B)</option>
+        </select>
+      </div>
     </div>
     <div class="editor-row">
       <label>Applies to facilities</label>
@@ -679,13 +667,12 @@ function renderModuleEditor(module) {
     </div>
 
     <div class="editor-row">
-      <label>Slides (JSON array — heading, body, icon, optional alert:"critical")</label>
-      <textarea id="edit-slides" rows="10" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
-    </div>
-
-    <div class="editor-row">
-      <label>Quiz questions (JSON array — question, options[], correctIndex)</label>
-      <textarea id="edit-quiz" rows="10" class="json-textarea">${escapeHTML(JSON.stringify(module.quiz, null, 2))}</textarea>
+      <label>
+        Slides (JSON array) — each item needs "type": "info", "map", or "quiz".
+        info: heading, icon, body, alert(optional "critical"). map: heading, imageUrl, body,
+        highlights[{label, icon, top, left, description}]. quiz: question, options[], correctIndex.
+      </label>
+      <textarea id="edit-slides" rows="16" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
     </div>
 
     <p id="editor-error" class="text-red-600 text-sm hidden mb-3"></p>
@@ -696,7 +683,6 @@ function renderModuleEditor(module) {
     </div>
   `;
 
-  // Facility checkboxes (plus an "all" option)
   const facilitiesWrap = panel.querySelector("#edit-facilities");
   const allOptions = [{ id: "all", name: "All facilities" }, ...window.__hseAdminFacilityOptions()];
   allOptions.forEach(opt => {
@@ -711,17 +697,20 @@ function renderModuleEditor(module) {
     errorEl.classList.add("hidden");
     try {
       const newSlides = JSON.parse(panel.querySelector("#edit-slides").value);
-      const newQuiz = JSON.parse(panel.querySelector("#edit-quiz").value);
-      const selectedFacilities = Array.from(facilitiesWrap.querySelectorAll("input:checked")).map(cb => cb.value);
+      if (!Array.isArray(newSlides)) throw new Error("Slides must be a JSON array.");
+      const validTypes = ["info", "map", "quiz"];
+      newSlides.forEach((s, i) => {
+        if (!validTypes.includes(s.type)) {
+          throw new Error(`Slide at index ${i} has an invalid or missing "type" (must be info, map, or quiz).`);
+        }
+      });
 
-      if (!Array.isArray(newSlides) || !Array.isArray(newQuiz)) {
-        throw new Error("Slides and quiz must both be JSON arrays.");
-      }
+      const selectedFacilities = Array.from(facilitiesWrap.querySelectorAll("input:checked")).map(cb => cb.value);
 
       module.title = panel.querySelector("#edit-title").value.trim() || module.title;
       module.icon = panel.querySelector("#edit-icon").value.trim() || module.icon;
+      module.category = panel.querySelector("#edit-category").value;
       module.slides = newSlides;
-      module.quiz = newQuiz;
       module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
 
       saveDB(state.db);
@@ -751,17 +740,13 @@ function flashSaved(container) {
   const original = btn.innerHTML;
   btn.innerHTML = `<i class="fa-solid fa-check mr-2"></i>Saved`;
   btn.classList.add("save-flash");
-  setTimeout(() => {
-    btn.innerHTML = original;
-    btn.classList.remove("save-flash");
-  }, 1400);
+  setTimeout(() => { btn.innerHTML = original; btn.classList.remove("save-flash"); }, 1400);
 }
 
 /* ---------------------------------------------------------------------- *
  * 7. UTILITY / DOM HELPERS
  * ---------------------------------------------------------------------- */
 
-/** Shorthand for document.createElement + className assignment. */
 function el(tag, className) {
   const e = document.createElement(tag);
   if (className) e.className = className;
