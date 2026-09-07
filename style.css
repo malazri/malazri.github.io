@@ -1,0 +1,199 @@
+/* style.css - Custom styles for HSE Induction App */
+
+/* ---------- Base / Reset ---------- */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f8fafc;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ---------- Smooth transitions for SPA views ---------- */
+#mainView {
+  transition: opacity 0.25s ease;
+}
+
+#mainView > * {
+  animation: fadeSlide 0.3s ease-out;
+}
+
+@keyframes fadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Card / Slide styling ---------- */
+.bg-white.rounded-2xl {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Quiz radio labels – improve touch target */
+.quiz-radio {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Slide content – basic typography */
+#mainView ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+#mainView li {
+  margin-bottom: 0.3rem;
+}
+
+/* ---------- Admin Panel ---------- */
+#adminPanel {
+  backdrop-filter: blur(4px);
+}
+
+.admin-module-content textarea {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  background: #f9fafb;
+  transition: border-color 0.2s;
+}
+
+.admin-module-content textarea:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.admin-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.admin-toggle:hover {
+  background-color: #f1f5f9;
+}
+
+.admin-toggle .fa-chevron-down {
+  transition: transform 0.2s;
+}
+
+.admin-toggle[aria-expanded="true"] .fa-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* ---------- Facility Selector Buttons ---------- */
+.facility-btn {
+  transition: all 0.2s ease;
+}
+
+.facility-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.facility-btn:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Digital Pass ---------- */
+#mainView .bg-gradient-to-r {
+  background-image: linear-gradient(135deg, #1e3a8a, #1e40af);
+}
+
+/* Print styles – make pass look good on paper */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #mainView,
+  #mainView * {
+    visibility: visible;
+  }
+  #mainView {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 1.5rem;
+    background: white;
+  }
+  #appHeader,
+  footer,
+  #adminToggleBtn,
+  #resetInductionBtn,
+  #printPassBtn {
+    display: none !important;
+  }
+  .bg-white.rounded-2xl {
+    box-shadow: none !important;
+    border: 1px solid #ddd;
+    border-radius: 8px !important;
+  }
+  .bg-gradient-to-r {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* ---------- Mobile first adjustments ---------- */
+@media (max-width: 640px) {
+  #mainView .flex-wrap {
+    gap: 0.5rem;
+  }
+  .admin-module-content textarea {
+    height: 100px !important;
+  }
+  /* Larger touch targets */
+  button,
+  .facility-btn,
+  .quiz-radio + span {
+    touch-action: manipulation;
+  }
+  .bg-white.rounded-2xl {
+    border-radius: 1rem;
+  }
+}
+
+/* ---------- Utility overrides for Tailwind ---------- */
+.bg-blue-900 {
+  background-color: #1e3a8a;
+}
+.text-amber-400 {
+  color: #fbbf24;
+}
+
+/* Disabled button styling */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Admin panel PIN input */
+#adminPinInput {
+  letter-spacing: 0.25em;
+}
+
+/* ---------- Scrollable module content (if needed) ---------- */
+.admin-module-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ---------- Print pass button icon margin ---------- */
+#printPassBtn .fas {
+  margin-right: 0.4rem;
+}
+
+/* ---------- Header facility name animation ---------- */
+#headerFacility {
+  transition: opacity 0.2s;
+}
