@@ -1,40 +1,50 @@
 /**
  * ============================================================================
- * data.js — Default "database" for the HSE Induction App
+ * data.js — Default "database" for the Site & HSE Induction App
  * ----------------------------------------------------------------------------
- * This file defines the DEFAULT_DATA object: the starting content set that
- * ships with the app. On first load, app.js copies this object into
- * localStorage under the key HSE_DB_KEY. From that point on, the Admin
- * Dashboard reads/writes the localStorage copy — this file is never mutated
- * at runtime, it's only the seed/fallback.
+ * DEFAULT_DATA is the seed content. On first load, app.js copies it into
+ * localStorage (key HSE_DB_KEY). After that, the Admin Dashboard reads and
+ * writes the localStorage copy — this file itself is never mutated at
+ * runtime, it's only the fallback/reset source.
  *
  * STRUCTURE
  * DEFAULT_DATA
- *   ├─ facilities   : [{ id, name, description, icon }]
- *   └─ modules      : [{
- *        id, title, icon, facilities: [facilityId, ...] | ["all"],
- *        slides: [{ id, heading, body, icon, alert? }],
- *        quiz: [{ id, question, options: [string,...], correctIndex }]
+ *   ├─ facilities : [{ id, name, description, icon }]
+ *   └─ modules    : [{
+ *        id, title, icon, category: "orientation" | "hse",
+ *        facilities: [facilityId, ...] | ["all"],
+ *        slides: [ SLIDE, ... ]   <-- one flat ordered list per module
  *      }]
  *
- * To add a new facility: push an object into `facilities`.
- * To add a new module: push an object into `modules` and list which
- * facility IDs it applies to (or use "all" to show it everywhere).
- * To add/edit slides or quiz questions: edit the arrays inside a module.
- * The Admin Dashboard can also do all of this through its UI, which
- * simply edits this same JSON shape inside localStorage.
+ * A SLIDE is one of three shapes, distinguished by its `type` field:
+ *
+ *   INFO slide  { type:"info", id, heading, icon, body, alert? }
+ *     alert: "critical" (optional) draws a red accent + warning tag.
+ *
+ *   MAP slide   { type:"map", id, heading, imageUrl, body,
+ *                 highlights: [{ id, label, icon, top, left, description }] }
+ *     `top`/`left` are CSS percentage strings positioning a pin marker
+ *     over `imageUrl` (e.g. "32%"). Tapping a pin (or its legend entry)
+ *     shows `description` in the detail panel below the map.
+ *
+ *   QUIZ slide  { type:"quiz", id, question, options:[string,...],
+ *                 correctIndex }
+ *
+ * To extend the app: add a new module object, or add/edit slides inside
+ * an existing module's `slides` array — any mix of info/map/quiz slides,
+ * in any order, is valid. The Admin Dashboard edits this same JSON shape.
  * ============================================================================
  */
 
 const DEFAULT_DATA = {
   // ---------------------------------------------------------------------
-  // FACILITIES — the site selector on the welcome screen
+  // FACILITIES — shown on the welcome screen's site selector
   // ---------------------------------------------------------------------
   facilities: [
     {
-      id: "lekhwair-camp",
-      name: "Lekhwair Camp",
-      description: "Accommodation & support camp facility",
+      id: "lekhwair-pdo-camp",
+      name: "Lekhwair PDO Camp",
+      description: "Residential camp & support facility",
       icon: "fa-campground"
     },
     {
@@ -44,51 +54,228 @@ const DEFAULT_DATA = {
       icon: "fa-oil-well"
     },
     {
-      id: "corporate-office",
-      name: "Corporate Office",
+      id: "main-office",
+      name: "Main Office",
       description: "Administrative & office premises",
       icon: "fa-building"
     }
   ],
 
   // ---------------------------------------------------------------------
-  // MODULES — the induction content, in the order they are presented
+  // MODULES — presented in this array order. "category" is used purely
+  // to group/label modules in the Admin sidebar (Part A / Part B).
   // ---------------------------------------------------------------------
   modules: [
-    // ------------------------------------------------------------------
-    // MODULE 1 — Life-Saving Rules & Stop Work Authority
-    // ------------------------------------------------------------------
+    // ==================================================================
+    // PART A — SITE ORIENTATION  (camp-specific, shown at Lekhwair only)
+    // ==================================================================
+    {
+      id: "mod-location-map",
+      title: "Location & Site Map",
+      icon: "fa-map-location-dot",
+      category: "orientation",
+      facilities: ["lekhwair-pdo-camp"],
+      slides: [
+        {
+          type: "info",
+          id: "loc-1",
+          heading: "Welcome to Lekhwair PDO Camp",
+          icon: "fa-campground",
+          body:
+            "This module orients you to the camp layout before you explore it in person. Familiarize yourself with the key locations below — you'll be expected to find your way to the clinic, mess hall, and your accommodation block without assistance by the end of your first day."
+        },
+        {
+          type: "map",
+          id: "loc-2",
+          heading: "Camp Layout",
+          imageUrl: "https://placehold.co/800x600/0f1b2b/f2b705?text=Lekhwair+PDO+Camp+%E2%80%94+Site+Map",
+          body: "Tap a marker below to see what's there.",
+          highlights: [
+            {
+              id: "hl-clinic",
+              label: "Camp Clinic",
+              icon: "fa-briefcase-medical",
+              top: "28%",
+              left: "62%",
+              description: "24-hour medical clinic. A qualified nurse is on-site at all times; the camp doctor holds clinic hours 8:00 AM–4:00 PM daily."
+            },
+            {
+              id: "hl-admin",
+              label: "Admin Office",
+              icon: "fa-building",
+              top: "45%",
+              left: "30%",
+              description: "Camp administration — badge issues, leave requests, and general enquiries. Open Sunday–Thursday, 7:30 AM–3:30 PM."
+            },
+            {
+              id: "hl-accom",
+              label: "Accommodation Blocks",
+              icon: "fa-bed",
+              top: "68%",
+              left: "55%",
+              description: "Blocks A through F. Your room number is printed on your camp induction card issued at check-in."
+            },
+            {
+              id: "hl-mess",
+              label: "Mess Hall",
+              icon: "fa-utensils",
+              top: "50%",
+              left: "72%",
+              description: "Main dining facility — see the Mess & Timings module for meal hours and hygiene rules."
+            },
+            {
+              id: "hl-muster",
+              label: "Muster Point A",
+              icon: "fa-people-group",
+              top: "15%",
+              left: "20%",
+              description: "Primary emergency assembly point for the accommodation and admin area. Know this location — see the Emergency Response module."
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      id: "mod-mess-timings",
+      title: "Mess (Dining) & Timings",
+      icon: "fa-utensils",
+      category: "orientation",
+      facilities: ["lekhwair-pdo-camp"],
+      slides: [
+        {
+          type: "info",
+          id: "mess-1",
+          heading: "Meal Timings",
+          icon: "fa-clock",
+          body:
+            "Breakfast: 5:30 AM – 7:30 AM. Lunch: 12:00 PM – 2:00 PM. Dinner: 6:30 PM – 9:00 PM. Meals outside these windows are not served except for personnel on approved night-shift rosters, who should collect a packed meal from the mess supervisor in advance."
+        },
+        {
+          type: "info",
+          id: "mess-2",
+          heading: "Hygiene Rules",
+          icon: "fa-hand-sparkles",
+          body:
+            "Wash or sanitize your hands at the stations provided before entering the mess hall. Coveralls and PPE should be removed or covered before dining — no oil-stained workwear at the tables. Food is not to be removed from the mess hall except for approved packed meals."
+        },
+        {
+          type: "info",
+          id: "mess-3",
+          heading: "Dress Code & Conduct",
+          icon: "fa-shirt",
+          body:
+            "Safety boots or closed footwear are required at all times in the mess hall — no sandals. Please queue in an orderly manner, keep noise to a considerate level, and return trays and plates to the designated collection point after eating."
+        }
+      ]
+    },
+
+    {
+      id: "mod-recreation",
+      title: "Recreation & Office Facilities",
+      icon: "fa-basketball",
+      category: "orientation",
+      facilities: ["lekhwair-pdo-camp"],
+      slides: [
+        {
+          type: "info",
+          id: "rec-1",
+          heading: "Gym & Sports Courts",
+          icon: "fa-dumbbell",
+          body:
+            "The gym is open 5:00 AM – 10:00 PM daily. Please wipe down equipment after use and rack weights when finished. The outdoor sports court (basketball/volleyball) is available on a first-come basis; floodlights operate until 10:30 PM."
+        },
+        {
+          type: "info",
+          id: "rec-2",
+          heading: "Smoking Shelters",
+          icon: "fa-ban-smoking",
+          alert: "critical",
+          body:
+            "Smoking is strictly prohibited except within the designated, clearly marked smoking shelters. This is a Life-Saving Rule on an oil and gas site — smoking outside these shelters, including near accommodation blocks or process areas, is a serious safety violation."
+        },
+        {
+          type: "info",
+          id: "rec-3",
+          heading: "Laundry Services",
+          icon: "fa-shirt",
+          body:
+            "Laundry bags are collected each morning from your accommodation block and returned within 24 hours. Label your bag with your name and room number. A self-service laundrette is also available near Block C for urgent needs."
+        }
+      ]
+    },
+
+    {
+      id: "mod-camp-rules",
+      title: "Camp Rules & Conduct",
+      icon: "fa-house-circle-check",
+      category: "orientation",
+      facilities: ["lekhwair-pdo-camp"],
+      slides: [
+        {
+          type: "info",
+          id: "rule-1",
+          heading: "Quiet Hours",
+          icon: "fa-volume-xmark",
+          body:
+            "Quiet hours run from 10:00 PM to 6:00 AM to protect the rest of colleagues working different shift patterns. Please keep televisions, music, and conversations at a low volume in accommodation blocks during this window."
+        },
+        {
+          type: "info",
+          id: "rule-2",
+          heading: "Room Housekeeping",
+          icon: "fa-broom",
+          body:
+            "Keep your room tidy and free of fire hazards — no cooking appliances, candles, or unauthorized electrical heaters in rooms. Housekeeping staff service rooms daily; please secure valuables and be respectful of their work."
+        },
+        {
+          type: "info",
+          id: "rule-3",
+          heading: "Respect for Site Personnel",
+          icon: "fa-people-arrows",
+          body:
+            "Camp and catering staff are colleagues, not service providers to be treated dismissively. Harassment, discrimination, or abusive behaviour toward any site personnel — regardless of role or company — will not be tolerated and may result in removal from site."
+        }
+      ]
+    },
+
+    // ==================================================================
+    // PART B — HEALTH, SAFETY & ENVIRONMENT  (applies to every facility)
+    // ==================================================================
     {
       id: "mod-lsr-swa",
       title: "Life-Saving Rules & Stop Work Authority",
       icon: "fa-hand",
+      category: "hse",
       facilities: ["all"],
       slides: [
         {
+          type: "info",
           id: "lsr-1",
           heading: "Our Life-Saving Rules",
           icon: "fa-shield-halved",
           body:
-            "Every task on this site is governed by our Life-Saving Rules — a small set of non-negotiable behaviours proven to prevent fatalities: work with a valid permit, verify isolation before work begins, obtain authorization before overriding safety controls, work at height with fall protection, never walk under a suspended load, do not smoke outside designated areas, no alcohol or drugs while working or driving, and always follow prescribed journey management for driving."
+            "A small set of non-negotiable behaviours prevent the majority of fatalities on site: work with a valid permit, verify isolation before work begins, get authorization before overriding safety controls, use fall protection at height, never walk under a suspended load, smoke only in designated shelters, never work under the influence of alcohol or drugs, and follow journey management when driving."
         },
         {
+          type: "info",
           id: "lsr-2",
           heading: "Stop Work Authority (SWA)",
           icon: "fa-hand-fist",
           alert: "critical",
           body:
-            "Every single person on this site — regardless of role, rank, or years of experience — has the right AND the obligation to stop any work that appears unsafe. No job is so urgent that it cannot be stopped. Exercising SWA is never penalized; failing to use it when you should have is what puts everyone at risk."
+            "Every single person on this site — regardless of role, rank, or years of experience — has the right AND the obligation to stop any work that appears unsafe. No job is so urgent it cannot be stopped. Using SWA is never penalized; failing to use it when you should have is what puts people at risk."
         },
         {
+          type: "info",
           id: "lsr-3",
           heading: "How to Use SWA",
           icon: "fa-hand-point-up",
           body:
-            "1) STOP the task calmly and clearly. 2) NOTIFY your supervisor or the person in charge immediately. 3) DISCUSS the concern and agree on a safe way forward. 4) RESUME only once everyone agrees the hazard has been controlled. There is no wrong way to raise a genuine safety concern."
-        }
-      ],
-      quiz: [
+            "1) STOP the task calmly and clearly. 2) NOTIFY your supervisor or the person in charge immediately. 3) DISCUSS the concern and agree a safe way forward. 4) RESUME only once everyone agrees the hazard is controlled."
+        },
         {
+          type: "quiz",
           id: "q-lsr-1",
           question: "Who has the authority to stop unsafe work on site?",
           options: [
@@ -100,6 +287,7 @@ const DEFAULT_DATA = {
           correctIndex: 2
         },
         {
+          type: "quiz",
           id: "q-lsr-2",
           question: "What is the first step when you observe an unsafe act?",
           options: [
@@ -113,52 +301,32 @@ const DEFAULT_DATA = {
       ]
     },
 
-    // ------------------------------------------------------------------
-    // MODULE 2 — Minimum PPE Requirements
-    // ------------------------------------------------------------------
     {
       id: "mod-ppe",
       title: "Minimum PPE Requirements",
       icon: "fa-hard-hat",
+      category: "hse",
       facilities: ["all"],
       slides: [
         {
+          type: "info",
           id: "ppe-1",
           heading: "Baseline PPE — Worn At All Times",
           icon: "fa-hard-hat",
           body:
-            "In all operational areas, the minimum PPE standard is: hard hat, safety glasses, flame-resistant clothing (FRC) coveralls, and safety boots with steel/composite toe caps. This baseline applies the moment you step past the site's safety line, not just while actively working."
+            "In all operational areas, the minimum PPE standard is: hard hat, safety glasses, flame-resistant clothing (FRC) coveralls, and safety boots with protective toe caps. This baseline applies from the moment you cross the site's safety line, not only while actively working."
         },
         {
+          type: "info",
           id: "ppe-2",
-          heading: "Personal H2S Monitors",
-          icon: "fa-gauge-high",
-          alert: "critical",
-          body:
-            "In any area designated as H2S-potential, a personal H2S monitor must be worn, switched on, and bump-tested at the start of every shift. If your monitor alarms, treat it as real: evacuate upwind and uphill immediately and follow your facility's H2S emergency response procedure."
-        },
-        {
-          id: "ppe-3",
           heading: "Task-Specific PPE",
           icon: "fa-user-shield",
           body:
-            "Beyond the baseline, specific tasks require additional protection: hearing protection in high-noise zones, respiratory protection for certain chemical handling, cut-resistant gloves for sharp materials, and fall arrest harnesses for work at height. Your Permit to Work will specify what's required for your specific task."
-        }
-      ],
-      quiz: [
-        {
-          id: "q-ppe-1",
-          question: "What should you do if your personal H2S monitor alarms?",
-          options: [
-            "Silence it and continue working carefully",
-            "Evacuate upwind and uphill immediately",
-            "Check with a coworker if they smell anything first",
-            "Finish the current step, then step away"
-          ],
-          correctIndex: 1
+            "Beyond the baseline: hearing protection in high-noise zones, respiratory protection for certain chemical handling, cut-resistant gloves for sharp materials, and fall arrest harnesses for work at height. Your Permit to Work specifies what your task requires."
         },
         {
-          id: "q-ppe-2",
+          type: "quiz",
+          id: "q-ppe-1",
           question: "Which of these is part of the baseline PPE worn at all times on site?",
           options: [
             "Fall arrest harness",
@@ -171,98 +339,99 @@ const DEFAULT_DATA = {
       ]
     },
 
-    // ------------------------------------------------------------------
-    // MODULE 3 — Site Hazards
-    // ------------------------------------------------------------------
     {
-      id: "mod-hazards",
-      title: "Site Hazards",
+      id: "mod-hazards-env",
+      title: "Site Hazards & Environment",
       icon: "fa-triangle-exclamation",
+      category: "hse",
       facilities: ["all"],
       slides: [
         {
+          type: "info",
           id: "haz-1",
           heading: "H2S — Hydrogen Sulfide",
           icon: "fa-skull-crossbones",
           alert: "critical",
           body:
-            "H2S is a highly toxic, flammable gas that can be present in crude oil and natural gas. At low concentrations it smells like rotten eggs — but at higher, more dangerous concentrations, it deadens your sense of smell entirely. Never rely on smell alone. Always trust your monitor."
+            "H2S is a highly toxic, flammable gas that can be present in crude oil and natural gas. At low concentrations it smells like rotten eggs — but at higher, more dangerous concentrations it deadens your sense of smell entirely. Never rely on smell alone; always trust your personal monitor."
         },
         {
+          type: "info",
           id: "haz-2",
-          heading: "Extreme Heat Stress",
+          heading: "Heat Stress Management",
           icon: "fa-temperature-high",
           body:
-            "In this climate, heat stress is a leading cause of medical incidents. Recognize the warning signs in yourself and others: heavy sweating, dizziness, nausea, confusion, or stopping sweating altogether. Drink water regularly before you feel thirsty, use scheduled rest breaks, and report symptoms immediately — do not push through them."
+            "In this climate, heat stress is a leading cause of medical incidents. Recognize the warning signs: heavy sweating, dizziness, nausea, confusion, or a sudden stop in sweating. Drink water regularly before you feel thirsty, use scheduled rest breaks, and report symptoms immediately rather than pushing through them."
         },
         {
+          type: "info",
           id: "haz-3",
-          heading: "Dropped Objects",
-          icon: "fa-down-long",
+          heading: "Waste Segregation",
+          icon: "fa-recycle",
           body:
-            "Anything carried, lifted, or stored at height is a potential dropped object. Secure loose tools with lanyards, never walk beneath suspended loads or active lifting operations, and inspect your tools and equipment before each use. A dropped wrench from height carries enough force to be fatal."
-        }
-      ],
-      quiz: [
+            "Camp waste and industrial waste are never mixed. Camp recycling bins (paper, plastic, cans) are located outside each accommodation block for domestic waste only. Industrial waste — oily rags, chemical containers, contaminated materials — goes exclusively into the marked industrial waste skips near the workshop, never into camp bins."
+        },
         {
+          type: "quiz",
           id: "q-haz-1",
           question: "Why is relying on smell alone to detect H2S dangerous?",
           options: [
             "H2S has no smell at any concentration",
             "High concentrations deaden your sense of smell",
-            "The smell only appears after exposure symptoms start",
+            "The smell only appears after symptoms start",
             "Only some people can smell it"
           ],
           correctIndex: 1
         },
         {
+          type: "quiz",
           id: "q-haz-2",
-          question: "What is the safest response to feeling early signs of heat stress?",
+          question: "Where should oily rags and chemical containers be disposed of?",
           options: [
-            "Push through until the scheduled break",
-            "Drink water only once you feel thirsty",
-            "Report symptoms immediately and stop the task",
-            "Move to a shaded area but keep working"
+            "Camp recycling bins outside accommodation blocks",
+            "Marked industrial waste skips near the workshop",
+            "General kitchen waste bins",
+            "Any nearby bin, as long as it's covered"
           ],
-          correctIndex: 2
+          correctIndex: 1
         }
       ]
     },
 
-    // ------------------------------------------------------------------
-    // MODULE 4 — Emergency Response
-    // ------------------------------------------------------------------
     {
       id: "mod-emergency",
       title: "Emergency Response",
       icon: "fa-truck-medical",
+      category: "hse",
       facilities: ["all"],
       slides: [
         {
+          type: "info",
           id: "emg-1",
           heading: "Muster Points",
           icon: "fa-map-location-dot",
           body:
-            "Every person must know the location of their nearest muster point before starting work. On hearing any alarm, stop what you're doing, make your work area safe if it is safe to do so, and proceed calmly — never run — to your designated muster point for headcount."
+            "Every person must know the location of their nearest muster point before starting work or moving into accommodation. On hearing any alarm, stop what you're doing, make your area safe if it's safe to do so, and proceed calmly — never run — to your designated muster point for headcount."
         },
         {
+          type: "info",
           id: "emg-2",
-          heading: "Alarm Tones",
+          heading: "Alarm Tone Recognition",
           icon: "fa-volume-high",
           alert: "critical",
           body:
-            "A CONTINUOUS alarm tone means evacuate immediately to your muster point. An INTERMITTENT (pulsing) alarm tone means a gas release — go to your designated safe refuge or upwind assembly area, not the standard muster point. Know the difference; using the wrong response can put you directly in harm's way."
+            "A CONTINUOUS alarm tone means evacuate immediately to your muster point. An INTERMITTENT (pulsing) alarm tone means a gas release — proceed to your designated safe refuge or upwind assembly area instead. Know the difference; the wrong response can put you directly in harm's way."
         },
         {
+          type: "info",
           id: "emg-3",
-          heading: "Evacuation Conduct",
-          icon: "fa-person-walking-arrow-right",
+          heading: "Emergency Contact Numbers",
+          icon: "fa-phone",
           body:
-            "Leave equipment and belongings behind. Assist anyone who needs help if you can do so safely. Do not re-enter the area for any reason until the All Clear is given by the emergency response team. Report to your headcount marshal so you can be accounted for."
-        }
-      ],
-      quiz: [
+            "Site Control Room: Ext. 2222. Camp Clinic (24hr): Ext. 2255. Fire & Emergency: Ext. 2200. HSE Duty Officer: Ext. 2211. Save these numbers in your phone on your first day — Admin can update these at any time from the Admin Dashboard."
+        },
         {
+          type: "quiz",
           id: "q-emg-1",
           question: "What does a CONTINUOUS alarm tone mean?",
           options: [
@@ -274,6 +443,7 @@ const DEFAULT_DATA = {
           correctIndex: 1
         },
         {
+          type: "quiz",
           id: "q-emg-2",
           question: "What does an INTERMITTENT (pulsing) alarm tone signal?",
           options: [
@@ -281,64 +451,6 @@ const DEFAULT_DATA = {
             "End of shift signal",
             "A gas release — proceed to safe refuge / upwind area",
             "Equipment test, no action needed"
-          ],
-          correctIndex: 2
-        }
-      ]
-    },
-
-    // ------------------------------------------------------------------
-    // MODULE 5 — Permit to Work (PTW) & LOTO
-    // ------------------------------------------------------------------
-    {
-      id: "mod-ptw-loto",
-      title: "Permit to Work & LOTO",
-      icon: "fa-lock",
-      facilities: ["onshore-rig", "corporate-office"],
-      slides: [
-        {
-          id: "ptw-1",
-          heading: "Permit to Work (PTW)",
-          icon: "fa-clipboard-check",
-          body:
-            "No task classified as higher-risk (hot work, confined space entry, excavation, work at height, electrical work) may begin without a valid, signed Permit to Work. The permit defines the hazards, controls, and the people authorized to perform the task — if the conditions on site change, the permit is no longer valid."
-        },
-        {
-          id: "ptw-2",
-          heading: "Lockout/Tagout (LOTO) Basics",
-          icon: "fa-lock",
-          alert: "critical",
-          body:
-            "Before working on any equipment that could unexpectedly start up or release stored energy, it must be isolated, locked out with your own personal lock, and tagged with your name. Never work on equipment isolated by someone else's lock alone, and never remove another person's lock."
-        },
-        {
-          id: "ptw-3",
-          heading: "Verifying Isolation",
-          icon: "fa-magnifying-glass",
-          body:
-            "A lock on a switch is not proof of isolation — always verify isolation directly at the point of work using a try-before-you-touch approach and, where applicable, a calibrated test instrument. Isolation must be confirmed by a competent, authorized person before work starts."
-        }
-      ],
-      quiz: [
-        {
-          id: "q-ptw-1",
-          question: "What must happen before higher-risk work such as hot work or confined space entry begins?",
-          options: [
-            "A verbal go-ahead from any supervisor",
-            "A valid, signed Permit to Work",
-            "Nothing, if the crew is experienced",
-            "A note in the shift logbook"
-          ],
-          correctIndex: 1
-        },
-        {
-          id: "q-ptw-2",
-          question: "Under LOTO, whose lock should you rely on before working on isolated equipment?",
-          options: [
-            "Any lock already on the isolation point",
-            "Your supervisor's lock only",
-            "Your own personal lock, applied by you",
-            "No lock is needed if the equipment looks off"
           ],
           correctIndex: 2
         }
