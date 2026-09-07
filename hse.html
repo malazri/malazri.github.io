@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>HSE Induction • Oil & Gas</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <!-- Font Awesome 6 (Free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <!-- ============================================================
+    MAIN APP SHELL
+    ============================================================ -->
+    <div id="app" class="min-h-screen bg-gray-50 font-sans antialiased">
+
+        <!-- ---- TOP HEADER (shared) ---- -->
+        <header id="appHeader" class="bg-blue-900 text-white shadow-md sticky top-0 z-30">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-hard-hat text-amber-400 text-xl"></i>
+                    <span class="font-bold text-sm tracking-wide">HSE Induction</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="headerFacility" class="text-xs opacity-80 hidden sm:inline"></span>
+                    <button id="adminToggleBtn" class="text-xs bg-blue-800 hover:bg-blue-700 px-3 py-1 rounded-full transition" title="Admin Access">
+                        <i class="fas fa-user-shield"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ---- DYNAMIC VIEW CONTAINER ---- -->
+        <main id="mainView" class="max-w-4xl mx-auto px-4 py-6">
+            <!-- Rendered by JavaScript -->
+        </main>
+
+        <!-- ---- FOOTER (simple) ---- -->
+        <footer class="text-center text-xs text-gray-400 py-4 border-t border-gray-200 mt-8">
+            &copy; 2026 HSE Induction &bull; Oil &amp; Gas Division &bull; v2.0
+        </footer>
+    </div>
+
+
+    <!-- ============================================================
+    ADMIN PANEL (hidden by default, shown via PIN)
+    ============================================================ -->
+    <div id="adminPanel" class="hidden fixed inset-0 z-50 bg-gray-900/80 backdrop-blur-sm overflow-y-auto">
+        <div class="min-h-screen flex items-start justify-center p-4">
+            <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl my-8 p-6 relative">
+
+                <!-- Close button -->
+                <button id="adminCloseBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+
+                <h2 class="text-2xl font-bold text-blue-900 mb-2 flex items-center gap-3">
+                    <i class="fas fa-sliders-h text-amber-500"></i> Admin Dashboard
+                </h2>
+                <p class="text-sm text-gray-500 mb-6">Edit induction content &amp; quiz questions. Changes save automatically to your browser.</p>
+
+                <!-- Admin Login / PIN gate -->
+                <div id="adminLoginGate" class="mb-6">
+                    <div class="flex flex-wrap items-center gap-3 p-4 bg-gray-100 rounded-xl">
+                        <label class="text-sm font-medium text-gray-700">Enter PIN:</label>
+                        <input type="password" id="adminPinInput" maxlength="6" class="border border-gray-300 rounded-lg px-4 py-2 w-32 text-center text-lg font-mono" placeholder="1234" />
+                        <button id="adminLoginBtn" class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2 rounded-lg transition text-sm font-medium">
+                            <i class="fas fa-key mr-1"></i> Unlock
+                        </button>
+                        <span id="adminLoginError" class="text-red-500 text-sm hidden">Incorrect PIN</span>
+                    </div>
+                </div>
+
+                <!-- Admin Content (visible after login) -->
+                <div id="adminContent" class="hidden">
+                    <!-- Module accordion rendered by JS -->
+                    <div id="adminModulesContainer"></div>
+
+                    <!-- Save / Reset -->
+                    <div class="mt-6 flex flex-wrap gap-3 border-t pt-4">
+                        <button id="adminSaveBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition font-medium">
+                            <i class="fas fa-save mr-1"></i> Save All Changes
+                        </button>
+                        <button id="adminResetBtn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition font-medium">
+                            <i class="fas fa-undo mr-1"></i> Reset to Default
+                        </button>
+                        <span id="adminSaveStatus" class="text-sm text-gray-500 self-center ml-2"></span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================================
+    SCRIPTS
+    ============================================================ -->
+    <!-- Data (default JSON) -->
+    <script src="data.js">
+    </script>
+    <!-- Application Logic -->
+    <script src="app.js">
+    </script>
+
+</body>
+</html>
