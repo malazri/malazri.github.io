@@ -9,126 +9,218 @@
  *
  * STRUCTURE
  * DEFAULT_DATA
- *   ├─ facilities : [{ id, name, description, icon }]
+ *   ├─ facilities : [{ id, name, description, icon, type: "camp"|"operational" }]
  *   └─ modules    : [{
  *        id, title, icon, category: "orientation" | "hse",
- *        facilities: [facilityId, ...] | ["all"],
- *        slides: [ SLIDE, ... ]   <-- one flat ordered list per module
+ *        facilities: [facilityId, ...] | ["all"],   <-- MODULE-level filter
+ *        slides: [ SLIDE, ... ]
  *      }]
  *
- * A SLIDE is one of three shapes, distinguished by its `type` field:
+ * A SLIDE is one of three shapes, distinguished by its `type` field. Any
+ * slide MAY also carry its own optional `facilities` array — when present,
+ * that single slide is only shown for those facility IDs even though the
+ * rest of the module is shared. This is how one "Location & Map" module
+ * can hold a different map for Lekhwair vs. Yibal without duplicating the
+ * whole module.
  *
- *   INFO slide  { type:"info", id, heading, icon, body, alert? }
- *     alert: "critical" (optional) draws a red accent + warning tag.
+ *   INFO slide  { type:"info", id, heading, icon, body, alert?, facilities?,
+ *                 image?: { url, position:"above"|"below", caption? } }
+ *     alert: "critical" (red, Life-Saving-Rule style) or "reference"
+ *     (blue, for quick-reference content like phone numbers) — both optional.
  *
- *   MAP slide   { type:"map", id, heading, imageUrl, body,
- *                 highlights: [{ id, label, icon, top, left, description }] }
- *     `top`/`left` are CSS percentage strings positioning a pin marker
- *     over `imageUrl` (e.g. "32%"). Tapping a pin (or its legend entry)
- *     shows `description` in the detail panel below the map.
+ *   MAP slide   { type:"map", id, heading, body, facilities?,
+ *                 mapType: "satellite" | "layout",
+ *                 // mapType "satellite" (real map, no API key required):
+ *                 center: [lat, lng], zoom,
+ *                 highlights: [{ id, label, icon, lat, lng, description }]
+ *                 // mapType "layout" (a drawn/photographed 2D floor plan):
+ *                 imageUrl,
+ *                 highlights: [{ id, label, icon, top, left, description }]
+ *                 //   ("top"/"left" are CSS percentage strings positioning
+ *                 //    a pin over imageUrl, e.g. "32%")
+ *               }
  *
  *   QUIZ slide  { type:"quiz", id, question, options:[string,...],
- *                 correctIndex }
+ *                 correctIndex, facilities? }
  *
  * To extend the app: add a new module object, or add/edit slides inside
- * an existing module's `slides` array — any mix of info/map/quiz slides,
- * in any order, is valid. The Admin Dashboard edits this same JSON shape.
+ * an existing module's `slides` array. The Admin Dashboard edits this same
+ * JSON shape via a per-module JSON textarea.
  * ============================================================================
  */
 
 const DEFAULT_DATA = {
   // ---------------------------------------------------------------------
-  // FACILITIES — shown on the welcome screen's site selector
+  // FACILITIES — shown on the welcome screen's site selector.
+  // "type" is just a small display badge (Camp / Operational Site) —
+  // it plays no role in content filtering, which uses facility "id".
   // ---------------------------------------------------------------------
   facilities: [
     {
       id: "lekhwair-pdo-camp",
       name: "Lekhwair PDO Camp",
       description: "Residential camp & support facility",
-      icon: "fa-campground"
+      icon: "fa-campground",
+      type: "camp"
+    },
+    {
+      id: "yibal-camp",
+      name: "Yibal Camp",
+      description: "Residential camp & support facility",
+      icon: "fa-campground",
+      type: "camp"
     },
     {
       id: "onshore-rig",
       name: "Onshore Rig",
       description: "Active drilling & well-site operations",
-      icon: "fa-oil-well"
+      icon: "fa-oil-well",
+      type: "operational"
     },
     {
       id: "main-office",
       name: "Main Office",
       description: "Administrative & office premises",
-      icon: "fa-building"
+      icon: "fa-building",
+      type: "operational"
     }
   ],
 
   // ---------------------------------------------------------------------
-  // MODULES — presented in this array order. "category" is used purely
-  // to group/label modules in the Admin sidebar (Part A / Part B).
+  // MODULES — presented in this array order. "category" only groups
+  // modules in the Admin sidebar (Part A / Part B).
   // ---------------------------------------------------------------------
   modules: [
     // ==================================================================
-    // PART A — SITE ORIENTATION  (camp-specific, shown at Lekhwair only)
+    // PART A — SITE ORIENTATION  (camp-specific, shown at camps only)
     // ==================================================================
     {
       id: "mod-location-map",
       title: "Location & Site Map",
       icon: "fa-map-location-dot",
       category: "orientation",
-      facilities: ["lekhwair-pdo-camp"],
+      // This module applies to BOTH camps — the individual map slides
+      // below are what actually differ per camp, via their own
+      // slide-level "facilities" tag.
+      facilities: ["lekhwair-pdo-camp", "yibal-camp"],
       slides: [
         {
           type: "info",
           id: "loc-1",
-          heading: "Welcome to Lekhwair PDO Camp",
+          heading: "Welcome to Camp",
           icon: "fa-campground",
           body:
-            "This module orients you to the camp layout before you explore it in person. Familiarize yourself with the key locations below — you'll be expected to find your way to the clinic, mess hall, and your accommodation block without assistance by the end of your first day."
+            "This module orients you to your camp's layout before you explore it in person. Familiarize yourself with the key locations on the map below — you'll be expected to find your way to the clinic, mess hall, and your accommodation block without assistance by the end of your first day.",
+          image: {
+            url: "https://placehold.co/800x400/0f1b2b/f2b705?text=Camp+Entrance",
+            position: "below",
+            caption: "Main camp entrance and security gate"
+          }
         },
+        // ---- Lekhwair-specific satellite map ----
         {
           type: "map",
-          id: "loc-2",
-          heading: "Camp Layout",
-          imageUrl: "https://placehold.co/800x600/0f1b2b/f2b705?text=Lekhwair+PDO+Camp+%E2%80%94+Site+Map",
-          body: "Tap a marker below to see what's there.",
+          id: "loc-map-lekhwair",
+          facilities: ["lekhwair-pdo-camp"],
+          heading: "Lekhwair Camp — Site Map",
+          body: "Tap a marker, or an item in the list below, to see what's there.",
+          mapType: "satellite",
+          // NOTE: adjust to the camp's exact surveyed coordinates in Admin.
+          center: [20.95, 56.42],
+          zoom: 16,
           highlights: [
             {
-              id: "hl-clinic",
+              id: "hl-lek-clinic",
               label: "Camp Clinic",
               icon: "fa-briefcase-medical",
-              top: "28%",
-              left: "62%",
+              lat: 20.9508,
+              lng: 56.4206,
               description: "24-hour medical clinic. A qualified nurse is on-site at all times; the camp doctor holds clinic hours 8:00 AM–4:00 PM daily."
             },
             {
-              id: "hl-admin",
+              id: "hl-lek-admin",
               label: "Admin Office",
               icon: "fa-building",
-              top: "45%",
-              left: "30%",
+              lat: 20.9494,
+              lng: 56.4188,
               description: "Camp administration — badge issues, leave requests, and general enquiries. Open Sunday–Thursday, 7:30 AM–3:30 PM."
             },
             {
-              id: "hl-accom",
+              id: "hl-lek-accom",
               label: "Accommodation Blocks",
               icon: "fa-bed",
-              top: "68%",
-              left: "55%",
+              lat: 20.9488,
+              lng: 56.4215,
               description: "Blocks A through F. Your room number is printed on your camp induction card issued at check-in."
             },
             {
-              id: "hl-mess",
+              id: "hl-lek-mess",
               label: "Mess Hall",
               icon: "fa-utensils",
-              top: "50%",
-              left: "72%",
+              lat: 20.9502,
+              lng: 56.4222,
               description: "Main dining facility — see the Mess & Timings module for meal hours and hygiene rules."
             },
             {
-              id: "hl-muster",
+              id: "hl-lek-muster",
               label: "Muster Point A",
               icon: "fa-people-group",
-              top: "15%",
-              left: "20%",
+              lat: 20.9515,
+              lng: 56.4192,
+              description: "Primary emergency assembly point for the accommodation and admin area. Know this location — see the Emergency Response module."
+            }
+          ]
+        },
+        // ---- Yibal-specific satellite map ----
+        {
+          type: "map",
+          id: "loc-map-yibal",
+          facilities: ["yibal-camp"],
+          heading: "Yibal Camp — Site Map",
+          body: "Tap a marker, or an item in the list below, to see what's there.",
+          mapType: "satellite",
+          // NOTE: adjust to the camp's exact surveyed coordinates in Admin.
+          center: [22.45, 56.53],
+          zoom: 16,
+          highlights: [
+            {
+              id: "hl-yib-clinic",
+              label: "Yibal Camp Clinic",
+              icon: "fa-briefcase-medical",
+              lat: 22.4508,
+              lng: 56.5306,
+              description: "24-hour medical clinic. A qualified nurse is on-site at all times; the camp doctor holds clinic hours 8:00 AM–4:00 PM daily."
+            },
+            {
+              id: "hl-yib-admin",
+              label: "Admin Office",
+              icon: "fa-building",
+              lat: 22.4494,
+              lng: 56.5288,
+              description: "Camp administration — badge issues, leave requests, and general enquiries. Open Sunday–Thursday, 7:30 AM–3:30 PM."
+            },
+            {
+              id: "hl-yib-accom",
+              label: "Accommodation Blocks",
+              icon: "fa-bed",
+              lat: 22.4488,
+              lng: 56.5315,
+              description: "Blocks A through D. Your room number is printed on your camp induction card issued at check-in."
+            },
+            {
+              id: "hl-yib-mess",
+              label: "Mess Hall",
+              icon: "fa-utensils",
+              lat: 22.4502,
+              lng: 56.5322,
+              description: "Main dining facility — see the Mess & Timings module for meal hours and hygiene rules."
+            },
+            {
+              id: "hl-yib-muster",
+              label: "Muster Point A",
+              icon: "fa-people-group",
+              lat: 22.4515,
+              lng: 56.5292,
               description: "Primary emergency assembly point for the accommodation and admin area. Know this location — see the Emergency Response module."
             }
           ]
@@ -141,7 +233,7 @@ const DEFAULT_DATA = {
       title: "Mess (Dining) & Timings",
       icon: "fa-utensils",
       category: "orientation",
-      facilities: ["lekhwair-pdo-camp"],
+      facilities: ["lekhwair-pdo-camp", "yibal-camp"],
       slides: [
         {
           type: "info",
@@ -156,6 +248,11 @@ const DEFAULT_DATA = {
           id: "mess-2",
           heading: "Hygiene Rules",
           icon: "fa-hand-sparkles",
+          image: {
+            url: "https://placehold.co/800x400/f2b705/0f1b2b?text=Wash+Hands+Before+Entry",
+            position: "above",
+            caption: "Hand-sanitizing stations are located at every mess hall entrance"
+          },
           body:
             "Wash or sanitize your hands at the stations provided before entering the mess hall. Coveralls and PPE should be removed or covered before dining — no oil-stained workwear at the tables. Food is not to be removed from the mess hall except for approved packed meals."
         },
@@ -175,7 +272,7 @@ const DEFAULT_DATA = {
       title: "Recreation & Office Facilities",
       icon: "fa-basketball",
       category: "orientation",
-      facilities: ["lekhwair-pdo-camp"],
+      facilities: ["lekhwair-pdo-camp", "yibal-camp"],
       slides: [
         {
           type: "info",
@@ -183,7 +280,11 @@ const DEFAULT_DATA = {
           heading: "Gym & Sports Courts",
           icon: "fa-dumbbell",
           body:
-            "The gym is open 5:00 AM – 10:00 PM daily. Please wipe down equipment after use and rack weights when finished. The outdoor sports court (basketball/volleyball) is available on a first-come basis; floodlights operate until 10:30 PM."
+            "The gym is open 5:00 AM – 10:00 PM daily. Please wipe down equipment after use and rack weights when finished. The outdoor sports court (basketball/volleyball) is available on a first-come basis; floodlights operate until 10:30 PM.",
+          image: {
+            url: "https://placehold.co/800x400/0f1b2b/f2b705?text=Camp+Gym",
+            position: "below"
+          }
         },
         {
           type: "info",
@@ -210,7 +311,7 @@ const DEFAULT_DATA = {
       title: "Camp Rules & Conduct",
       icon: "fa-house-circle-check",
       category: "orientation",
-      facilities: ["lekhwair-pdo-camp"],
+      facilities: ["lekhwair-pdo-camp", "yibal-camp"],
       slides: [
         {
           type: "info",
@@ -427,6 +528,7 @@ const DEFAULT_DATA = {
           id: "emg-3",
           heading: "Emergency Contact Numbers",
           icon: "fa-phone",
+          alert: "reference",
           body:
             "Site Control Room: Ext. 2222. Camp Clinic (24hr): Ext. 2255. Fire & Emergency: Ext. 2200. HSE Duty Officer: Ext. 2211. Save these numbers in your phone on your first day — Admin can update these at any time from the Admin Dashboard."
         },
