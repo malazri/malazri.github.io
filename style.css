@@ -507,17 +507,6 @@ body.admin-mode #app-shell { max-width: 1180px; }
   font-size: 0.9rem;
   background: #fff;
 }
-.json-textarea {
-  width: 100%;
-  border: 1px solid #cbd5e0;
-  border-radius: 0.45rem;
-  padding: 0.75rem;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  background: #0f1b2b;
-  color: #e2e8f0;
-}
 
 .facility-checkbox { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; background: #f7f5f0; border-radius: 0.4rem; padding: 0.35rem 0.6rem; }
 .save-flash { background: var(--hse-green) !important; }
@@ -536,4 +525,272 @@ body.admin-mode #app-shell { max-width: 1180px; }
 @media print {
   .app-header, .hazard-strip, .flow-nav, #admin-entry-btn, #print-pass-btn, #restart-btn { display: none !important; }
   body { background: #fff; }
+}
+
+/* ---------------------------------------------------------------------- *
+ * Grouped camp selector button (welcome screen) + camp picker modal
+ * ---------------------------------------------------------------------- */
+
+.facility-card-camp-selector {
+  border-style: dashed;
+}
+.facility-card-camp-selector.selected {
+  border-style: solid;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 27, 43, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-sheet {
+  background: #fff;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  border-radius: 1rem 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  animation: slideUpSheet 0.22s ease both;
+}
+@keyframes slideUpSheet {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-close-btn {
+  background: #edf2f7;
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  color: #4a5568;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close-btn:hover { background: #e2e8f0; }
+
+.modal-sheet-body {
+  padding: 1rem 1.25rem 1.5rem;
+  overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Admin — form-based slide editor (replaces the old raw-JSON textarea)
+ * ---------------------------------------------------------------------- */
+
+.slide-editor-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  background: #fff;
+  overflow: hidden;
+}
+
+.slide-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: #f7f5f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.slide-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  color: #fff;
+}
+.slide-type-badge.slide-type-info { background: var(--hse-steel); }
+.slide-type-badge.slide-type-map { background: #2b6cb0; }
+.slide-type-badge.slide-type-quiz { background: var(--hse-navy); }
+
+.slide-editor-index {
+  font-size: 0.78rem;
+  color: var(--hse-steel);
+  font-weight: 600;
+}
+
+.slide-editor-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.3rem;
+}
+
+.icon-btn {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--hse-steel);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.icon-btn:hover { border-color: var(--hse-yellow); color: var(--hse-navy); }
+.icon-btn-danger:hover { border-color: var(--hse-red); color: var(--hse-red); background: #fff5f5; }
+
+.slide-editor-body {
+  padding: 1rem 0.9rem;
+}
+
+.slide-form .slide-field-row { margin-bottom: 0.9rem; }
+.slide-form .slide-field-row:last-child { margin-bottom: 0; }
+.slide-form .slide-field-row-inline { display: flex; gap: 0.9rem; margin-bottom: 0.9rem; }
+.slide-form .slide-field-row-inline:last-child { margin-bottom: 0; }
+
+.slide-form label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--hse-steel);
+  margin-bottom: 0.3rem;
+}
+.slide-form label.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-transform: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #2d3748;
+  cursor: pointer;
+}
+.slide-form input[type="text"],
+.slide-form input[type="number"],
+.slide-form textarea,
+.slide-form select {
+  width: 100%;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.85rem;
+  background: #fff;
+  font-family: inherit;
+}
+
+.image-subfields {
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  background: #f7f5f0;
+  border-radius: 0.5rem;
+}
+
+.field-hint {
+  font-size: 0.72rem;
+  color: var(--hse-steel);
+  font-style: italic;
+  margin-top: 0.4rem;
+}
+.field-hint-inline {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  font-style: italic;
+  color: #a0aec0;
+}
+
+/* Add-slide row (bottom of the slides list) */
+.add-slide-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.add-slide-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--hse-steel);
+}
+.add-slide-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 999px;
+  background: #fff;
+  color: #2d3748;
+  cursor: pointer;
+}
+.add-slide-btn:hover { border-color: var(--hse-yellow); background: #fffbea; }
+
+/* Marker (map slide) sub-forms */
+.marker-form-row {
+  border: 1px dashed #cbd5e0;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: #fafafa;
+}
+.marker-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.marker-form-index {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--hse-steel);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Quiz option rows */
+.option-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.option-form-row input[type="radio"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--hse-green);
+  flex-shrink: 0;
+}
+
+/* Per-slide facility override row */
+.slide-facilities-override {
+  padding: 0.75rem 0.9rem 1rem;
+  border-top: 1px dashed #e2e8f0;
+  background: #fcfcfb;
+}
+.slide-facilities-override label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--hse-steel);
+  margin-bottom: 0.5rem;
+}
+.facility-checkbox-compact {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
 }
