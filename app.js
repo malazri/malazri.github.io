@@ -545,8 +545,11 @@ function initSatelliteMap(slide) {
 
     // Clicking an actual marker on the map shows its details in the SAME
     // single place as clicking its legend entry below (the detail panel
-    // under the map) — not in a separate floating popup on the map.
+    // under the map), AND pans/centers the map to it — matching exactly
+    // what clicking the legend button does, so both trigger the same
+    // "move to place" behavior instead of only one of them.
     marker.on("click", () => {
+      map.panTo(marker.getLatLng());
       if (mapCard && mapCard._showHighlight) mapCard._showHighlight(h);
     });
 
@@ -1304,6 +1307,7 @@ function renderSlideCardEditor(slide, index, workingSlides, rerenderList, adminM
     <div class="slide-editor-actions">
       <button type="button" class="icon-btn" data-action="up" title="Move up"><i class="fa-solid fa-arrow-up"></i></button>
       <button type="button" class="icon-btn" data-action="down" title="Move down"><i class="fa-solid fa-arrow-down"></i></button>
+      <button type="button" class="icon-btn" data-action="duplicate" title="Duplicate slide"><i class="fa-solid fa-copy"></i></button>
       <button type="button" class="icon-btn icon-btn-danger" data-action="delete" title="Delete slide"><i class="fa-solid fa-trash"></i></button>
     </div>
   `;
@@ -1319,6 +1323,21 @@ function renderSlideCardEditor(slide, index, workingSlides, rerenderList, adminM
     const tmp = workingSlides[index + 1];
     workingSlides[index + 1] = workingSlides[index];
     workingSlides[index] = tmp;
+    rerenderList();
+  });
+  header.querySelector('[data-action="duplicate"]').addEventListener("click", () => {
+    // Deep-clone the slide (e.g. a camp's map, with all its markers) so it
+    // can be reused for another location by only editing what's different
+    // — the facility restriction, marker positions, a few labels — rather
+    // than rebuilding it field by field. Fresh IDs prevent the clone from
+    // colliding with the original's DOM ids (mini-map, coordinate
+    // readouts, quiz radio-button groups, etc).
+    const clone = JSON.parse(JSON.stringify(slide));
+    clone.id = uid("slide");
+    if (clone.type === "map" && Array.isArray(clone.highlights)) {
+      clone.highlights.forEach(h => { h.id = uid("marker"); });
+    }
+    workingSlides.splice(index + 1, 0, clone);
     rerenderList();
   });
   header.querySelector('[data-action="delete"]').addEventListener("click", () => {
