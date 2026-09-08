@@ -282,14 +282,14 @@ body.admin-mode #app-shell { max-width: 1180px; }
   transform: rotate(-45deg);
   font-size: 0.9rem;
 }
-
-/* Keep Leaflet's popup styling in line with the app's look */
-.leaflet-popup-content-wrapper {
-  border-radius: 0.5rem;
-  font-family: "Barlow", sans-serif;
-  font-size: 0.85rem;
+/* Selected marker — same red highlight used for layout-mode pins and the
+   active legend entry, so the "which one is selected" cue is consistent
+   across both map types. */
+.leaflet-pin-icon.active {
+  background: var(--hse-red);
+  color: #fff;
+  z-index: 1000 !important;
 }
-.leaflet-popup-content { margin: 0.65rem 0.85rem; line-height: 1.4; }
 
 /* ---------------------------------------------------------------------- *
  * Map slide — image with positioned pin markers + legend + detail panel
@@ -793,4 +793,183 @@ body.admin-mode #app-shell { max-width: 1180px; }
 .facility-checkbox-compact {
   font-size: 0.75rem;
   padding: 0.25rem 0.55rem;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Slide-count indicators — user flow ("Slide X of Y") and Admin sidebar
+ * ---------------------------------------------------------------------- */
+
+.slide-progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--hse-steel);
+  background: #edf2f7;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+}
+
+.module-slide-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--hse-steel);
+  background: #edf2f7;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  flex-shrink: 0;
+}
+.admin-nav-item.active .module-slide-count {
+  background: #fff;
+  color: var(--hse-navy);
+}
+
+/* ---------------------------------------------------------------------- *
+ * Icon picker widget (module / info-slide / marker icon fields)
+ * ---------------------------------------------------------------------- */
+
+.icon-picker {
+  position: relative;
+}
+
+.icon-picker-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-align: left;
+}
+.icon-picker-trigger:hover { border-color: var(--hse-yellow); }
+
+.icon-picker-preview {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  border-radius: 0.35rem;
+  background: var(--hse-navy);
+  color: var(--hse-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.icon-picker-label {
+  flex: 1;
+  color: #2d3748;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-picker-chevron {
+  color: #a0aec0;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.icon-picker-panel {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(15, 27, 43, 0.18);
+  padding: 0.6rem;
+}
+
+.icon-picker-search {
+  width: 100%;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.5rem;
+}
+
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.3rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+@media (min-width: 480px) {
+  .icon-picker-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+.icon-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.35rem;
+  border: 1px solid transparent;
+  background: #f7f5f0;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #2d3748;
+  text-align: left;
+}
+.icon-picker-option i { color: var(--hse-navy); width: 1rem; text-align: center; flex-shrink: 0; }
+.icon-picker-option:hover { border-color: var(--hse-yellow); background: #fffbea; }
+.icon-picker-option.selected { border-color: var(--hse-green); background: #f0fff4; }
+
+.icon-picker-empty {
+  font-size: 0.8rem;
+  color: var(--hse-steel);
+  text-align: center;
+  padding: 0.75rem;
+  font-style: italic;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Admin — interactive coordinate picker (drag-to-place, satellite maps)
+ * ---------------------------------------------------------------------- */
+
+.admin-position-map {
+  height: 280px;
+  width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #cbd5e0;
+}
+
+/* The draggable "center" marker — a crosshair, visually distinct from the
+   yellow location pins so it's obvious which one sets the map's center. */
+.admin-map-center-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--hse-navy);
+  color: #fff;
+  border: 2px solid var(--hse-yellow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: grab;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.marker-coord-readout {
+  font-size: 0.78rem;
+  color: var(--hse-steel);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  background: #f7f5f0;
+  border-radius: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  margin: 0;
 }
