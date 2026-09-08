@@ -369,11 +369,14 @@ function renderFlow() {
   const wrap = el("div", "view-flow fade-in");
   wrap.innerHTML = `
     <div class="progress-track"><div class="progress-fill" style="width:${overallProgress}%"></div></div>
-    <div class="px-5 pt-4 pb-2 flex items-center justify-between">
+    <div class="px-5 pt-4 pb-1 flex items-center justify-between">
       <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
         Module ${state.moduleIndex + 1} of ${totalModuleCount}
       </span>
       <span class="text-xs font-semibold text-slate-400">${escapeHTML(module.title)}</span>
+    </div>
+    <div class="px-5 pb-2">
+      <span class="slide-progress-badge"><i class="fa-solid fa-list-ol"></i> Slide ${state.slideIndex + 1} of ${totalSlides}</span>
     </div>
     <div id="card-slot" class="px-5 pb-28"></div>
     <div id="flow-nav" class="flow-nav">
@@ -474,11 +477,15 @@ function renderMapSlide(slide) {
   const detail = card.querySelector("#map-detail");
 
   function showHighlight(h) {
-    card.querySelectorAll(".map-pin, .map-legend-item").forEach(node => {
+    card.querySelectorAll(".map-pin, .map-legend-item, .leaflet-pin-icon").forEach(node => {
       node.classList.toggle("active", node.dataset.highlightId === h.id);
     });
     detail.innerHTML = `<strong>${escapeHTML(h.label)}</strong><br>${escapeHTML(h.description)}`;
   }
+  // Exposed so initSatelliteMap() — called separately, once this card is
+  // attached to the live DOM — can reuse this exact same "show info in
+  // ONE place" logic when an actual on-map marker is clicked.
+  card._showHighlight = showHighlight;
 
   (slide.highlights || []).forEach(h => {
     if (!isSatellite) {
@@ -525,32 +532,47 @@ function initSatelliteMap(slide) {
     attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
   }).addTo(map);
 
+  const mapCard = container.closest(".map-card");
   const markersById = {};
   (slide.highlights || []).forEach(h => {
     const icon = L.divIcon({
       className: "leaflet-pin-icon",
       html: `<i class="fa-solid ${h.icon}"></i>`,
       iconSize: [34, 34],
-      iconAnchor: [17, 34],
-      popupAnchor: [0, -32]
+      iconAnchor: [17, 34]
     });
     const marker = L.marker([h.lat, h.lng], { icon }).addTo(map);
-    marker.bindPopup(`<strong>${escapeHTML(h.label)}</strong><br>${escapeHTML(h.description)}`);
+
+    // Clicking an actual marker on the map shows its details in the SAME
+    // single place as clicking its legend entry below (the detail panel
+    // under the map) — not in a separate floating popup on the map.
+    marker.on("click", () => {
+      if (mapCard && mapCard._showHighlight) mapCard._showHighlight(h);
+    });
+
+    // Tag the marker's rendered DOM element so showHighlight() (defined in
+    // renderMapSlide) can recolor it the same way it recolors the legend
+    // entry and layout-mode pins — this is what shows WHICH marker is
+    // currently selected, directly on the map.
+    const markerEl = marker.getElement();
+    if (markerEl) markerEl.dataset.highlightId = h.id;
+
     markersById[h.id] = marker;
   });
 
-  container
-    .closest(".map-card")
-    .querySelectorAll(`[data-map-legend-for="${CSS.escape(slide.id)}"] .map-legend-item`)
-    .forEach(item => {
-      item.addEventListener("click", () => {
-        const marker = markersById[item.dataset.highlightId];
-        if (marker) {
-          map.panTo(marker.getLatLng());
-          marker.openPopup();
-        }
+  // Legend clicks already trigger showHighlight() via the listener wired
+  // in renderMapSlide (updating the detail panel + recoloring markers) —
+  // here we only add the courtesy of panning the camera to that marker.
+  if (mapCard) {
+    mapCard
+      .querySelectorAll(`[data-map-legend-for="${CSS.escape(slide.id)}"] .map-legend-item`)
+      .forEach(item => {
+        item.addEventListener("click", () => {
+          const marker = markersById[item.dataset.highlightId];
+          if (marker) map.panTo(marker.getLatLng());
+        });
       });
-    });
+  }
 
   activeLeafletMap = map;
   setTimeout(() => map.invalidateSize(), 150);
@@ -801,7 +823,7 @@ function renderAdminDashboard() {
   const hseNav = wrap.querySelector("#module-nav-hse");
   state.db.modules.forEach(m => {
     const item = el("button", "admin-nav-item" + (state.adminSelectedModuleId === m.id ? " active" : ""));
-    item.innerHTML = `<i class="fa-solid ${m.icon}"></i> <span>${escapeHTML(m.title)}</span>`;
+    item.innerHTML = `<i class="fa-solid ${m.icon}"></i> <span class="flex-1">${escapeHTML(m.title)}</span><span class="module-slide-count">${m.slides.length}</span>`;
     item.addEventListener("click", () => { state.adminSelectedModuleId = m.id; render(); });
     (m.category === "hse" ? hseNav : orientationNav).appendChild(item);
   });
@@ -887,6 +909,224 @@ function renderAdminDashboard() {
  * 6c. ADMIN — FORM-BASED module & slide editor (no raw JSON required)
  * ---------------------------------------------------------------------- */
 
+/**
+ * Curated set of Font Awesome icons offered by the icon picker below.
+ * Covers everything used in the default content plus common extras an
+ * admin is likely to want when adding new modules/slides/markers. Any
+ * icon class already saved in the data but NOT in this list still shows
+ * correctly (buildIconPicker falls back to displaying the raw class name)
+ * — it just won't appear as a pickable option until re-chosen.
+ */
+const ICON_LIBRARY = [
+  // Safety / PPE / hazards
+  { value: "fa-hard-hat", label: "Hard Hat" },
+  { value: "fa-user-shield", label: "PPE / Protection" },
+  { value: "fa-shield-halved", label: "Shield" },
+  { value: "fa-hand-fist", label: "Stop Work / Fist" },
+  { value: "fa-hand", label: "Hand / Rule" },
+  { value: "fa-hand-point-up", label: "Point Up" },
+  { value: "fa-skull-crossbones", label: "Toxic / Hazard" },
+  { value: "fa-triangle-exclamation", label: "Warning" },
+  { value: "fa-temperature-high", label: "Heat" },
+  { value: "fa-recycle", label: "Recycle / Waste" },
+  { value: "fa-lock", label: "Lock / LOTO" },
+  { value: "fa-fire-extinguisher", label: "Fire Extinguisher" },
+  { value: "fa-truck-medical", label: "Ambulance / Emergency" },
+  { value: "fa-briefcase-medical", label: "Medical / Clinic" },
+  { value: "fa-volume-high", label: "Alarm / Loud" },
+  { value: "fa-volume-xmark", label: "Quiet" },
+  { value: "fa-phone", label: "Phone" },
+  { value: "fa-people-group", label: "Muster / Group" },
+  { value: "fa-ban-smoking", label: "No Smoking" },
+  { value: "fa-gauge-high", label: "Gauge / Monitor" },
+  { value: "fa-down-long", label: "Dropped Object" },
+  // Camp / facility
+  { value: "fa-campground", label: "Camp" },
+  { value: "fa-building", label: "Building / Office" },
+  { value: "fa-bed", label: "Accommodation" },
+  { value: "fa-utensils", label: "Mess / Dining" },
+  { value: "fa-dumbbell", label: "Gym" },
+  { value: "fa-basketball", label: "Sports" },
+  { value: "fa-shirt", label: "Laundry / Dress Code" },
+  { value: "fa-broom", label: "Housekeeping" },
+  { value: "fa-hand-sparkles", label: "Hygiene" },
+  { value: "fa-people-arrows", label: "Respect / Conduct" },
+  { value: "fa-house-circle-check", label: "Camp Rules" },
+  { value: "fa-clock", label: "Timings" },
+  // Map / location
+  { value: "fa-map-location-dot", label: "Map" },
+  { value: "fa-location-dot", label: "Location Pin" },
+  { value: "fa-oil-well", label: "Oil Well / Rig" },
+  // General / quiz
+  { value: "fa-circle-question", label: "Question" },
+  { value: "fa-circle-info", label: "Info" },
+  { value: "fa-clipboard-list", label: "Checklist" },
+  { value: "fa-circle-check", label: "Check" },
+  { value: "fa-file-lines", label: "Document" },
+  { value: "fa-file-circle-plus", label: "New Module" }
+];
+
+/**
+ * A dropdown icon picker with a live preview, replacing free-text Font
+ * Awesome class entry. Renders a trigger button (current icon + label)
+ * that opens a searchable grid of choices; picking one updates the
+ * trigger and calls onChange(newIconClass). Works as a drop-in widget —
+ * mount it into any container via `.appendChild(buildIconPicker(...))`.
+ */
+function buildIconPicker(currentValue, onChange) {
+  const wrap = el("div", "icon-picker");
+  let value = currentValue || "fa-circle";
+
+  function findLabel(v) {
+    const match = ICON_LIBRARY.find(i => i.value === v);
+    return match ? match.label : v;
+  }
+
+  wrap.innerHTML = `
+    <button type="button" class="icon-picker-trigger">
+      <i class="fa-solid ${escapeAttr(value)} icon-picker-preview"></i>
+      <span class="icon-picker-label">${escapeHTML(findLabel(value))}</span>
+      <i class="fa-solid fa-chevron-down icon-picker-chevron"></i>
+    </button>
+    <div class="icon-picker-panel hidden">
+      <input type="text" class="icon-picker-search" placeholder="Search icons..." />
+      <div class="icon-picker-grid"></div>
+    </div>
+  `;
+
+  const trigger = wrap.querySelector(".icon-picker-trigger");
+  const panel = wrap.querySelector(".icon-picker-panel");
+  const searchInput = wrap.querySelector(".icon-picker-search");
+  const grid = wrap.querySelector(".icon-picker-grid");
+
+  function renderGrid(filterText) {
+    grid.innerHTML = "";
+    const term = (filterText || "").toLowerCase();
+    const list = ICON_LIBRARY.filter(
+      i => !term || i.label.toLowerCase().includes(term) || i.value.includes(term)
+    );
+    if (list.length === 0) {
+      grid.innerHTML = `<p class="icon-picker-empty">No matching icons.</p>`;
+      return;
+    }
+    list.forEach(i => {
+      const btn = el("button", "icon-picker-option" + (i.value === value ? " selected" : ""));
+      btn.type = "button";
+      btn.innerHTML = `<i class="fa-solid ${i.value}"></i><span>${escapeHTML(i.label)}</span>`;
+      btn.addEventListener("click", () => {
+        value = i.value;
+        trigger.querySelector(".icon-picker-preview").className = `fa-solid ${value} icon-picker-preview`;
+        trigger.querySelector(".icon-picker-label").textContent = i.label;
+        closePanel();
+        onChange(value);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function onOutsideClick(e) {
+    if (!wrap.contains(e.target)) closePanel();
+  }
+  function openPanel() {
+    panel.classList.remove("hidden");
+    searchInput.value = "";
+    renderGrid("");
+    searchInput.focus();
+    document.addEventListener("click", onOutsideClick);
+  }
+  function closePanel() {
+    panel.classList.add("hidden");
+    document.removeEventListener("click", onOutsideClick);
+  }
+
+  trigger.addEventListener("click", e => {
+    e.stopPropagation();
+    if (panel.classList.contains("hidden")) openPanel();
+    else closePanel();
+  });
+  searchInput.addEventListener("input", () => renderGrid(searchInput.value));
+
+  return wrap;
+}
+
+/**
+ * Renders an interactive Leaflet mini-map inside a satellite map slide's
+ * editor so an admin can PICK coordinates by dragging pins, instead of
+ * typing latitude/longitude by hand. Shows one draggable crosshair marker
+ * for the slide's center point, plus one draggable pin per existing
+ * highlight/marker. Dragging updates the underlying data directly and
+ * refreshes the small read-only coordinate readouts next to each field.
+ *
+ * Must be called AFTER `containerId` is attached to the live DOM (Leaflet
+ * needs to measure real pixel dimensions) — callers schedule this via
+ * `setTimeout(..., 0)` right after building the surrounding form markup,
+ * the same pattern used by the main app's initSatelliteMap().
+ */
+function initPositionMiniMap(slide, containerId, miniMapsRegistry) {
+  const container = document.getElementById(containerId);
+  if (!container || typeof L === "undefined") return;
+
+  const center = slide.center || [0, 0];
+  const map = L.map(container, { attributionControl: false }).setView(center, slide.zoom || 16);
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Esri"
+  }).addTo(map);
+
+  // Center marker — a distinct crosshair icon, draggable to set slide.center.
+  const centerIcon = L.divIcon({
+    className: "admin-map-center-icon",
+    html: `<i class="fa-solid fa-crosshairs"></i>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+  });
+  const centerMarker = L.marker(center, { icon: centerIcon, draggable: true }).addTo(map);
+  const centerReadout = document.getElementById(`center-readout-${slide.id}`);
+  centerMarker.on("drag", () => {
+    const pos = centerMarker.getLatLng();
+    if (centerReadout) centerReadout.textContent = `Center: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+  });
+  centerMarker.on("dragend", () => {
+    const pos = centerMarker.getLatLng();
+    slide.center = [pos.lat, pos.lng];
+  });
+
+  // One draggable pin per existing marker, so every location can be
+  // positioned visually rather than by typing coordinates.
+  (slide.highlights || []).forEach(h => {
+    const icon = L.divIcon({
+      className: "leaflet-pin-icon",
+      html: `<i class="fa-solid ${h.icon || "fa-location-dot"}"></i>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30]
+    });
+    const marker = L.marker([h.lat || center[0], h.lng || center[1]], { icon, draggable: true }).addTo(map);
+    marker.bindTooltip(h.label || "Marker", { direction: "top", offset: [0, -28] });
+
+    const readoutEl = document.getElementById(`marker-coord-${h.id}`);
+    marker.on("drag", () => {
+      const pos = marker.getLatLng();
+      if (readoutEl) readoutEl.textContent = `Lat: ${pos.lat.toFixed(5)} · Lng: ${pos.lng.toFixed(5)}`;
+    });
+    marker.on("dragend", () => {
+      const pos = marker.getLatLng();
+      h.lat = pos.lat;
+      h.lng = pos.lng;
+    });
+  });
+
+  // Keep the zoom number field (still manually editable — zoom level isn't
+  // really a "coordinate") in sync with the mini-map's own zoom controls.
+  map.on("zoomend", () => {
+    slide.zoom = map.getZoom();
+    const zoomInput = document.getElementById(`zoom-input-${slide.id}`);
+    if (zoomInput) zoomInput.value = slide.zoom;
+  });
+
+  setTimeout(() => map.invalidateSize(), 150);
+  if (miniMapsRegistry) miniMapsRegistry.push(map);
+}
+
 /** A fresh, blank slide object of the given type, used by the "Add slide" buttons. */
 function defaultSlide(type) {
   if (type === "info") {
@@ -912,8 +1152,8 @@ function renderModuleEditor(module) {
     </div>
     <div class="editor-row-inline">
       <div class="flex-1">
-        <label>Font Awesome icon class (e.g. fa-hard-hat)</label>
-        <input id="edit-icon" type="text" value="${escapeAttr(module.icon)}" />
+        <label>Icon</label>
+        <div id="edit-icon-slot"></div>
       </div>
       <div class="flex-1">
         <label>Category</label>
@@ -929,7 +1169,7 @@ function renderModuleEditor(module) {
     </div>
 
     <div class="editor-row">
-      <label>Slides</label>
+      <label id="slides-count-label">Slides</label>
       <div id="slides-editor-list" class="space-y-4"></div>
       <div class="add-slide-row">
         <span class="add-slide-label">Add slide:</span>
@@ -947,6 +1187,15 @@ function renderModuleEditor(module) {
     </div>
   `;
 
+  // Module-level icon: a dropdown picker with live preview (see buildIconPicker)
+  // instead of a raw text field. The picked value is held here and only
+  // committed to `module.icon` when "Save changes" is clicked, matching how
+  // the title/category/facilities fields already behave.
+  let workingModuleIcon = module.icon;
+  panel.querySelector("#edit-icon-slot").appendChild(
+    buildIconPicker(workingModuleIcon, v => { workingModuleIcon = v; })
+  );
+
   // Module-level facilities checkboxes (unchanged behaviour)
   const facilitiesWrap = panel.querySelector("#edit-facilities");
   const allOptions = [{ id: "all", name: "All facilities" }, ...window.__hseAdminFacilityOptions()];
@@ -957,12 +1206,24 @@ function renderModuleEditor(module) {
     facilitiesWrap.appendChild(label);
   });
 
+  // Tracks any interactive position-picker mini-maps (see initPositionMiniMap)
+  // created while this module's slides are on screen, so they can be torn
+  // down cleanly whenever the slides list is rebuilt (add/delete/reorder).
+  let adminMiniMaps = [];
+  function destroyAdminMiniMaps() {
+    adminMiniMaps.forEach(m => { try { m.remove(); } catch (e) { /* already gone */ } });
+    adminMiniMaps = [];
+  }
+
   const slidesListEl = panel.querySelector("#slides-editor-list");
+  const slidesCountLabel = panel.querySelector("#slides-count-label");
   function rerenderSlidesList() {
+    destroyAdminMiniMaps();
     slidesListEl.innerHTML = "";
     workingSlides.forEach((slide, index) => {
-      slidesListEl.appendChild(renderSlideCardEditor(slide, index, workingSlides, rerenderSlidesList));
+      slidesListEl.appendChild(renderSlideCardEditor(slide, index, workingSlides, rerenderSlidesList, adminMiniMaps));
     });
+    slidesCountLabel.textContent = `Slides (${workingSlides.length} total)`;
   }
   rerenderSlidesList();
 
@@ -1008,7 +1269,7 @@ function renderModuleEditor(module) {
       const selectedFacilities = Array.from(facilitiesWrap.querySelectorAll("input:checked")).map(cb => cb.value);
 
       module.title = panel.querySelector("#edit-title").value.trim() || module.title;
-      module.icon = panel.querySelector("#edit-icon").value.trim() || module.icon;
+      module.icon = workingModuleIcon || module.icon;
       module.category = panel.querySelector("#edit-category").value;
       module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
       module.slides = JSON.parse(JSON.stringify(workingSlides)); // commit the working copy
@@ -1033,7 +1294,7 @@ function renderModuleEditor(module) {
 }
 
 /** One slide's editor card: header (type badge + reorder/delete) + type-specific form + facility override. */
-function renderSlideCardEditor(slide, index, workingSlides, rerenderList) {
+function renderSlideCardEditor(slide, index, workingSlides, rerenderList, adminMiniMaps) {
   const card = el("div", "slide-editor-card");
 
   const header = el("div", "slide-editor-header");
@@ -1069,7 +1330,7 @@ function renderSlideCardEditor(slide, index, workingSlides, rerenderList) {
 
   const body = el("div", "slide-editor-body");
   if (slide.type === "info") body.appendChild(buildInfoSlideForm(slide));
-  else if (slide.type === "map") body.appendChild(buildMapSlideForm(slide, rerenderList));
+  else if (slide.type === "map") body.appendChild(buildMapSlideForm(slide, rerenderList, adminMiniMaps));
   else if (slide.type === "quiz") body.appendChild(buildQuizSlideForm(slide, rerenderList));
   card.appendChild(body);
 
@@ -1094,7 +1355,7 @@ function buildInfoSlideForm(slide) {
       <input data-f="heading" type="text" value="${escapeAttr(slide.heading || "")}" />
     </div>
     <div class="slide-field-row-inline">
-      <div class="flex-1"><label>Icon (Font Awesome class)</label><input data-f="icon" type="text" value="${escapeAttr(slide.icon || "")}" /></div>
+      <div class="flex-1"><label>Icon</label><div class="icon-picker-slot" data-slot="icon"></div></div>
       <div class="flex-1">
         <label>Alert style</label>
         <select data-f="alert">
@@ -1124,7 +1385,9 @@ function buildInfoSlideForm(slide) {
   `;
 
   wrap.querySelector('[data-f="heading"]').addEventListener("input", e => { slide.heading = e.target.value; });
-  wrap.querySelector('[data-f="icon"]').addEventListener("input", e => { slide.icon = e.target.value; });
+  wrap.querySelector('[data-slot="icon"]').appendChild(
+    buildIconPicker(slide.icon, v => { slide.icon = v; })
+  );
   wrap.querySelector('[data-f="alert"]').addEventListener("change", e => {
     if (e.target.value) slide.alert = e.target.value;
     else delete slide.alert;
@@ -1158,7 +1421,7 @@ function buildInfoSlideForm(slide) {
   return wrap;
 }
 
-function buildMapSlideForm(slide, rerenderList) {
+function buildMapSlideForm(slide, rerenderList, adminMiniMaps) {
   const wrap = el("div", "slide-form");
   const isSatellite = slide.mapType === "satellite";
 
@@ -1210,25 +1473,25 @@ function buildMapSlideForm(slide, rerenderList) {
   const typeFieldsEl = wrap.querySelector("#map-type-fields");
   if (isSatellite) {
     const center = slide.center || [0, 0];
+    const mapContainerId = `position-map-${slide.id}`;
     typeFieldsEl.innerHTML = `
-      <div class="slide-field-row-inline">
-        <div class="flex-1"><label>Center latitude</label><input data-f="lat" type="number" step="any" value="${center[0]}" /></div>
-        <div class="flex-1"><label>Center longitude</label><input data-f="lng" type="number" step="any" value="${center[1]}" /></div>
-        <div class="flex-1"><label>Zoom (1–19)</label><input data-f="zoom" type="number" min="1" max="19" value="${slide.zoom || 16}" /></div>
+      <div class="slide-field-row" style="max-width:140px">
+        <label>Zoom (1–19)</label>
+        <input data-f="zoom" id="zoom-input-${slide.id}" type="number" min="1" max="19" value="${slide.zoom || 16}" />
       </div>
-      <p class="field-hint">Tip: open Google Maps, right-click the exact spot, and copy the coordinates it shows.</p>
+      <div class="slide-field-row">
+        <label>Position on map <span class="field-hint-inline">(drag the crosshair to set the center; drag pins below to place each marker)</span></label>
+        <div id="${mapContainerId}" class="admin-position-map"></div>
+        <p class="field-hint" id="center-readout-${slide.id}">Center: ${center[0].toFixed(5)}, ${center[1].toFixed(5)}</p>
+      </div>
     `;
-    typeFieldsEl.querySelector('[data-f="lat"]').addEventListener("input", e => {
-      const lng = slide.center ? slide.center[1] : 0;
-      slide.center = [parseFloat(e.target.value) || 0, lng];
-    });
-    typeFieldsEl.querySelector('[data-f="lng"]').addEventListener("input", e => {
-      const lat = slide.center ? slide.center[0] : 0;
-      slide.center = [lat, parseFloat(e.target.value) || 0];
-    });
     typeFieldsEl.querySelector('[data-f="zoom"]').addEventListener("input", e => {
       slide.zoom = parseInt(e.target.value, 10) || 16;
     });
+    // Deferred until after this form is attached to the live DOM (see
+    // initPositionMiniMap's doc comment) — Leaflet needs real pixel
+    // dimensions to lay out its tiles correctly.
+    setTimeout(() => initPositionMiniMap(slide, mapContainerId, adminMiniMaps), 0);
   } else {
     typeFieldsEl.innerHTML = `
       <div class="slide-field-row">
@@ -1263,10 +1526,8 @@ function buildMapSlideForm(slide, rerenderList) {
 function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
   const row = el("div", "marker-form-row");
   const coordFields = isSatellite
-    ? `<div class="slide-field-row-inline">
-         <div class="flex-1"><label>Latitude</label><input data-f="lat" type="number" step="any" value="${marker.lat || 0}" /></div>
-         <div class="flex-1"><label>Longitude</label><input data-f="lng" type="number" step="any" value="${marker.lng || 0}" /></div>
-       </div>`
+    ? `<p class="marker-coord-readout" id="marker-coord-${marker.id}">Lat: ${(marker.lat || 0).toFixed(5)} · Lng: ${(marker.lng || 0).toFixed(5)}</p>
+       <p class="field-hint">Drag this marker's pin on the map above to reposition it.</p>`
     : `<div class="slide-field-row-inline">
          <div class="flex-1"><label>Top position (%)</label><input data-f="top" type="text" value="${escapeAttr(marker.top || "50%")}" /></div>
          <div class="flex-1"><label>Left position (%)</label><input data-f="left" type="text" value="${escapeAttr(marker.left || "50%")}" /></div>
@@ -1279,7 +1540,7 @@ function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
     </div>
     <div class="slide-field-row-inline">
       <div class="flex-1"><label>Label</label><input data-f="label" type="text" value="${escapeAttr(marker.label || "")}" /></div>
-      <div class="flex-1"><label>Icon</label><input data-f="icon" type="text" value="${escapeAttr(marker.icon || "")}" /></div>
+      <div class="flex-1"><label>Icon</label><div class="icon-picker-slot" data-slot="icon"></div></div>
     </div>
     ${coordFields}
     <div class="slide-field-row">
@@ -1289,12 +1550,11 @@ function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
   `;
 
   row.querySelector('[data-f="label"]').addEventListener("input", e => { marker.label = e.target.value; });
-  row.querySelector('[data-f="icon"]').addEventListener("input", e => { marker.icon = e.target.value; });
+  row.querySelector('[data-slot="icon"]').appendChild(
+    buildIconPicker(marker.icon, v => { marker.icon = v; })
+  );
   row.querySelector('[data-f="description"]').addEventListener("input", e => { marker.description = e.target.value; });
-  if (isSatellite) {
-    row.querySelector('[data-f="lat"]').addEventListener("input", e => { marker.lat = parseFloat(e.target.value) || 0; });
-    row.querySelector('[data-f="lng"]').addEventListener("input", e => { marker.lng = parseFloat(e.target.value) || 0; });
-  } else {
+  if (!isSatellite) {
     row.querySelector('[data-f="top"]').addEventListener("input", e => { marker.top = e.target.value; });
     row.querySelector('[data-f="left"]').addEventListener("input", e => { marker.left = e.target.value; });
   }
