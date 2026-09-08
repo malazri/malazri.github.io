@@ -21,8 +21,8 @@
  * 1. CONSTANTS & STORAGE HELPERS
  * ---------------------------------------------------------------------- */
 
-const HSE_DB_KEY = "hse_induction_db_v2";        // editable content (facilities + modules)
-const HSE_RECORDS_KEY = "hse_induction_records_v2"; // completed inductions, for the Admin log
+const HSE_DB_KEY = "hse_induction_db_v3";        // editable content (facilities + modules)
+const HSE_RECORDS_KEY = "hse_induction_records_v3"; // completed inductions, for the Admin log
 const ADMIN_PIN = "1234"; // Prototype-only hardcoded PIN. Replace with real auth before production use.
 const PASS_THRESHOLD = 0.8; // 80% correct across all quiz slides required to earn a Pass
 
@@ -68,14 +68,18 @@ const state = {
   user: { name: "", facilityId: null },
   activeModules: [],     // modules filtered for the chosen facility, in presented order
   moduleIndex: 0,
-  slideIndex: 0,         // index into activeModules[moduleIndex].slides
+  slideIndex: 0,         // index into getVisibleSlides(activeModules[moduleIndex])
   answers: {},           // { [quizSlideId]: selectedIndex }
   score: { correct: 0, total: 0 },
-  activeHighlightId: null, // which map pin is currently selected (per map slide render)
 
   // --- admin editor state ---
   adminSelectedModuleId: null
 };
+
+// Tracks the currently-mounted Leaflet map instance (if any) so we can tear
+// it down cleanly before the next render — Leaflet maps can't be silently
+// re-initialized on a DOM node that React/vanilla re-rendering has replaced.
+let activeLeafletMap = null;
 
 /* ---------------------------------------------------------------------- *
  * 3. BOOT / INIT
@@ -106,6 +110,19 @@ function resetInductionState() {
   state.score = { correct: 0, total: 0 };
 }
 
+/**
+ * A module's `slides` array may contain slides tagged with their OWN
+ * `facilities` list (e.g. two different camp maps living in one shared
+ * "Location & Map" module). This returns only the slides that apply to
+ * the currently-selected facility — slides with no `facilities` field
+ * are shown for every facility the module itself is visible to.
+ */
+function getVisibleSlides(module) {
+  return module.slides.filter(
+    s => !s.facilities || s.facilities.includes("all") || s.facilities.includes(state.user.facilityId)
+  );
+}
+
 /* ---------------------------------------------------------------------- *
  * 4. ROUTER
  * ---------------------------------------------------------------------- */
@@ -115,6 +132,13 @@ function render() {
   root.innerHTML = "";
   document.body.classList.toggle("admin-mode", state.view.startsWith("admin"));
 
+  // Tear down any previously-mounted satellite map before wiping the DOM,
+  // so we never leak a Leaflet instance pointed at a removed container.
+  if (activeLeafletMap) {
+    activeLeafletMap.remove();
+    activeLeafletMap = null;
+  }
+
   switch (state.view) {
     case "welcome": root.appendChild(renderWelcome()); break;
     case "flow": root.appendChild(renderFlow()); break;
@@ -122,6 +146,18 @@ function render() {
     case "admin-login": root.appendChild(renderAdminLogin()); break;
     case "admin-dashboard": root.appendChild(renderAdminDashboard()); break;
     default: root.appendChild(renderWelcome());
+  }
+
+  // A satellite map needs its container attached to the live DOM (with a
+  // real pixel size) before Leaflet can measure it — so we initialize it
+  // AFTER the view has been appended to #app-root above, not while the
+  // card was still being built off-DOM inside renderMapSlide().
+  if (state.view === "flow") {
+    const module = state.activeModules[state.moduleIndex];
+    const slide = module ? getVisibleSlides(module)[state.slideIndex] : null;
+    if (slide && slide.type === "map" && slide.mapType === "satellite") {
+      initSatelliteMap(slide);
+    }
   }
 }
 
@@ -166,6 +202,7 @@ function renderWelcome() {
         <div class="font-semibold text-slate-900">${escapeHTML(facility.name)}</div>
         <div class="text-xs text-slate-500">${escapeHTML(facility.description)}</div>
       </div>
+      ${facility.type ? `<span class="facility-type-badge">${facility.type === "camp" ? "Camp" : "Site"}</span>` : ""}
       <i class="fa-solid fa-circle-check check-icon"></i>
     `;
     card.addEventListener("click", () => {
@@ -199,9 +236,12 @@ function renderWelcome() {
 
 /** Build the ordered list of modules that apply to the chosen facility, then start the flow. */
 function beginInduction() {
-  state.activeModules = state.db.modules.filter(
-    m => m.facilities.includes("all") || m.facilities.includes(state.user.facilityId)
-  );
+  state.activeModules = state.db.modules
+    .filter(m => m.facilities.includes("all") || m.facilities.includes(state.user.facilityId))
+    // Defensive: drop a module entirely if, after slide-level facility
+    // filtering, it would have zero applicable slides for this facility.
+    .filter(m => getVisibleSlides(m).length > 0);
+
   state.moduleIndex = 0;
   state.slideIndex = 0;
   state.answers = {};
@@ -216,8 +256,9 @@ function beginInduction() {
 
 function renderFlow() {
   const module = state.activeModules[state.moduleIndex];
-  const slide = module.slides[state.slideIndex];
-  const totalSlides = module.slides.length;
+  const slides = getVisibleSlides(module);
+  const slide = slides[state.slideIndex];
+  const totalSlides = slides.length;
   const totalModuleCount = state.activeModules.length;
   const overallProgress =
     ((state.moduleIndex + (state.slideIndex + 1) / totalSlides) / totalModuleCount) * 100;
@@ -262,55 +303,97 @@ function renderFlow() {
   return wrap;
 }
 
+/** Build the optional <img> (+ caption) block used by info slides. */
+function buildSlideImageBlock(image) {
+  if (!image || !image.url) return "";
+  return `
+    <img src="${escapeAttr(image.url)}" alt="${escapeAttr(image.caption || "")}" class="slide-image" loading="lazy" />
+    ${image.caption ? `<p class="slide-image-caption">${escapeHTML(image.caption)}</p>` : ""}
+  `;
+}
+
 function renderInfoSlide(slide) {
-  const card = el("div", `content-card ${slide.alert === "critical" ? "content-card-critical" : ""}`);
+  const alertClass =
+    slide.alert === "critical" ? "content-card-critical" :
+    slide.alert === "reference" ? "content-card-reference" : "";
+  const card = el("div", `content-card ${alertClass}`);
+
+  const tagBlock =
+    slide.alert === "critical"
+      ? `<div class="critical-tag"><i class="fa-solid fa-triangle-exclamation"></i> Critical</div>`
+      : slide.alert === "reference"
+      ? `<div class="critical-tag reference-tag"><i class="fa-solid fa-circle-info"></i> Quick Reference</div>`
+      : "";
+
+  const imageBlock = buildSlideImageBlock(slide.image);
+  const imageAbove = slide.image && slide.image.position === "above";
+
   card.innerHTML = `
     <div class="content-card-icon"><i class="fa-solid ${slide.icon}"></i></div>
-    ${slide.alert === "critical" ? `<div class="critical-tag"><i class="fa-solid fa-triangle-exclamation"></i> Critical</div>` : ""}
+    ${tagBlock}
     <h2 class="font-display text-xl mt-3 mb-2 text-slate-900">${escapeHTML(slide.heading)}</h2>
+    ${imageAbove ? imageBlock : ""}
     <p class="text-slate-600 leading-relaxed text-[15px]">${escapeHTML(slide.body)}</p>
+    ${!imageAbove ? imageBlock : ""}
   `;
   return card;
 }
 
+/**
+ * Renders a map slide in one of two modes:
+ *   mapType "satellite" — a real interactive map (see initSatelliteMap,
+ *     called separately once this card is attached to the live DOM).
+ *   mapType "layout" (or unset, for backward compatibility) — a static
+ *     image with pixel-positioned pin buttons overlaid on top of it.
+ * Both modes share the same legend + detail-panel UI below the map.
+ */
 function renderMapSlide(slide) {
   const card = el("div", "content-card map-card");
+  const isSatellite = slide.mapType === "satellite";
+
   card.innerHTML = `
     <div class="content-card-icon"><i class="fa-solid fa-map-location-dot"></i></div>
     <h2 class="font-display text-xl mt-3 mb-1 text-slate-900">${escapeHTML(slide.heading)}</h2>
     <p class="text-slate-500 text-sm mb-3">${escapeHTML(slide.body || "")}</p>
-    <div class="map-frame">
-      <img src="${escapeAttr(slide.imageUrl)}" alt="${escapeAttr(slide.heading)}" class="map-image" />
-      <div class="map-pins"></div>
-    </div>
-    <div id="map-detail" class="map-detail">
-      <i class="fa-solid fa-hand-pointer"></i> Tap a marker or a location below to see details.
-    </div>
-    <div class="map-legend"></div>
+    ${
+      isSatellite
+        ? `<div id="leaflet-${escapeAttr(slide.id)}" class="leaflet-map-frame"></div>`
+        : `<div class="map-frame">
+             <img src="${escapeAttr(slide.imageUrl)}" alt="${escapeAttr(slide.heading)}" class="map-image" />
+             <div class="map-pins"></div>
+           </div>`
+    }
+    <div id="map-detail" class="map-detail"><i class="fa-solid fa-hand-pointer"></i> Tap a marker or a location below to see details.</div>
+    <div class="map-legend" data-map-legend-for="${escapeAttr(slide.id)}"></div>
   `;
 
-  const pinsLayer = card.querySelector(".map-pins");
   const legend = card.querySelector(".map-legend");
   const detail = card.querySelector("#map-detail");
 
   function showHighlight(h) {
-    state.activeHighlightId = h.id;
     card.querySelectorAll(".map-pin, .map-legend-item").forEach(node => {
       node.classList.toggle("active", node.dataset.highlightId === h.id);
     });
     detail.innerHTML = `<strong>${escapeHTML(h.label)}</strong><br>${escapeHTML(h.description)}`;
   }
 
-  slide.highlights.forEach(h => {
-    const pin = el("button", "map-pin");
-    pin.type = "button";
-    pin.dataset.highlightId = h.id;
-    pin.style.top = h.top;
-    pin.style.left = h.left;
-    pin.innerHTML = `<i class="fa-solid ${h.icon}"></i>`;
-    pin.addEventListener("click", () => showHighlight(h));
-    pinsLayer.appendChild(pin);
+  (slide.highlights || []).forEach(h => {
+    if (!isSatellite) {
+      const pinsLayer = card.querySelector(".map-pins");
+      const pin = el("button", "map-pin");
+      pin.type = "button";
+      pin.dataset.highlightId = h.id;
+      pin.style.top = h.top;
+      pin.style.left = h.left;
+      pin.innerHTML = `<i class="fa-solid ${h.icon}"></i>`;
+      pin.addEventListener("click", () => showHighlight(h));
+      pinsLayer.appendChild(pin);
+    }
 
+    // The legend list is shared by both map modes. For satellite maps,
+    // initSatelliteMap() (called after this card is in the live DOM)
+    // additionally wires these same legend buttons to pan/open the
+    // matching Leaflet marker popup.
     const legendItem = el("button", "map-legend-item");
     legendItem.type = "button";
     legendItem.dataset.highlightId = h.id;
@@ -320,6 +403,61 @@ function renderMapSlide(slide) {
   });
 
   return card;
+}
+
+/**
+ * Initializes a real, interactive satellite/aerial map for the given slide
+ * using Leaflet + Esri World Imagery tiles (no API key required). Must be
+ * called AFTER the slide's container div is attached to the live DOM
+ * (see render()), since Leaflet needs to measure the container's pixel size.
+ */
+function initSatelliteMap(slide) {
+  const container = document.getElementById(`leaflet-${slide.id}`);
+  if (!container || typeof L === "undefined") return;
+
+  const map = L.map(container, { attributionControl: true }).setView(slide.center, slide.zoom || 16);
+
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
+  }).addTo(map);
+
+  const markersById = {};
+  (slide.highlights || []).forEach(h => {
+    const icon = L.divIcon({
+      className: "leaflet-pin-icon",
+      html: `<i class="fa-solid ${h.icon}"></i>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 34],
+      popupAnchor: [0, -32]
+    });
+    const marker = L.marker([h.lat, h.lng], { icon }).addTo(map);
+    marker.bindPopup(`<strong>${escapeHTML(h.label)}</strong><br>${escapeHTML(h.description)}`);
+    markersById[h.id] = marker;
+  });
+
+  // Clicking a legend item (built in renderMapSlide) also pans the map to,
+  // and opens the popup for, the matching marker.
+  container
+    .closest(".map-card")
+    .querySelectorAll(`[data-map-legend-for="${CSS.escape(slide.id)}"] .map-legend-item`)
+    .forEach(item => {
+      item.addEventListener("click", () => {
+        const marker = markersById[item.dataset.highlightId];
+        if (marker) {
+          map.panTo(marker.getLatLng());
+          marker.openPopup();
+        }
+      });
+    });
+
+  activeLeafletMap = map;
+
+  // Leaflet sometimes renders a partially-gray tile set if initialized
+  // while its container's final size wasn't yet settled (e.g. right after
+  // a CSS transition/animation frame) — a short delayed invalidateSize()
+  // forces it to re-measure and redraw correctly.
+  setTimeout(() => map.invalidateSize(), 150);
 }
 
 function renderQuizSlide(slide) {
@@ -385,13 +523,15 @@ function showAnswerFeedback(card, isCorrect) {
 /** Move forward/back through slides, crossing module boundaries and finishing to the Pass screen. */
 function moveSlide(direction) {
   const module = state.activeModules[state.moduleIndex];
-  const totalSlides = module.slides.length;
+  const slides = getVisibleSlides(module);
+  const totalSlides = slides.length;
   const nextIndex = state.slideIndex + direction;
 
   if (nextIndex < 0) {
     if (state.moduleIndex === 0) return;
     state.moduleIndex -= 1;
-    state.slideIndex = state.activeModules[state.moduleIndex].slides.length - 1;
+    const prevSlides = getVisibleSlides(state.activeModules[state.moduleIndex]);
+    state.slideIndex = prevSlides.length - 1;
   } else if (nextIndex >= totalSlides) {
     if (state.moduleIndex + 1 >= state.activeModules.length) {
       finishInduction();
@@ -605,7 +745,14 @@ function renderAdminDashboard() {
   wrap.querySelector("#add-facility-btn").addEventListener("click", () => {
     const name = prompt("New facility name:");
     if (!name) return;
-    state.db.facilities.push({ id: "facility-" + Date.now(), name, description: "New facility", icon: "fa-location-dot" });
+    const type = confirm("Is this a residential camp? (OK = Camp, Cancel = Operational Site)") ? "camp" : "operational";
+    state.db.facilities.push({
+      id: "facility-" + Date.now(),
+      name,
+      description: type === "camp" ? "Residential camp & support facility" : "Operational site",
+      icon: type === "camp" ? "fa-campground" : "fa-location-dot",
+      type
+    });
     saveDB(state.db);
     render();
   });
@@ -662,17 +809,23 @@ function renderModuleEditor(module) {
       </div>
     </div>
     <div class="editor-row">
-      <label>Applies to facilities</label>
+      <label>Applies to facilities (module-level default)</label>
       <div id="edit-facilities" class="flex flex-wrap gap-3"></div>
     </div>
 
     <div class="editor-row">
       <label>
-        Slides (JSON array) — each item needs "type": "info", "map", or "quiz".
-        info: heading, icon, body, alert(optional "critical"). map: heading, imageUrl, body,
-        highlights[{label, icon, top, left, description}]. quiz: question, options[], correctIndex.
+        Slides (JSON array) — each item needs "type": "info", "map", or "quiz". Any slide may
+        also include its own "facilities": [...] to override the module default (useful for
+        per-camp map slides sharing one module).<br/>
+        <strong>info:</strong> heading, icon, body, alert (optional: "critical" or "reference"),
+        image (optional: {url, position:"above"|"below", caption}).<br/>
+        <strong>map:</strong> heading, body, mapType: "satellite" or "layout".
+        Satellite → center:[lat,lng], zoom, highlights:[{label, icon, lat, lng, description}].
+        Layout → imageUrl, highlights:[{label, icon, top, left, description}].<br/>
+        <strong>quiz:</strong> question, options[], correctIndex.
       </label>
-      <textarea id="edit-slides" rows="16" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
+      <textarea id="edit-slides" rows="18" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
     </div>
 
     <p id="editor-error" class="text-red-600 text-sm hidden mb-3"></p>
@@ -702,6 +855,9 @@ function renderModuleEditor(module) {
       newSlides.forEach((s, i) => {
         if (!validTypes.includes(s.type)) {
           throw new Error(`Slide at index ${i} has an invalid or missing "type" (must be info, map, or quiz).`);
+        }
+        if (s.type === "map" && s.mapType === "satellite" && (!Array.isArray(s.center) || s.center.length !== 2)) {
+          throw new Error(`Slide at index ${i} is a satellite map but is missing a valid "center": [lat, lng].`);
         }
       });
 
