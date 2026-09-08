@@ -21,9 +21,7 @@
   --hse-steel: #4a5568;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--hse-offwhite);
@@ -37,13 +35,11 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* Visible keyboard focus everywhere, for accessibility */
-button:focus-visible, input:focus-visible, textarea:focus-visible {
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
   outline: 3px solid var(--hse-yellow);
   outline-offset: 2px;
 }
@@ -61,9 +57,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   position: relative;
 }
 
-body.admin-mode #app-shell {
-  max-width: 1180px;
-}
+body.admin-mode #app-shell { max-width: 1180px; }
 
 .app-header {
   background: var(--hse-navy);
@@ -90,7 +84,6 @@ body.admin-mode #app-shell {
   color: #fff;
   cursor: pointer;
 }
-
 .app-header .brand i { color: var(--hse-yellow); }
 
 .admin-gear-btn {
@@ -104,15 +97,10 @@ body.admin-mode #app-shell {
 }
 .admin-gear-btn:hover { color: var(--hse-yellow); }
 
-/* Repeating diagonal hazard stripe — used as a thin accent divider */
 .hazard-strip {
   height: 8px;
   width: 100%;
-  background: repeating-linear-gradient(
-    135deg,
-    var(--hse-yellow) 0 14px,
-    var(--hse-navy) 14px 28px
-  );
+  background: repeating-linear-gradient(135deg, var(--hse-yellow) 0 14px, var(--hse-navy) 14px 28px);
 }
 
 /* ---------------------------------------------------------------------- *
@@ -133,26 +121,15 @@ body.admin-mode #app-shell {
   text-align: left;
 }
 .facility-card .check-icon { opacity: 0; color: var(--hse-green); transition: opacity 0.15s ease; }
-.facility-card.selected {
-  border-color: var(--hse-yellow);
-  background: #fffbea;
-}
+.facility-card.selected { border-color: var(--hse-yellow); background: #fffbea; }
 .facility-card.selected .check-icon { opacity: 1; }
 
 /* ---------------------------------------------------------------------- *
  * Induction flow — progress bar + content cards
  * ---------------------------------------------------------------------- */
 
-.progress-track {
-  height: 6px;
-  width: 100%;
-  background: #e2e8f0;
-}
-.progress-fill {
-  height: 100%;
-  background: var(--hse-yellow);
-  transition: width 0.3s ease;
-}
+.progress-track { height: 6px; width: 100%; background: #e2e8f0; }
+.progress-fill { height: 100%; background: var(--hse-yellow); transition: width 0.3s ease; }
 
 .content-card {
   background: #fff;
@@ -162,10 +139,7 @@ body.admin-mode #app-shell {
   margin-top: 0.75rem;
   box-shadow: 0 2px 10px rgba(15, 27, 43, 0.05);
 }
-
-.content-card-critical {
-  border-left: 5px solid var(--hse-red);
-}
+.content-card-critical { border-left: 5px solid var(--hse-red); }
 
 .content-card-icon {
   width: 3rem;
@@ -178,11 +152,7 @@ body.admin-mode #app-shell {
   justify-content: center;
   font-size: 1.3rem;
 }
-.content-card-icon.quiz-icon {
-  background: #fffbea;
-  color: var(--hse-navy);
-  border: 2px solid var(--hse-yellow);
-}
+.content-card-icon.quiz-icon { background: #fffbea; color: var(--hse-navy); border: 2px solid var(--hse-yellow); }
 
 .critical-tag {
   display: inline-flex;
@@ -198,11 +168,7 @@ body.admin-mode #app-shell {
   padding: 0.2rem 0.6rem;
   margin-top: 0.75rem;
 }
-.critical-tag.quiz-tag {
-  color: var(--hse-navy);
-  background: #fffbea;
-  border-color: var(--hse-yellow);
-}
+.critical-tag.quiz-tag { color: var(--hse-navy); background: #fffbea; border-color: var(--hse-yellow); }
 
 /* Quiz options */
 .quiz-option {
@@ -234,16 +200,175 @@ body.admin-mode #app-shell {
   font-weight: 700;
   color: var(--hse-steel);
 }
-.quiz-option.correct {
-  border-color: var(--hse-green);
-  background: #f0fff4;
-}
+.quiz-option.correct { border-color: var(--hse-green); background: #f0fff4; }
 .quiz-option.correct .quiz-option-letter { background: var(--hse-green); color: #fff; }
-.quiz-option.incorrect {
-  border-color: var(--hse-red);
-  background: #fff5f5;
-}
+.quiz-option.incorrect { border-color: var(--hse-red); background: #fff5f5; }
 .quiz-option.incorrect .quiz-option-letter { background: var(--hse-red); color: #fff; }
+
+/* ---------------------------------------------------------------------- *
+ * Facility type badge (welcome screen)
+ * ---------------------------------------------------------------------- */
+
+.facility-type-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hse-steel);
+  background: #edf2f7;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  margin-right: 0.35rem;
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Slide images (info slides with an optional image above/below the text)
+ * ---------------------------------------------------------------------- */
+
+.slide-image {
+  width: 100%;
+  border-radius: 0.6rem;
+  margin: 0.85rem 0 0.25rem;
+  display: block;
+  border: 1px solid #e2e8f0;
+}
+.slide-image-caption {
+  font-size: 0.75rem;
+  color: var(--hse-steel);
+  text-align: center;
+  margin: 0.25rem 0 0.6rem;
+  font-style: italic;
+}
+
+/* "Reference" alert style — distinct blue accent, used for quick-reference
+   content (like emergency phone numbers) that isn't a hazard warning. */
+.content-card-reference { border-left: 5px solid #2b6cb0; }
+.critical-tag.reference-tag {
+  color: #2b6cb0;
+  background: #ebf8ff;
+  border-color: #bee3f8;
+}
+
+/* ---------------------------------------------------------------------- *
+ * Satellite map slide — real Leaflet map (mapType:"satellite")
+ * ---------------------------------------------------------------------- */
+
+.leaflet-map-frame {
+  height: 280px;
+  width: 100%;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: #cbd5e0; /* visible while tiles are loading */
+}
+
+/* Custom teardrop-style marker used by Leaflet's L.divIcon (see
+   initSatelliteMap in app.js). Rotated square = classic map-pin shape. */
+.leaflet-pin-icon {
+  width: 34px;
+  height: 34px;
+  background: var(--hse-yellow);
+  color: var(--hse-navy);
+  border: 2px solid #fff;
+  border-radius: 999px 999px 999px 0;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.leaflet-pin-icon i {
+  transform: rotate(-45deg);
+  font-size: 0.9rem;
+}
+
+/* Keep Leaflet's popup styling in line with the app's look */
+.leaflet-popup-content-wrapper {
+  border-radius: 0.5rem;
+  font-family: "Barlow", sans-serif;
+  font-size: 0.85rem;
+}
+.leaflet-popup-content { margin: 0.65rem 0.85rem; line-height: 1.4; }
+
+/* ---------------------------------------------------------------------- *
+ * Map slide — image with positioned pin markers + legend + detail panel
+ * (used when mapType is "layout" — a drawn/photographed 2D floor plan)
+ * ---------------------------------------------------------------------- */
+
+.map-frame {
+  position: relative;
+  width: 100%;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background: var(--hse-navy);
+}
+.map-image { width: 100%; display: block; }
+.map-pins { position: absolute; inset: 0; }
+
+.map-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 999px;
+  background: var(--hse-yellow);
+  color: var(--hse-navy);
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  animation: pinPulse 2.4s ease-in-out infinite;
+}
+.map-pin:hover, .map-pin.active {
+  background: var(--hse-red);
+  color: #fff;
+  transform: translate(-50%, -50%) scale(1.15);
+  animation: none;
+}
+@keyframes pinPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 0 rgba(242,183,5,0.5); }
+  50% { box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 0 0 8px rgba(242,183,5,0); }
+}
+
+.map-detail {
+  margin-top: 0.85rem;
+  padding: 0.8rem 1rem;
+  background: #fffbea;
+  border: 1px dashed var(--hse-yellow);
+  border-radius: 0.5rem;
+  font-size: 0.88rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+.map-detail i { color: var(--hse-yellow); margin-right: 0.3rem; }
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  color: #4a5568;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.map-legend-item:hover { border-color: var(--hse-yellow); }
+.map-legend-item.active { border-color: var(--hse-red); background: #fff5f5; color: var(--hse-red); font-weight: 600; }
 
 /* Bottom nav bar for the flow screen */
 .flow-nav {
@@ -271,34 +396,19 @@ body.admin-mode #app-shell {
   transition: opacity 0.15s ease, background-color 0.15s ease;
   border: none;
 }
-.nav-btn-primary {
-  background: var(--hse-navy);
-  color: #fff;
-}
+.nav-btn-primary { background: var(--hse-navy); color: #fff; }
 .nav-btn-primary:disabled { opacity: 0.4; cursor: default; }
 .nav-btn-primary:hover:not(:disabled) { background: #16263c; }
-.nav-btn-secondary {
-  background: #edf2f7;
-  color: #2d3748;
-}
+.nav-btn-secondary { background: #edf2f7; color: #2d3748; }
 .nav-btn-secondary:hover { background: #e2e8f0; }
-.nav-btn-danger {
-  background: #fff5f5;
-  color: var(--hse-red);
-  border: 1px solid #fed7d7;
-}
+.nav-btn-danger { background: #fff5f5; color: var(--hse-red); border: 1px solid #fed7d7; }
 .nav-btn-danger:hover { background: #fed7d7; }
 
 /* ---------------------------------------------------------------------- *
  * Digital pass card
  * ---------------------------------------------------------------------- */
 
-.hse-pass-card {
-  border-radius: 0.9rem;
-  overflow: hidden;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 8px 24px rgba(15, 27, 43, 0.12);
-}
+.hse-pass-card { border-radius: 0.9rem; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 8px 24px rgba(15, 27, 43, 0.12); }
 .hse-pass-card-fail { filter: grayscale(0.3); }
 
 .hse-pass-header {
@@ -313,27 +423,12 @@ body.admin-mode #app-shell {
   justify-content: space-between;
   align-items: center;
 }
-
-.hse-pass-body {
-  background: #fff;
-  padding: 1.1rem;
-}
-.hse-pass-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem 0;
-  border-bottom: 1px dashed #e2e8f0;
-  font-size: 0.92rem;
-}
+.hse-pass-body { background: #fff; padding: 1.1rem; }
+.hse-pass-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #e2e8f0; font-size: 0.92rem; }
 .hse-pass-row:last-child { border-bottom: none; }
 .hse-pass-row span { color: var(--hse-steel); }
-
 .hse-pass-footer {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--hse-yellow) 0 10px,
-    var(--hse-navy) 10px 20px
-  );
+  background: repeating-linear-gradient(135deg, var(--hse-yellow) 0 10px, var(--hse-navy) 10px 20px);
   color: transparent;
   text-align: center;
   font-size: 0.6rem;
@@ -344,37 +439,12 @@ body.admin-mode #app-shell {
  * Admin dashboard (desktop-optimized)
  * ---------------------------------------------------------------------- */
 
-.admin-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-}
+.admin-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; }
+.admin-layout { display: grid; grid-template-columns: 240px 1fr; }
+@media (max-width: 720px) { .admin-layout { grid-template-columns: 1fr; } }
 
-.admin-layout {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-}
-
-@media (max-width: 720px) {
-  .admin-layout { grid-template-columns: 1fr; }
-}
-
-.admin-sidebar {
-  border-right: 1px solid #e2e8f0;
-  padding: 1.1rem;
-  min-height: 60vh;
-}
-
-.admin-section-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--hse-steel);
-  margin-bottom: 0.5rem;
-}
+.admin-sidebar { border-right: 1px solid #e2e8f0; padding: 1.1rem; min-height: 60vh; }
+.admin-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--hse-steel); margin-bottom: 0.5rem; }
 
 .admin-nav-item {
   width: 100%;
@@ -395,13 +465,7 @@ body.admin-mode #app-shell {
 .admin-nav-item-static { cursor: default; }
 .admin-nav-item-static:hover { background: none; }
 
-.admin-delete-icon {
-  background: none;
-  border: none;
-  color: #cbd5e0;
-  cursor: pointer;
-  padding: 0.2rem;
-}
+.admin-delete-icon { background: none; border: none; color: #cbd5e0; cursor: pointer; padding: 0.2rem; }
 .admin-delete-icon:hover { color: var(--hse-red); }
 
 .admin-add-btn {
@@ -417,20 +481,15 @@ body.admin-mode #app-shell {
   padding: 0.45rem;
   background: none;
   cursor: pointer;
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
 }
 .admin-add-btn:hover { border-color: var(--hse-yellow); color: var(--hse-navy); }
 
-.admin-record-row {
-  border-bottom: 1px solid #edf2f7;
-  padding: 0.35rem 0;
-}
-
-.admin-main {
-  padding: 1.5rem;
-}
+.admin-record-row { border-bottom: 1px solid #edf2f7; padding: 0.35rem 0; }
+.admin-main { padding: 1.5rem; }
 
 .module-editor .editor-row { margin-bottom: 1.1rem; }
+.module-editor .editor-row-inline { display: flex; gap: 1rem; margin-bottom: 1.1rem; }
 .module-editor label {
   display: block;
   font-size: 0.75rem;
@@ -440,12 +499,13 @@ body.admin-mode #app-shell {
   color: var(--hse-steel);
   margin-bottom: 0.3rem;
 }
-.module-editor input[type="text"] {
+.module-editor input[type="text"], .module-editor select {
   width: 100%;
   border: 1px solid #cbd5e0;
   border-radius: 0.45rem;
   padding: 0.55rem 0.75rem;
   font-size: 0.9rem;
+  background: #fff;
 }
 .json-textarea {
   width: 100%;
@@ -459,38 +519,21 @@ body.admin-mode #app-shell {
   color: #e2e8f0;
 }
 
-.facility-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  background: #f7f5f0;
-  border-radius: 0.4rem;
-  padding: 0.35rem 0.6rem;
-}
-
+.facility-checkbox { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; background: #f7f5f0; border-radius: 0.4rem; padding: 0.35rem 0.6rem; }
 .save-flash { background: var(--hse-green) !important; }
 
 /* ---------------------------------------------------------------------- *
  * Animations
  * ---------------------------------------------------------------------- */
 
-.fade-in {
-  animation: fadeInUp 0.25s ease both;
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.fade-in { animation: fadeInUp 0.25s ease both; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------------------------------------------------------------------- *
  * Print styles — used by the "Print" button on the Digital Pass screen
  * ---------------------------------------------------------------------- */
 
 @media print {
-  .app-header, .hazard-strip, .flow-nav, #admin-entry-btn,
-  #print-pass-btn, #restart-btn {
-    display: none !important;
-  }
+  .app-header, .hazard-strip, .flow-nav, #admin-entry-btn, #print-pass-btn, #restart-btn { display: none !important; }
   body { background: #fff; }
 }
