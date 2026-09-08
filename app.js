@@ -11,8 +11,9 @@
  *   2. Global state
  *   3. Boot / init
  *   4. Router
- *   5. User App views: welcome, induction flow (info/map/quiz slides), pass
- *   6. Admin views: PIN gate, dashboard, module editor
+ *   5. User App views: welcome (+ camp picker modal), induction flow
+ *      (info/map/quiz slides), digital pass
+ *   6. Admin views: PIN gate, dashboard, FORM-BASED module/slide editor
  *   7. Utility / DOM helpers
  * ============================================================================
  */
@@ -78,7 +79,7 @@ const state = {
 
 // Tracks the currently-mounted Leaflet map instance (if any) so we can tear
 // it down cleanly before the next render — Leaflet maps can't be silently
-// re-initialized on a DOM node that React/vanilla re-rendering has replaced.
+// re-initialized on a DOM node that vanilla re-rendering has replaced.
 let activeLeafletMap = null;
 
 /* ---------------------------------------------------------------------- *
@@ -123,6 +124,11 @@ function getVisibleSlides(module) {
   );
 }
 
+/** Generates a reasonably-unique id for new slides/markers created in Admin. */
+function uid(prefix) {
+  return prefix + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+}
+
 /* ---------------------------------------------------------------------- *
  * 4. ROUTER
  * ---------------------------------------------------------------------- */
@@ -150,8 +156,7 @@ function render() {
 
   // A satellite map needs its container attached to the live DOM (with a
   // real pixel size) before Leaflet can measure it — so we initialize it
-  // AFTER the view has been appended to #app-root above, not while the
-  // card was still being built off-DOM inside renderMapSlide().
+  // AFTER the view has been appended to #app-root above.
   if (state.view === "flow") {
     const module = state.activeModules[state.moduleIndex];
     const slide = module ? getVisibleSlides(module)[state.slideIndex] : null;
@@ -162,7 +167,7 @@ function render() {
 }
 
 /* ---------------------------------------------------------------------- *
- * 5a. USER APP — Welcome / facility selector
+ * 5a. USER APP — Welcome / facility selector (with grouped camp picker)
  * ---------------------------------------------------------------------- */
 
 function renderWelcome() {
@@ -192,7 +197,51 @@ function renderWelcome() {
   `;
 
   const facilityList = wrap.querySelector("#facility-list");
-  state.db.facilities.forEach(facility => {
+  // Facilities are split into two groups for display:
+  //  - "camp"        → collapsed into ONE button that opens a picker modal
+  //  - anything else → shown as its own direct-tap card, same as before
+  const camps = state.db.facilities.filter(f => f.type === "camp");
+  const otherFacilities = state.db.facilities.filter(f => f.type !== "camp");
+
+  function markSelected(node) {
+    facilityList.querySelectorAll(".facility-card").forEach(c => c.classList.remove("selected"));
+    node.classList.add("selected");
+  }
+
+  let campSelectorBtn = null;
+  function refreshCampSelectorLabel() {
+    if (!campSelectorBtn) return;
+    const selectedCamp = camps.find(c => c.id === state.user.facilityId);
+    campSelectorBtn.innerHTML = `
+      <i class="fa-solid fa-campground text-xl text-slate-700 w-8"></i>
+      <div class="text-left flex-1">
+        <div class="font-semibold text-slate-900">${selectedCamp ? escapeHTML(selectedCamp.name) : "Select a Camp"}</div>
+        <div class="text-xs text-slate-500">${
+          selectedCamp
+            ? escapeHTML(selectedCamp.description)
+            : "Choose from " + camps.length + " camp" + (camps.length !== 1 ? "s" : "")
+        }</div>
+      </div>
+      <i class="fa-solid fa-chevron-down text-slate-400"></i>
+    `;
+  }
+
+  if (camps.length > 0) {
+    campSelectorBtn = el("button", "facility-card facility-card-camp-selector");
+    campSelectorBtn.type = "button";
+    refreshCampSelectorLabel();
+    campSelectorBtn.addEventListener("click", () => {
+      openCampPicker(camps, state.user.facilityId, chosenCamp => {
+        state.user.facilityId = chosenCamp.id;
+        refreshCampSelectorLabel();
+        markSelected(campSelectorBtn);
+        validateWelcomeForm();
+      });
+    });
+    facilityList.appendChild(campSelectorBtn);
+  }
+
+  otherFacilities.forEach(facility => {
     const card = el("button", "facility-card");
     card.type = "button";
     card.dataset.facilityId = facility.id;
@@ -202,13 +251,12 @@ function renderWelcome() {
         <div class="font-semibold text-slate-900">${escapeHTML(facility.name)}</div>
         <div class="text-xs text-slate-500">${escapeHTML(facility.description)}</div>
       </div>
-      ${facility.type ? `<span class="facility-type-badge">${facility.type === "camp" ? "Camp" : "Site"}</span>` : ""}
       <i class="fa-solid fa-circle-check check-icon"></i>
     `;
     card.addEventListener("click", () => {
       state.user.facilityId = facility.id;
-      wrap.querySelectorAll(".facility-card").forEach(c => c.classList.remove("selected"));
-      card.classList.add("selected");
+      markSelected(card);
+      refreshCampSelectorLabel(); // resets the camp button back to its unselected label
       validateWelcomeForm();
     });
     facilityList.appendChild(card);
@@ -232,6 +280,61 @@ function renderWelcome() {
 
   wrap.querySelector("#start-btn").addEventListener("click", beginInduction);
   return wrap;
+}
+
+/**
+ * A bottom-sheet modal listing the individual camps, appended directly to
+ * <body> (so it overlays the whole viewport regardless of where the
+ * welcome screen's DOM sits). Calls onSelect(camp) and closes itself once
+ * a camp is tapped; can also be dismissed via the backdrop, the close
+ * button, or the Escape key.
+ */
+function openCampPicker(camps, currentSelectedId, onSelect) {
+  const overlay = el("div", "modal-overlay fade-in");
+  overlay.innerHTML = `
+    <div class="modal-sheet">
+      <div class="modal-sheet-header">
+        <h3 class="font-display text-lg text-slate-900">Select a Camp</h3>
+        <button type="button" class="modal-close-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-sheet-body space-y-3"></div>
+    </div>
+  `;
+
+  const body = overlay.querySelector(".modal-sheet-body");
+  camps.forEach(camp => {
+    const row = el("button", "facility-card" + (camp.id === currentSelectedId ? " selected" : ""));
+    row.type = "button";
+    row.innerHTML = `
+      <i class="fa-solid ${camp.icon} text-xl text-slate-700 w-8"></i>
+      <div class="text-left flex-1">
+        <div class="font-semibold text-slate-900">${escapeHTML(camp.name)}</div>
+        <div class="text-xs text-slate-500">${escapeHTML(camp.description)}</div>
+      </div>
+      <i class="fa-solid fa-circle-check check-icon"></i>
+    `;
+    row.addEventListener("click", () => {
+      onSelect(camp);
+      closeModal();
+    });
+    body.appendChild(row);
+  });
+
+  function closeModal() {
+    overlay.remove();
+    document.removeEventListener("keydown", onKeydown);
+  }
+  function onKeydown(e) {
+    if (e.key === "Escape") closeModal();
+  }
+
+  overlay.addEventListener("click", e => {
+    if (e.target === overlay) closeModal(); // backdrop click (not the sheet itself)
+  });
+  overlay.querySelector(".modal-close-btn").addEventListener("click", closeModal);
+  document.addEventListener("keydown", onKeydown);
+
+  document.body.appendChild(overlay);
 }
 
 /** Build the ordered list of modules that apply to the chosen facility, then start the flow. */
@@ -436,8 +539,6 @@ function initSatelliteMap(slide) {
     markersById[h.id] = marker;
   });
 
-  // Clicking a legend item (built in renderMapSlide) also pans the map to,
-  // and opens the popup for, the matching marker.
   container
     .closest(".map-card")
     .querySelectorAll(`[data-map-legend-for="${CSS.escape(slide.id)}"] .map-legend-item`)
@@ -452,11 +553,6 @@ function initSatelliteMap(slide) {
     });
 
   activeLeafletMap = map;
-
-  // Leaflet sometimes renders a partially-gray tile set if initialized
-  // while its container's final size wasn't yet settled (e.g. right after
-  // a CSS transition/animation frame) — a short delayed invalidateSize()
-  // forces it to re-measure and redraw correctly.
   setTimeout(() => map.invalidateSize(), 150);
 }
 
@@ -712,12 +808,12 @@ function renderAdminDashboard() {
 
   wrap.querySelector("#add-module-btn").addEventListener("click", () => {
     const newModule = {
-      id: "mod-" + Date.now(),
+      id: uid("mod"),
       title: "New Module",
       icon: "fa-file-circle-plus",
       category: "orientation",
       facilities: ["all"],
-      slides: [{ type: "info", id: "slide-" + Date.now(), heading: "New Slide", icon: "fa-circle-info", body: "Edit this slide's content." }]
+      slides: [defaultSlide("info")]
     };
     state.db.modules.push(newModule);
     saveDB(state.db);
@@ -747,7 +843,7 @@ function renderAdminDashboard() {
     if (!name) return;
     const type = confirm("Is this a residential camp? (OK = Camp, Cancel = Operational Site)") ? "camp" : "operational";
     state.db.facilities.push({
-      id: "facility-" + Date.now(),
+      id: uid("facility"),
       name,
       description: type === "camp" ? "Residential camp & support facility" : "Operational site",
       icon: type === "camp" ? "fa-campground" : "fa-location-dot",
@@ -787,8 +883,27 @@ function renderAdminDashboard() {
   return wrap;
 }
 
+/* ---------------------------------------------------------------------- *
+ * 6c. ADMIN — FORM-BASED module & slide editor (no raw JSON required)
+ * ---------------------------------------------------------------------- */
+
+/** A fresh, blank slide object of the given type, used by the "Add slide" buttons. */
+function defaultSlide(type) {
+  if (type === "info") {
+    return { type: "info", id: uid("slide"), heading: "New Info Slide", icon: "fa-circle-info", body: "" };
+  }
+  if (type === "map") {
+    return { type: "map", id: uid("slide"), heading: "New Map", body: "", mapType: "satellite", center: [0, 0], zoom: 16, highlights: [] };
+  }
+  return { type: "quiz", id: uid("slide"), question: "", options: ["", ""], correctIndex: 0 };
+}
+
 function renderModuleEditor(module) {
   const panel = el("div", "module-editor");
+
+  // Edits happen on a deep-cloned working copy of the slides so nothing
+  // touches the live data (or localStorage) until "Save changes" is clicked.
+  const workingSlides = JSON.parse(JSON.stringify(module.slides));
 
   panel.innerHTML = `
     <div class="editor-row">
@@ -809,23 +924,19 @@ function renderModuleEditor(module) {
       </div>
     </div>
     <div class="editor-row">
-      <label>Applies to facilities (module-level default)</label>
+      <label>Applies to facilities (module default)</label>
       <div id="edit-facilities" class="flex flex-wrap gap-3"></div>
     </div>
 
     <div class="editor-row">
-      <label>
-        Slides (JSON array) — each item needs "type": "info", "map", or "quiz". Any slide may
-        also include its own "facilities": [...] to override the module default (useful for
-        per-camp map slides sharing one module).<br/>
-        <strong>info:</strong> heading, icon, body, alert (optional: "critical" or "reference"),
-        image (optional: {url, position:"above"|"below", caption}).<br/>
-        <strong>map:</strong> heading, body, mapType: "satellite" or "layout".
-        Satellite → center:[lat,lng], zoom, highlights:[{label, icon, lat, lng, description}].
-        Layout → imageUrl, highlights:[{label, icon, top, left, description}].<br/>
-        <strong>quiz:</strong> question, options[], correctIndex.
-      </label>
-      <textarea id="edit-slides" rows="18" class="json-textarea">${escapeHTML(JSON.stringify(module.slides, null, 2))}</textarea>
+      <label>Slides</label>
+      <div id="slides-editor-list" class="space-y-4"></div>
+      <div class="add-slide-row">
+        <span class="add-slide-label">Add slide:</span>
+        <button type="button" class="add-slide-btn" data-add-type="info"><i class="fa-solid fa-file-lines"></i> Info</button>
+        <button type="button" class="add-slide-btn" data-add-type="map"><i class="fa-solid fa-map-location-dot"></i> Map</button>
+        <button type="button" class="add-slide-btn" data-add-type="quiz"><i class="fa-solid fa-circle-question"></i> Quiz</button>
+      </div>
     </div>
 
     <p id="editor-error" class="text-red-600 text-sm hidden mb-3"></p>
@@ -836,6 +947,7 @@ function renderModuleEditor(module) {
     </div>
   `;
 
+  // Module-level facilities checkboxes (unchanged behaviour)
   const facilitiesWrap = panel.querySelector("#edit-facilities");
   const allOptions = [{ id: "all", name: "All facilities" }, ...window.__hseAdminFacilityOptions()];
   allOptions.forEach(opt => {
@@ -845,19 +957,51 @@ function renderModuleEditor(module) {
     facilitiesWrap.appendChild(label);
   });
 
+  const slidesListEl = panel.querySelector("#slides-editor-list");
+  function rerenderSlidesList() {
+    slidesListEl.innerHTML = "";
+    workingSlides.forEach((slide, index) => {
+      slidesListEl.appendChild(renderSlideCardEditor(slide, index, workingSlides, rerenderSlidesList));
+    });
+  }
+  rerenderSlidesList();
+
+  panel.querySelectorAll(".add-slide-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      workingSlides.push(defaultSlide(btn.dataset.addType));
+      rerenderSlidesList();
+    });
+  });
+
   panel.querySelector("#save-module-btn").addEventListener("click", () => {
     const errorEl = panel.querySelector("#editor-error");
     errorEl.classList.add("hidden");
     try {
-      const newSlides = JSON.parse(panel.querySelector("#edit-slides").value);
-      if (!Array.isArray(newSlides)) throw new Error("Slides must be a JSON array.");
-      const validTypes = ["info", "map", "quiz"];
-      newSlides.forEach((s, i) => {
-        if (!validTypes.includes(s.type)) {
-          throw new Error(`Slide at index ${i} has an invalid or missing "type" (must be info, map, or quiz).`);
+      if (workingSlides.length === 0) throw new Error("A module needs at least one slide.");
+
+      workingSlides.forEach((s, i) => {
+        const n = i + 1;
+        if (s.type === "info" && !(s.heading || "").trim()) {
+          throw new Error(`Slide ${n} (info) needs a heading.`);
         }
-        if (s.type === "map" && s.mapType === "satellite" && (!Array.isArray(s.center) || s.center.length !== 2)) {
-          throw new Error(`Slide at index ${i} is a satellite map but is missing a valid "center": [lat, lng].`);
+        if (s.type === "map") {
+          if (!(s.heading || "").trim()) throw new Error(`Slide ${n} (map) needs a heading.`);
+          if (s.mapType === "satellite") {
+            if (!Array.isArray(s.center) || s.center.some(v => typeof v !== "number" || Number.isNaN(v))) {
+              throw new Error(`Slide ${n} (map) needs a valid center latitude/longitude.`);
+            }
+          } else if (!(s.imageUrl || "").trim()) {
+            throw new Error(`Slide ${n} (map) needs a layout image URL.`);
+          }
+        }
+        if (s.type === "quiz") {
+          if (!(s.question || "").trim()) throw new Error(`Slide ${n} (quiz) needs a question.`);
+          if (!Array.isArray(s.options) || s.options.length < 2 || s.options.some(o => !(o || "").trim())) {
+            throw new Error(`Slide ${n} (quiz) needs at least 2 non-empty options.`);
+          }
+          if (s.correctIndex === undefined || s.correctIndex < 0 || s.correctIndex >= s.options.length) {
+            throw new Error(`Slide ${n} (quiz) needs a correct answer selected.`);
+          }
         }
       });
 
@@ -866,13 +1010,13 @@ function renderModuleEditor(module) {
       module.title = panel.querySelector("#edit-title").value.trim() || module.title;
       module.icon = panel.querySelector("#edit-icon").value.trim() || module.icon;
       module.category = panel.querySelector("#edit-category").value;
-      module.slides = newSlides;
       module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
+      module.slides = JSON.parse(JSON.stringify(workingSlides)); // commit the working copy
 
       saveDB(state.db);
       flashSaved(panel);
     } catch (e) {
-      errorEl.textContent = "Could not save — check your JSON syntax. (" + e.message + ")";
+      errorEl.textContent = e.message;
       errorEl.classList.remove("hidden");
     }
   });
@@ -888,7 +1032,350 @@ function renderModuleEditor(module) {
   return panel;
 }
 
-// Small helper so renderModuleEditor can read the current facility list without a circular import
+/** One slide's editor card: header (type badge + reorder/delete) + type-specific form + facility override. */
+function renderSlideCardEditor(slide, index, workingSlides, rerenderList) {
+  const card = el("div", "slide-editor-card");
+
+  const header = el("div", "slide-editor-header");
+  header.innerHTML = `
+    <span class="slide-type-badge slide-type-${slide.type}">${slide.type}</span>
+    <span class="slide-editor-index">Slide ${index + 1}</span>
+    <div class="slide-editor-actions">
+      <button type="button" class="icon-btn" data-action="up" title="Move up"><i class="fa-solid fa-arrow-up"></i></button>
+      <button type="button" class="icon-btn" data-action="down" title="Move down"><i class="fa-solid fa-arrow-down"></i></button>
+      <button type="button" class="icon-btn icon-btn-danger" data-action="delete" title="Delete slide"><i class="fa-solid fa-trash"></i></button>
+    </div>
+  `;
+  header.querySelector('[data-action="up"]').addEventListener("click", () => {
+    if (index === 0) return;
+    const tmp = workingSlides[index - 1];
+    workingSlides[index - 1] = workingSlides[index];
+    workingSlides[index] = tmp;
+    rerenderList();
+  });
+  header.querySelector('[data-action="down"]').addEventListener("click", () => {
+    if (index === workingSlides.length - 1) return;
+    const tmp = workingSlides[index + 1];
+    workingSlides[index + 1] = workingSlides[index];
+    workingSlides[index] = tmp;
+    rerenderList();
+  });
+  header.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    if (!confirm("Delete this slide?")) return;
+    workingSlides.splice(index, 1);
+    rerenderList();
+  });
+  card.appendChild(header);
+
+  const body = el("div", "slide-editor-body");
+  if (slide.type === "info") body.appendChild(buildInfoSlideForm(slide));
+  else if (slide.type === "map") body.appendChild(buildMapSlideForm(slide, rerenderList));
+  else if (slide.type === "quiz") body.appendChild(buildQuizSlideForm(slide, rerenderList));
+  card.appendChild(body);
+
+  // A control shared by every slide type: optionally restrict this ONE
+  // slide to specific facilities (e.g. a camp-specific map slide living
+  // inside a module that's otherwise shared by every camp).
+  card.appendChild(buildSlideFacilitiesOverride(slide));
+
+  return card;
+}
+
+function buildInfoSlideForm(slide) {
+  const wrap = el("div", "slide-form");
+  const hasImage = !!slide.image;
+  const imageUrl = slide.image ? slide.image.url || "" : "";
+  const imagePosition = slide.image ? slide.image.position || "below" : "below";
+  const imageCaption = slide.image ? slide.image.caption || "" : "";
+
+  wrap.innerHTML = `
+    <div class="slide-field-row">
+      <label>Heading</label>
+      <input data-f="heading" type="text" value="${escapeAttr(slide.heading || "")}" />
+    </div>
+    <div class="slide-field-row-inline">
+      <div class="flex-1"><label>Icon (Font Awesome class)</label><input data-f="icon" type="text" value="${escapeAttr(slide.icon || "")}" /></div>
+      <div class="flex-1">
+        <label>Alert style</label>
+        <select data-f="alert">
+          <option value="" ${!slide.alert ? "selected" : ""}>None</option>
+          <option value="critical" ${slide.alert === "critical" ? "selected" : ""}>Critical (red)</option>
+          <option value="reference" ${slide.alert === "reference" ? "selected" : ""}>Quick Reference (blue)</option>
+        </select>
+      </div>
+    </div>
+    <div class="slide-field-row">
+      <label>Body text</label>
+      <textarea data-f="body" rows="4">${escapeHTML(slide.body || "")}</textarea>
+    </div>
+    <div class="slide-field-row">
+      <label class="checkbox-label"><input type="checkbox" id="has-image-${slide.id}" ${hasImage ? "checked" : ""} /> Include an image</label>
+      <div class="image-subfields" style="display:${hasImage ? "block" : "none"}">
+        <input data-f="image-url" type="text" placeholder="Image URL" value="${escapeAttr(imageUrl)}" />
+        <div class="slide-field-row-inline mt-2">
+          <select data-f="image-position" class="flex-1">
+            <option value="above" ${imagePosition === "above" ? "selected" : ""}>Show above text</option>
+            <option value="below" ${imagePosition === "below" ? "selected" : ""}>Show below text</option>
+          </select>
+          <input data-f="image-caption" type="text" placeholder="Caption (optional)" value="${escapeAttr(imageCaption)}" class="flex-1" />
+        </div>
+      </div>
+    </div>
+  `;
+
+  wrap.querySelector('[data-f="heading"]').addEventListener("input", e => { slide.heading = e.target.value; });
+  wrap.querySelector('[data-f="icon"]').addEventListener("input", e => { slide.icon = e.target.value; });
+  wrap.querySelector('[data-f="alert"]').addEventListener("change", e => {
+    if (e.target.value) slide.alert = e.target.value;
+    else delete slide.alert;
+  });
+  wrap.querySelector('[data-f="body"]').addEventListener("input", e => { slide.body = e.target.value; });
+
+  const imageCheckbox = wrap.querySelector(`#has-image-${slide.id}`);
+  const imageSubfields = wrap.querySelector(".image-subfields");
+  imageCheckbox.addEventListener("change", e => {
+    if (e.target.checked) {
+      slide.image = slide.image || { url: "", position: "below", caption: "" };
+      imageSubfields.style.display = "block";
+    } else {
+      delete slide.image;
+      imageSubfields.style.display = "none";
+    }
+  });
+  wrap.querySelector('[data-f="image-url"]').addEventListener("input", e => {
+    slide.image = slide.image || { position: "below" };
+    slide.image.url = e.target.value;
+  });
+  wrap.querySelector('[data-f="image-position"]').addEventListener("change", e => {
+    slide.image = slide.image || {};
+    slide.image.position = e.target.value;
+  });
+  wrap.querySelector('[data-f="image-caption"]').addEventListener("input", e => {
+    slide.image = slide.image || {};
+    slide.image.caption = e.target.value;
+  });
+
+  return wrap;
+}
+
+function buildMapSlideForm(slide, rerenderList) {
+  const wrap = el("div", "slide-form");
+  const isSatellite = slide.mapType === "satellite";
+
+  wrap.innerHTML = `
+    <div class="slide-field-row">
+      <label>Heading</label>
+      <input data-f="heading" type="text" value="${escapeAttr(slide.heading || "")}" />
+    </div>
+    <div class="slide-field-row">
+      <label>Intro text (shown above the map)</label>
+      <textarea data-f="body" rows="2">${escapeHTML(slide.body || "")}</textarea>
+    </div>
+    <div class="slide-field-row">
+      <label>Map type</label>
+      <select data-f="mapType">
+        <option value="satellite" ${isSatellite ? "selected" : ""}>Satellite / aerial map (real coordinates)</option>
+        <option value="layout" ${!isSatellite ? "selected" : ""}>2D layout image (floor plan / drawn map)</option>
+      </select>
+    </div>
+    <div id="map-type-fields"></div>
+    <div class="slide-field-row">
+      <label>Markers</label>
+      <div id="markers-list" class="space-y-3"></div>
+      <button type="button" id="add-marker-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add marker</button>
+    </div>
+  `;
+
+  wrap.querySelector('[data-f="heading"]').addEventListener("input", e => { slide.heading = e.target.value; });
+  wrap.querySelector('[data-f="body"]').addEventListener("input", e => { slide.body = e.target.value; });
+  wrap.querySelector('[data-f="mapType"]').addEventListener("change", e => {
+    slide.mapType = e.target.value;
+    // lat/lng and top/left aren't interchangeable, so switching map type
+    // resets each marker's coordinate fields to sensible blanks rather
+    // than trying to convert between them.
+    if (slide.mapType === "satellite") {
+      slide.center = slide.center || [0, 0];
+      slide.zoom = slide.zoom || 16;
+      delete slide.imageUrl;
+      (slide.highlights || []).forEach(h => { delete h.top; delete h.left; h.lat = h.lat || 0; h.lng = h.lng || 0; });
+    } else {
+      slide.imageUrl = slide.imageUrl || "";
+      delete slide.center;
+      delete slide.zoom;
+      (slide.highlights || []).forEach(h => { delete h.lat; delete h.lng; h.top = h.top || "50%"; h.left = h.left || "50%"; });
+    }
+    rerenderList();
+  });
+
+  const typeFieldsEl = wrap.querySelector("#map-type-fields");
+  if (isSatellite) {
+    const center = slide.center || [0, 0];
+    typeFieldsEl.innerHTML = `
+      <div class="slide-field-row-inline">
+        <div class="flex-1"><label>Center latitude</label><input data-f="lat" type="number" step="any" value="${center[0]}" /></div>
+        <div class="flex-1"><label>Center longitude</label><input data-f="lng" type="number" step="any" value="${center[1]}" /></div>
+        <div class="flex-1"><label>Zoom (1–19)</label><input data-f="zoom" type="number" min="1" max="19" value="${slide.zoom || 16}" /></div>
+      </div>
+      <p class="field-hint">Tip: open Google Maps, right-click the exact spot, and copy the coordinates it shows.</p>
+    `;
+    typeFieldsEl.querySelector('[data-f="lat"]').addEventListener("input", e => {
+      const lng = slide.center ? slide.center[1] : 0;
+      slide.center = [parseFloat(e.target.value) || 0, lng];
+    });
+    typeFieldsEl.querySelector('[data-f="lng"]').addEventListener("input", e => {
+      const lat = slide.center ? slide.center[0] : 0;
+      slide.center = [lat, parseFloat(e.target.value) || 0];
+    });
+    typeFieldsEl.querySelector('[data-f="zoom"]').addEventListener("input", e => {
+      slide.zoom = parseInt(e.target.value, 10) || 16;
+    });
+  } else {
+    typeFieldsEl.innerHTML = `
+      <div class="slide-field-row">
+        <label>Layout image URL</label>
+        <input data-f="imageUrl" type="text" value="${escapeAttr(slide.imageUrl || "")}" placeholder="https://..." />
+      </div>
+    `;
+    typeFieldsEl.querySelector('[data-f="imageUrl"]').addEventListener("input", e => { slide.imageUrl = e.target.value; });
+  }
+
+  slide.highlights = slide.highlights || [];
+  const markersListEl = wrap.querySelector("#markers-list");
+  slide.highlights.forEach((h, hIndex) => {
+    markersListEl.appendChild(buildMarkerForm(h, hIndex, slide, isSatellite, rerenderList));
+  });
+  wrap.querySelector("#add-marker-btn").addEventListener("click", () => {
+    const newMarker = { id: uid("marker"), label: "New location", icon: "fa-location-dot", description: "" };
+    if (isSatellite) {
+      newMarker.lat = slide.center ? slide.center[0] : 0;
+      newMarker.lng = slide.center ? slide.center[1] : 0;
+    } else {
+      newMarker.top = "50%";
+      newMarker.left = "50%";
+    }
+    slide.highlights.push(newMarker);
+    rerenderList();
+  });
+
+  return wrap;
+}
+
+function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
+  const row = el("div", "marker-form-row");
+  const coordFields = isSatellite
+    ? `<div class="slide-field-row-inline">
+         <div class="flex-1"><label>Latitude</label><input data-f="lat" type="number" step="any" value="${marker.lat || 0}" /></div>
+         <div class="flex-1"><label>Longitude</label><input data-f="lng" type="number" step="any" value="${marker.lng || 0}" /></div>
+       </div>`
+    : `<div class="slide-field-row-inline">
+         <div class="flex-1"><label>Top position (%)</label><input data-f="top" type="text" value="${escapeAttr(marker.top || "50%")}" /></div>
+         <div class="flex-1"><label>Left position (%)</label><input data-f="left" type="text" value="${escapeAttr(marker.left || "50%")}" /></div>
+       </div>`;
+
+  row.innerHTML = `
+    <div class="marker-form-header">
+      <span class="marker-form-index">Marker ${index + 1}</span>
+      <button type="button" class="icon-btn icon-btn-danger" title="Remove marker"><i class="fa-solid fa-trash"></i></button>
+    </div>
+    <div class="slide-field-row-inline">
+      <div class="flex-1"><label>Label</label><input data-f="label" type="text" value="${escapeAttr(marker.label || "")}" /></div>
+      <div class="flex-1"><label>Icon</label><input data-f="icon" type="text" value="${escapeAttr(marker.icon || "")}" /></div>
+    </div>
+    ${coordFields}
+    <div class="slide-field-row">
+      <label>Description</label>
+      <textarea data-f="description" rows="2">${escapeHTML(marker.description || "")}</textarea>
+    </div>
+  `;
+
+  row.querySelector('[data-f="label"]').addEventListener("input", e => { marker.label = e.target.value; });
+  row.querySelector('[data-f="icon"]').addEventListener("input", e => { marker.icon = e.target.value; });
+  row.querySelector('[data-f="description"]').addEventListener("input", e => { marker.description = e.target.value; });
+  if (isSatellite) {
+    row.querySelector('[data-f="lat"]').addEventListener("input", e => { marker.lat = parseFloat(e.target.value) || 0; });
+    row.querySelector('[data-f="lng"]').addEventListener("input", e => { marker.lng = parseFloat(e.target.value) || 0; });
+  } else {
+    row.querySelector('[data-f="top"]').addEventListener("input", e => { marker.top = e.target.value; });
+    row.querySelector('[data-f="left"]').addEventListener("input", e => { marker.left = e.target.value; });
+  }
+  row.querySelector(".icon-btn-danger").addEventListener("click", () => {
+    slide.highlights.splice(index, 1);
+    rerenderList();
+  });
+
+  return row;
+}
+
+function buildQuizSlideForm(slide, rerenderList) {
+  const wrap = el("div", "slide-form");
+  slide.options = slide.options && slide.options.length ? slide.options : ["", ""];
+  if (slide.correctIndex === undefined) slide.correctIndex = 0;
+
+  wrap.innerHTML = `
+    <div class="slide-field-row">
+      <label>Question</label>
+      <textarea data-f="question" rows="2">${escapeHTML(slide.question || "")}</textarea>
+    </div>
+    <div class="slide-field-row">
+      <label>Answer options (select the radio button for the correct one)</label>
+      <div id="options-list" class="space-y-2"></div>
+      <button type="button" id="add-option-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add option</button>
+    </div>
+  `;
+
+  wrap.querySelector('[data-f="question"]').addEventListener("input", e => { slide.question = e.target.value; });
+
+  const optionsListEl = wrap.querySelector("#options-list");
+  slide.options.forEach((optionText, oIndex) => {
+    const row = el("div", "option-form-row");
+    row.innerHTML = `
+      <input type="radio" name="correct-${slide.id}" ${slide.correctIndex === oIndex ? "checked" : ""} title="Mark as correct answer" />
+      <input data-f="option-text" type="text" value="${escapeAttr(optionText)}" class="flex-1" placeholder="Option ${oIndex + 1}" />
+      <button type="button" class="icon-btn icon-btn-danger" title="Remove option"><i class="fa-solid fa-trash"></i></button>
+    `;
+    row.querySelector('input[type="radio"]').addEventListener("change", () => { slide.correctIndex = oIndex; });
+    row.querySelector('[data-f="option-text"]').addEventListener("input", e => { slide.options[oIndex] = e.target.value; });
+    row.querySelector(".icon-btn-danger").addEventListener("click", () => {
+      if (slide.options.length <= 2) { alert("A quiz question needs at least 2 options."); return; }
+      slide.options.splice(oIndex, 1);
+      if (slide.correctIndex >= slide.options.length) slide.correctIndex = 0;
+      rerenderList();
+    });
+    optionsListEl.appendChild(row);
+  });
+
+  wrap.querySelector("#add-option-btn").addEventListener("click", () => {
+    slide.options.push("");
+    rerenderList();
+  });
+
+  return wrap;
+}
+
+/** Compact chip row letting Admin restrict ONE slide to specific facilities, overriding the module default. */
+function buildSlideFacilitiesOverride(slide) {
+  const wrap = el("div", "slide-facilities-override");
+  const facilities = window.__hseAdminFacilityOptions();
+  wrap.innerHTML = `
+    <label>Restrict this slide to specific facilities <span class="field-hint-inline">(optional — leave all unchecked to use the module's facilities)</span></label>
+    <div class="flex flex-wrap gap-2" id="slide-fac-chips"></div>
+  `;
+  const chipsWrap = wrap.querySelector("#slide-fac-chips");
+  facilities.forEach(f => {
+    const checked = Array.isArray(slide.facilities) && slide.facilities.includes(f.id);
+    const chip = el("label", "facility-checkbox facility-checkbox-compact");
+    chip.innerHTML = `<input type="checkbox" value="${escapeAttr(f.id)}" ${checked ? "checked" : ""} /> ${escapeHTML(f.name)}`;
+    chip.querySelector("input").addEventListener("change", () => {
+      const checkedBoxes = Array.from(chipsWrap.querySelectorAll("input:checked")).map(cb => cb.value);
+      if (checkedBoxes.length > 0) slide.facilities = checkedBoxes;
+      else delete slide.facilities;
+    });
+    chipsWrap.appendChild(chip);
+  });
+  return wrap;
+}
+
+// Small helper so slide/module editors can read the current facility list without a circular import
 window.__hseAdminFacilityOptions = () => state.db.facilities.map(f => ({ id: f.id, name: f.name }));
 
 function flashSaved(container) {
@@ -912,11 +1399,11 @@ function el(tag, className) {
 /** Escape text for safe insertion into innerHTML (prevents admin-entered content from injecting markup). */
 function escapeHTML(str) {
   const div = document.createElement("div");
-  div.textContent = String(str ?? "");
+  div.textContent = String(str == null ? "" : str);
   return div.innerHTML;
 }
 
 /** Escape text for safe insertion into an HTML attribute value. */
 function escapeAttr(str) {
-  return String(str ?? "").replace(/"/g, "&quot;");
+  return String(str == null ? "" : str).replace(/"/g, "&quot;");
 }
