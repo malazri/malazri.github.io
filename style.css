@@ -973,3 +973,46 @@ body.admin-mode #app-shell { max-width: 1180px; }
   padding: 0.35rem 0.55rem;
   margin: 0;
 }
+
+/* ---------------------------------------------------------------------- *
+ * Supabase connection states — initial loading spinner and the persistent
+ * "offline sample content" warning banner
+ * ---------------------------------------------------------------------- */
+
+.connection-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fffbea;
+  border-bottom: 1px solid var(--hse-yellow);
+  color: #7b5b00;
+  font-size: 0.78rem;
+  padding: 0.6rem 1rem;
+}
+.connection-banner i { color: var(--hse-yellow); flex-shrink: 0; }
+.connection-banner span { flex: 1; }
+.connection-banner button {
+  background: var(--hse-navy);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.connection-banner button:hover { background: #16263c; }
+
+/* Admin sidebar section titles that also need an inline action button
+   (e.g. "Recent Completions" + its refresh icon) */
+.admin-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-section-title-row .icon-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.65rem;
+}
