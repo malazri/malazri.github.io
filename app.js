@@ -275,8 +275,8 @@ function render() {
 function renderLoadingScreen() {
   const wrap = el("div", "view-loading fade-in px-5 pt-24 text-center");
   wrap.innerHTML = `
-    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-hse-yellow"></i>
-    <p class="text-slate-500 text-sm mt-4">Loading induction content…</p>
+    <i class="fa-solid fa-hard-hat text-4xl text-hse-yellow"></i>
+    <p class="text-slate-500 text-sm mt-4"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Loading induction content…</p>
   `;
   return wrap;
 }
@@ -286,9 +286,18 @@ function renderConnectionBanner() {
   banner.innerHTML = `
     <i class="fa-solid fa-triangle-exclamation"></i>
     <span>Offline sample content — couldn't reach the database. Admin changes won't be saved.</span>
-    <button type="button" id="retry-connection-btn">Retry</button>
+    <button type="button" id="retry-connection-btn"><i class="fa-solid fa-arrows-rotate"></i> Retry</button>
   `;
-  banner.querySelector("#retry-connection-btn").addEventListener("click", () => bootLoadData());
+  const retryBtn = banner.querySelector("#retry-connection-btn");
+  retryBtn.addEventListener("click", () => {
+    // bootLoadData() calls render() itself once the fetch settles — that
+    // rebuilds this whole banner (removing it on success, or rebuilding a
+    // fresh non-spinning Retry button on failure) — so there's nothing to
+    // reset manually here, we only need to show the in-flight state now.
+    retryBtn.disabled = true;
+    retryBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Retrying…`;
+    bootLoadData();
+  });
   return banner;
 }
 
@@ -1025,11 +1034,16 @@ function renderAdminDashboard() {
     });
   });
 
-  wrap.querySelector("#refresh-records-btn").addEventListener("click", async () => {
+  wrap.querySelector("#refresh-records-btn").addEventListener("click", async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    // The button's rebuilt fresh (spinner gone) by the render() call below
+    // regardless of outcome, so there's no separate "reset" step needed.
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i>`;
     try {
       state.records = await fetchRecords();
-    } catch (e) {
-      alert("Could not refresh completions from the database: " + e.message);
+    } catch (err) {
+      alert("Could not refresh completions from the database: " + err.message);
     }
     render();
   });
@@ -1463,6 +1477,7 @@ function renderModuleEditor(module) {
 
   panel.querySelector("#save-module-btn").addEventListener("click", async () => {
     const errorEl = panel.querySelector("#editor-error");
+    const saveBtn = panel.querySelector("#save-module-btn");
     errorEl.classList.add("hidden");
     try {
       if (workingSlides.length === 0) throw new Error("A module needs at least one slide.");
@@ -1501,11 +1516,18 @@ function renderModuleEditor(module) {
       module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
       module.slides = JSON.parse(JSON.stringify(workingSlides)); // commit the working copy
 
+      // Only now — once validation has passed and we're actually about to
+      // make the network call — show the in-flight "Saving…" state.
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Saving...`;
+
       await upsertModuleRemote(module);
-      flashSaved(panel);
+      flashSaved(saveBtn);
     } catch (e) {
       errorEl.textContent = e.message;
       errorEl.classList.remove("hidden");
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-2"></i>Save changes`;
     }
   });
 
@@ -2038,12 +2060,17 @@ function buildSlideFacilitiesOverride(slide) {
 // Small helper so slide/module editors can read the current facility list without a circular import
 window.__hseAdminFacilityOptions = () => state.db.facilities.map(f => ({ id: f.id, name: f.name }));
 
-function flashSaved(container) {
-  const btn = container.querySelector("#save-module-btn");
-  const original = btn.innerHTML;
+function flashSaved(btn) {
+  btn.disabled = false;
   btn.innerHTML = `<i class="fa-solid fa-check mr-2"></i>Saved`;
   btn.classList.add("save-flash");
-  setTimeout(() => { btn.innerHTML = original; btn.classList.remove("save-flash"); }, 1400);
+  setTimeout(() => {
+    // Restore a fixed, known-correct label rather than whatever HTML was
+    // captured before this call — that would otherwise be the transient
+    // "Saving..." spinner state, not the button's normal resting label.
+    btn.innerHTML = `<i class="fa-solid fa-floppy-disk mr-2"></i>Save changes`;
+    btn.classList.remove("save-flash");
+  }, 1400);
 }
 
 /* ---------------------------------------------------------------------- *
