@@ -72,12 +72,14 @@
   </div>
 
   <!-- ============================================================
-       SCRIPTS — order matters: Supabase client library first (app.js
-       calls window.supabase.createClient at load time), then data.js
-       (seeds window.DEFAULT_DATA, used only as an offline fallback if
-       Supabase can't be reached), then app.js itself.
+       SCRIPTS — order matters: Supabase client library and SheetJS
+       (Excel read/write, used by the Admin map-slide export/import
+       buttons) first (app.js references both at load time), then
+       data.js (seeds window.DEFAULT_DATA, used only as an offline
+       fallback if Supabase can't be reached), then app.js itself.
        ============================================================ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>
