@@ -1016,3 +1016,24 @@ body.admin-mode #app-shell { max-width: 1180px; }
   height: 1.5rem;
   font-size: 0.65rem;
 }
+
+/* ---------------------------------------------------------------------- *
+ * Excel export/import row (map slide markers — bulk editing via spreadsheet)
+ * ---------------------------------------------------------------------- */
+
+.excel-io-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+/* The "Import from Excel" control is a real <input type="file"> (hidden
+   via Tailwind's .hidden class) inside a <label> styled like the other
+   .admin-add-btn buttons — clicking the label's visible text/icon
+   activates the hidden input natively in every modern browser. */
+.admin-file-btn {
+  position: relative;
+  margin-top: 0;
+  cursor: pointer;
+}
