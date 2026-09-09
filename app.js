@@ -172,6 +172,16 @@ document.addEventListener("DOMContentLoaded", () => {
  * Also called by the banner's and the error screen's "Retry" buttons.
  */
 async function bootLoadData() {
+  // Only force a render before the fetch on a genuine first load (state.db
+  // still null) so the loading screen appears. On a Retry, state.db is
+  // already set and the button that triggered this already shows its own
+  // in-flight spinner — rendering here would immediately rebuild the
+  // banner from scratch and wipe that spinner out before the fetch even
+  // starts, so we deliberately skip it in that case.
+  if (!state.db) {
+    render();
+  }
+
   try {
     const [facilities, modules, records] = await Promise.all([
       fetchFacilities(),
