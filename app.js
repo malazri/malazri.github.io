@@ -1287,6 +1287,73 @@ function initPositionMiniMap(slide, containerId, miniMapsRegistry) {
   if (miniMapsRegistry) miniMapsRegistry.push(map);
 }
 
+/**
+ * Renders an interactive Leaflet mini-map for a "layout" (2D floor-plan
+ * image) map slide, using Leaflet's Simple CRS mode to treat the image as
+ * its own flat coordinate space instead of real-world geography. Lets an
+ * admin drag pins directly onto the image to set each marker's top/left
+ * percentage — the same drag-to-place workflow used for satellite maps,
+ * instead of typing percentages by hand.
+ *
+ * Must be called AFTER `containerId` is attached to the live DOM, same
+ * requirement as initPositionMiniMap (see its doc comment) — plus this
+ * one also waits for the image itself to load, since it needs the image's
+ * real pixel dimensions to define the map's coordinate bounds.
+ */
+function initLayoutPositionMap(slide, containerId, miniMapsRegistry) {
+  const container = document.getElementById(containerId);
+  if (!container || typeof L === "undefined" || !slide.imageUrl) return;
+
+  const img = new Image();
+  img.onload = () => {
+    // The admin may have navigated away (or the slides list re-rendered)
+    // before a slow/broken image URL finished loading.
+    if (!document.getElementById(containerId)) return;
+
+    const w = img.naturalWidth || 1000;
+    const h = img.naturalHeight || 1000;
+    const bounds = [[0, 0], [h, w]]; // [y, x] — matches plain image pixel coordinates, y measured from the top
+
+    const map = L.map(container, { crs: L.CRS.Simple, attributionControl: false, minZoom: -5 });
+    L.imageOverlay(slide.imageUrl, bounds).addTo(map);
+    map.fitBounds(bounds);
+
+    (slide.highlights || []).forEach(h2 => {
+      const topPct = parseFloat(h2.top) || 0;
+      const leftPct = parseFloat(h2.left) || 0;
+      const icon = L.divIcon({
+        className: "leaflet-pin-icon",
+        html: `<i class="fa-solid ${h2.icon || "fa-location-dot"}"></i>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 30]
+      });
+      const marker = L.marker([(topPct / 100) * h, (leftPct / 100) * w], { icon, draggable: true }).addTo(map);
+      marker.bindTooltip(h2.label || "Marker", { direction: "top", offset: [0, -28] });
+
+      const readoutEl = document.getElementById(`marker-coord-${h2.id}`);
+      marker.on("drag", () => {
+        const pos = marker.getLatLng();
+        const t = ((pos.lat / h) * 100).toFixed(1) + "%";
+        const l = ((pos.lng / w) * 100).toFixed(1) + "%";
+        if (readoutEl) readoutEl.textContent = `Top: ${t} · Left: ${l}`;
+      });
+      marker.on("dragend", () => {
+        const pos = marker.getLatLng();
+        h2.top = ((pos.lat / h) * 100).toFixed(1) + "%";
+        h2.left = ((pos.lng / w) * 100).toFixed(1) + "%";
+      });
+    });
+
+    setTimeout(() => map.invalidateSize(), 150);
+    if (miniMapsRegistry) miniMapsRegistry.push(map);
+  };
+  img.onerror = () => {
+    const target = document.getElementById(containerId);
+    if (target) target.innerHTML = `<p class="field-hint" style="padding:1rem;">Couldn't load that image URL.</p>`;
+  };
+  img.src = slide.imageUrl;
+}
+
 /** A fresh, blank slide object of the given type, used by the "Add slide" buttons. */
 function defaultSlide(type) {
   if (type === "info") {
@@ -1599,6 +1666,126 @@ function buildInfoSlideForm(slide) {
   return wrap;
 }
 
+/**
+ * Exports a map slide's heading/center/zoom (or image URL) and all its
+ * markers to a two-sheet Excel workbook — "Map Info" (key/value settings)
+ * and "Markers" (one row per location). This is both an export tool for
+ * bulk-editing an existing camp's map in a spreadsheet, and — used on a
+ * brand-new, empty map slide — a ready-to-fill blank template, since the
+ * same two sheets and column headers come out either way.
+ */
+function exportMapSlideToExcel(slide) {
+  const isSatellite = slide.mapType === "satellite";
+  const infoRows = [
+    ["Field", "Value"],
+    ["Heading", slide.heading || ""],
+    ["Intro text", slide.body || ""],
+    ["Map type (satellite or layout)", slide.mapType || "satellite"],
+    ["Center latitude (satellite only)", isSatellite && slide.center ? slide.center[0] : ""],
+    ["Center longitude (satellite only)", isSatellite && slide.center ? slide.center[1] : ""],
+    ["Zoom 1-19 (satellite only)", isSatellite ? (slide.zoom || 16) : ""],
+    ["Layout image URL (layout only)", !isSatellite ? (slide.imageUrl || "") : ""]
+  ];
+
+  const markerRows = [["Label", "Icon", "Latitude", "Longitude", "Top %", "Left %", "Description"]];
+  (slide.highlights || []).forEach(h => {
+    markerRows.push([
+      h.label || "",
+      h.icon || "",
+      h.lat !== undefined ? h.lat : "",
+      h.lng !== undefined ? h.lng : "",
+      h.top !== undefined ? h.top : "",
+      h.left !== undefined ? h.left : "",
+      h.description || ""
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(infoRows), "Map Info");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(markerRows), "Markers");
+
+  const safeTitle = (slide.heading || "map-slide").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  XLSX.writeFile(wb, `${safeTitle}.xlsx`);
+}
+
+/**
+ * Reads a two-sheet Excel workbook (see exportMapSlideToExcel — either a
+ * previously-exported file, or the same template filled in from scratch)
+ * and REPLACES the given slide's heading/center/zoom/imageUrl/markers
+ * with its contents. Calls onDone(error) — error is null on success.
+ * Fresh internal ids are generated for every imported marker, since a
+ * spreadsheet has no concept of the app's internal id scheme.
+ */
+function importMapSlideFromExcel(file, slide, onDone) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "array" });
+      const infoSheet = wb.Sheets["Map Info"];
+      const markersSheet = wb.Sheets["Markers"];
+      if (!infoSheet || !markersSheet) {
+        throw new Error('Expected two sheets named "Map Info" and "Markers" — did the sheet names get changed?');
+      }
+
+      const infoRows = XLSX.utils.sheet_to_json(infoSheet, { header: 1 });
+      const infoMap = {};
+      infoRows.slice(1).forEach(row => { if (row && row[0]) infoMap[row[0]] = row[1]; });
+
+      const mapType = String(infoMap["Map type (satellite or layout)"] || "satellite").trim().toLowerCase();
+      if (mapType !== "satellite" && mapType !== "layout") {
+        throw new Error('The "Map type" field must be exactly "satellite" or "layout".');
+      }
+
+      slide.heading = String(infoMap["Heading"] || slide.heading || "Untitled map");
+      slide.body = String(infoMap["Intro text"] || "");
+      slide.mapType = mapType;
+
+      if (mapType === "satellite") {
+        const lat = parseFloat(infoMap["Center latitude (satellite only)"]);
+        const lng = parseFloat(infoMap["Center longitude (satellite only)"]);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) {
+          throw new Error("Center latitude/longitude must be numbers for a satellite map.");
+        }
+        slide.center = [lat, lng];
+        slide.zoom = parseInt(infoMap["Zoom 1-19 (satellite only)"], 10) || 16;
+        delete slide.imageUrl;
+      } else {
+        slide.imageUrl = String(infoMap["Layout image URL (layout only)"] || "");
+        delete slide.center;
+        delete slide.zoom;
+      }
+
+      const markerRows = XLSX.utils.sheet_to_json(markersSheet);
+      slide.highlights = markerRows.map(row => {
+        const marker = {
+          id: uid("marker"),
+          label: String(row["Label"] || "Location"),
+          icon: String(row["Icon"] || "fa-location-dot"),
+          description: String(row["Description"] || "")
+        };
+        if (mapType === "satellite") {
+          marker.lat = parseFloat(row["Latitude"]) || 0;
+          marker.lng = parseFloat(row["Longitude"]) || 0;
+        } else {
+          let top = row["Top %"] !== undefined && row["Top %"] !== "" ? String(row["Top %"]).trim() : "50%";
+          let left = row["Left %"] !== undefined && row["Left %"] !== "" ? String(row["Left %"]).trim() : "50%";
+          if (!top.includes("%")) top += "%";
+          if (!left.includes("%")) left += "%";
+          marker.top = top;
+          marker.left = left;
+        }
+        return marker;
+      });
+
+      onDone(null);
+    } catch (err) {
+      onDone(err);
+    }
+  };
+  reader.onerror = () => onDone(new Error("Could not read the file."));
+  reader.readAsArrayBuffer(file);
+}
+
 function buildMapSlideForm(slide, rerenderList, adminMiniMaps) {
   const wrap = el("div", "slide-form");
   const isSatellite = slide.mapType === "satellite";
@@ -1622,10 +1809,34 @@ function buildMapSlideForm(slide, rerenderList, adminMiniMaps) {
     <div id="map-type-fields"></div>
     <div class="slide-field-row">
       <label>Markers</label>
+      <div class="excel-io-row">
+        <button type="button" id="export-excel-btn" class="admin-add-btn"><i class="fa-solid fa-file-arrow-down"></i> Export to Excel</button>
+        <label class="admin-add-btn admin-file-btn">
+          <i class="fa-solid fa-file-arrow-up"></i> Import from Excel
+          <input type="file" id="import-excel-input" accept=".xlsx,.xls" class="hidden" />
+        </label>
+      </div>
       <div id="markers-list" class="space-y-3"></div>
       <button type="button" id="add-marker-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add marker</button>
     </div>
   `;
+
+  wrap.querySelector("#export-excel-btn").addEventListener("click", () => {
+    exportMapSlideToExcel(slide);
+  });
+  wrap.querySelector("#import-excel-input").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const ok = confirm(
+      "Importing will REPLACE this slide's heading, map center/zoom (or image URL), and ALL markers with what's in the spreadsheet. Continue?"
+    );
+    if (!ok) { e.target.value = ""; return; }
+    importMapSlideFromExcel(file, slide, err => {
+      e.target.value = "";
+      if (err) { alert("Could not import: " + err.message); return; }
+      rerenderList();
+    });
+  });
 
   wrap.querySelector('[data-f="heading"]').addEventListener("input", e => { slide.heading = e.target.value; });
   wrap.querySelector('[data-f="body"]').addEventListener("input", e => { slide.body = e.target.value; });
@@ -1671,13 +1882,30 @@ function buildMapSlideForm(slide, rerenderList, adminMiniMaps) {
     // dimensions to lay out its tiles correctly.
     setTimeout(() => initPositionMiniMap(slide, mapContainerId, adminMiniMaps), 0);
   } else {
+    const mapContainerId = `position-map-${slide.id}`;
     typeFieldsEl.innerHTML = `
       <div class="slide-field-row">
         <label>Layout image URL</label>
         <input data-f="imageUrl" type="text" value="${escapeAttr(slide.imageUrl || "")}" placeholder="https://..." />
       </div>
+      <div class="slide-field-row">
+        <label>Position on layout image <span class="field-hint-inline">(drag pins below to place each marker)</span></label>
+        ${
+          slide.imageUrl
+            ? `<div id="${mapContainerId}" class="admin-position-map"></div>`
+            : `<p class="field-hint">Enter an image URL above, then click away from the field to load the position picker.</p>`
+        }
+      </div>
     `;
-    typeFieldsEl.querySelector('[data-f="imageUrl"]').addEventListener("input", e => { slide.imageUrl = e.target.value; });
+    const imageUrlInput = typeFieldsEl.querySelector('[data-f="imageUrl"]');
+    imageUrlInput.addEventListener("input", e => { slide.imageUrl = e.target.value; });
+    // Only rebuild the position picker once they're done typing/pasting a
+    // URL (on blur/change) — refreshing on every keystroke would reload
+    // the image constantly and steal focus from the field.
+    imageUrlInput.addEventListener("change", () => rerenderList());
+    if (slide.imageUrl) {
+      setTimeout(() => initLayoutPositionMap(slide, mapContainerId, adminMiniMaps), 0);
+    }
   }
 
   slide.highlights = slide.highlights || [];
@@ -1706,10 +1934,8 @@ function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
   const coordFields = isSatellite
     ? `<p class="marker-coord-readout" id="marker-coord-${marker.id}">Lat: ${(marker.lat || 0).toFixed(5)} · Lng: ${(marker.lng || 0).toFixed(5)}</p>
        <p class="field-hint">Drag this marker's pin on the map above to reposition it.</p>`
-    : `<div class="slide-field-row-inline">
-         <div class="flex-1"><label>Top position (%)</label><input data-f="top" type="text" value="${escapeAttr(marker.top || "50%")}" /></div>
-         <div class="flex-1"><label>Left position (%)</label><input data-f="left" type="text" value="${escapeAttr(marker.left || "50%")}" /></div>
-       </div>`;
+    : `<p class="marker-coord-readout" id="marker-coord-${marker.id}">Top: ${marker.top || "50%"} · Left: ${marker.left || "50%"}</p>
+       <p class="field-hint">Drag this marker's pin on the layout image above to reposition it.</p>`;
 
   row.innerHTML = `
     <div class="marker-form-header">
@@ -1732,10 +1958,6 @@ function buildMarkerForm(marker, index, slide, isSatellite, rerenderList) {
     buildIconPicker(marker.icon, v => { marker.icon = v; })
   );
   row.querySelector('[data-f="description"]').addEventListener("input", e => { marker.description = e.target.value; });
-  if (!isSatellite) {
-    row.querySelector('[data-f="top"]').addEventListener("input", e => { marker.top = e.target.value; });
-    row.querySelector('[data-f="left"]').addEventListener("input", e => { marker.left = e.target.value; });
-  }
   row.querySelector(".icon-btn-danger").addEventListener("click", () => {
     slide.highlights.splice(index, 1);
     rerenderList();
