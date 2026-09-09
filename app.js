@@ -19,41 +19,98 @@
  */
 
 /* ---------------------------------------------------------------------- *
- * 1. CONSTANTS & STORAGE HELPERS
+ * 1. CONSTANTS & SUPABASE CLIENT / DATA-ACCESS HELPERS
  * ---------------------------------------------------------------------- */
 
-const HSE_DB_KEY = "hse_induction_db_v3";        // editable content (facilities + modules)
-const HSE_RECORDS_KEY = "hse_induction_records_v3"; // completed inductions, for the Admin log
 const ADMIN_PIN = "1234"; // Prototype-only hardcoded PIN. Replace with real auth before production use.
 const PASS_THRESHOLD = 0.8; // 80% correct across all quiz slides required to earn a Pass
 
-/** Read the content DB from localStorage, seeding it from DEFAULT_DATA on first run. */
-function loadDB() {
-  const raw = localStorage.getItem(HSE_DB_KEY);
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn("Corrupt HSE DB in localStorage, falling back to defaults.", e);
-    }
-  }
-  const seeded = JSON.parse(JSON.stringify(window.DEFAULT_DATA)); // deep clone the seed
-  saveDB(seeded);
-  return seeded;
+// Content (facilities, modules) and completion records now live in a shared
+// Supabase project instead of per-browser localStorage — every admin edit
+// and every completed induction is visible to everyone, from any device.
+// See supabase-schema.sql for the table definitions these calls rely on.
+const SUPABASE_URL = "https://umauawrovapmavjwfgye.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtYXVhd3JvdmFwbWF2andmZ3llIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwODY3NzAsImV4cCI6MjA4OTY2Mjc3MH0.15Ss6KsnUx9eAEnw0EVhw8whzZBHOEqjZWVjQgTlquU";
+// `persistSession: false` because this app has no Supabase Auth session to
+// keep — without it, the client would still try to use localStorage for an
+// auth session that's never created, which we don't need.
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: false }
+});
+
+async function fetchFacilities() {
+  const { data, error } = await sbClient.from("facilities").select("*").order("name");
+  if (error) throw error;
+  return data;
 }
 
-function saveDB(db) {
-  localStorage.setItem(HSE_DB_KEY, JSON.stringify(db));
+async function fetchModules() {
+  const { data, error } = await sbClient.from("modules").select("*").order("sort_order");
+  if (error) throw error;
+  // Supabase already parses jsonb columns into real JS arrays/objects, so
+  // `facilities` and `slides` arrive ready to use — no JSON.parse needed.
+  return data;
 }
 
-function saveRecord(record) {
-  const records = JSON.parse(localStorage.getItem(HSE_RECORDS_KEY) || "[]");
-  records.unshift(record); // newest first
-  localStorage.setItem(HSE_RECORDS_KEY, JSON.stringify(records.slice(0, 100)));
+async function fetchRecords(limit) {
+  const { data, error } = await sbClient
+    .from("induction_records")
+    .select("*")
+    .order("completed_at", { ascending: false })
+    .limit(limit || 100);
+  if (error) throw error;
+  return data.map(r => ({
+    name: r.name,
+    facility: r.facility,
+    date: r.completed_at,
+    score: r.score,
+    total: r.total,
+    percent: r.percent,
+    passed: r.passed
+  }));
 }
 
-function loadRecords() {
-  return JSON.parse(localStorage.getItem(HSE_RECORDS_KEY) || "[]");
+async function insertFacilityRemote(f) {
+  const { error } = await sbClient.from("facilities").insert({
+    id: f.id, name: f.name, description: f.description, icon: f.icon, type: f.type
+  });
+  if (error) throw error;
+}
+
+async function deleteFacilityRemote(id) {
+  const { error } = await sbClient.from("facilities").delete().eq("id", id);
+  if (error) throw error;
+}
+
+async function upsertModuleRemote(m) {
+  const { error } = await sbClient.from("modules").upsert({
+    id: m.id,
+    title: m.title,
+    icon: m.icon,
+    category: m.category,
+    facilities: m.facilities,
+    slides: m.slides,
+    sort_order: m.sort_order != null ? m.sort_order : 0
+  });
+  if (error) throw error;
+}
+
+async function deleteModuleRemote(id) {
+  const { error } = await sbClient.from("modules").delete().eq("id", id);
+  if (error) throw error;
+}
+
+async function insertRecordRemote(r) {
+  const { error } = await sbClient.from("induction_records").insert({
+    name: r.name,
+    facility: r.facility,
+    score: r.score,
+    total: r.total,
+    percent: r.percent,
+    passed: r.passed
+    // completed_at is set by the database (default now())
+  });
+  if (error) throw error;
 }
 
 /* ---------------------------------------------------------------------- *
@@ -61,7 +118,9 @@ function loadRecords() {
  * ---------------------------------------------------------------------- */
 
 const state = {
-  db: null,              // { facilities: [...], modules: [...] } — loaded on boot
+  db: null,              // { facilities: [...], modules: [...] } — loaded from Supabase on boot
+  records: [],           // cached completed-induction records, for the Admin dashboard
+  dbError: null,         // set if Supabase couldn't be reached (see bootLoadData)
   view: "welcome",
   isAdmin: false,
 
@@ -87,9 +146,8 @@ let activeLeafletMap = null;
  * ---------------------------------------------------------------------- */
 
 document.addEventListener("DOMContentLoaded", () => {
-  state.db = loadDB();
-  render();
-
+  // These two buttons live in the static header (outside #app-root), so
+  // they can be wired immediately — they don't depend on data being loaded.
   document.getElementById("admin-entry-btn").addEventListener("click", () => {
     state.view = state.isAdmin ? "admin-dashboard" : "admin-login";
     render();
@@ -100,7 +158,42 @@ document.addEventListener("DOMContentLoaded", () => {
     state.view = "welcome";
     render();
   });
+
+  bootLoadData();
 });
+
+/**
+ * Loads facilities, modules, and completion records from Supabase. Shown
+ * as a loading screen while in flight (see render()'s `!state.db` guard).
+ * If Supabase can't be reached (network issue, or the tables haven't been
+ * created yet — see supabase-schema.sql), the app falls back to the
+ * bundled DEFAULT_DATA so it's still usable, and shows a persistent
+ * banner warning that Admin changes won't be saved until this is fixed.
+ * Also called by the banner's and the error screen's "Retry" buttons.
+ */
+async function bootLoadData() {
+  try {
+    const [facilities, modules, records] = await Promise.all([
+      fetchFacilities(),
+      fetchModules(),
+      fetchRecords()
+    ]);
+    state.db = { facilities, modules };
+    state.records = records;
+    state.dbError = null;
+  } catch (e) {
+    console.error("Supabase load failed:", e);
+    // Only overwrite with bundled defaults on a genuinely first load — if a
+    // Retry attempt fails, keep whatever's already on screen rather than
+    // clobbering it with sample content.
+    if (!state.db) {
+      state.db = JSON.parse(JSON.stringify(window.DEFAULT_DATA));
+      state.records = [];
+    }
+    state.dbError = (e && e.message) ? e.message : "Could not connect to the database.";
+  }
+  render();
+}
 
 function resetInductionState() {
   state.user = { name: "", facilityId: null };
@@ -145,6 +238,19 @@ function render() {
     activeLeafletMap = null;
   }
 
+  // Data hasn't arrived from Supabase yet (first load only) — show a
+  // spinner instead of any view until bootLoadData() finishes.
+  if (!state.db) {
+    root.appendChild(renderLoadingScreen());
+    return;
+  }
+
+  // If Supabase couldn't be reached, keep the app usable with fallback
+  // content but show a persistent warning above whatever view is active.
+  if (state.dbError) {
+    root.appendChild(renderConnectionBanner());
+  }
+
   switch (state.view) {
     case "welcome": root.appendChild(renderWelcome()); break;
     case "flow": root.appendChild(renderFlow()); break;
@@ -164,6 +270,26 @@ function render() {
       initSatelliteMap(slide);
     }
   }
+}
+
+function renderLoadingScreen() {
+  const wrap = el("div", "view-loading fade-in px-5 pt-24 text-center");
+  wrap.innerHTML = `
+    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-hse-yellow"></i>
+    <p class="text-slate-500 text-sm mt-4">Loading induction content…</p>
+  `;
+  return wrap;
+}
+
+function renderConnectionBanner() {
+  const banner = el("div", "connection-banner");
+  banner.innerHTML = `
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>Offline sample content — couldn't reach the database. Admin changes won't be saved.</span>
+    <button type="button" id="retry-connection-btn">Retry</button>
+  `;
+  banner.querySelector("#retry-connection-btn").addEventListener("click", () => bootLoadData());
+  return banner;
 }
 
 /* ---------------------------------------------------------------------- *
@@ -672,7 +798,7 @@ function finishInduction() {
   const passed = pct >= PASS_THRESHOLD;
   const facility = state.db.facilities.find(f => f.id === state.user.facilityId);
 
-  saveRecord({
+  const record = {
     name: state.user.name,
     facility: facility ? facility.name : state.user.facilityId,
     date: new Date().toISOString(),
@@ -680,10 +806,19 @@ function finishInduction() {
     total: state.score.total,
     percent: Math.round(pct * 100),
     passed
-  });
+  };
 
+  // Show the pass immediately — don't make the user wait on a network
+  // round trip to see their result. Update the local records cache right
+  // away (so it shows in Admin instantly too), then save to Supabase in
+  // the background; a failure here is logged but never blocks the user.
+  state.records.unshift(record);
   state.view = "pass";
   render();
+
+  insertRecordRemote(record).catch(e => {
+    console.warn("Could not save completion record to the database:", e);
+  });
 }
 
 /* ---------------------------------------------------------------------- *
@@ -788,7 +923,7 @@ function renderAdminDashboard() {
     <div class="admin-header">
       <div>
         <h1 class="font-display text-xl text-slate-900">Admin Dashboard</h1>
-        <p class="text-slate-500 text-sm">Edit induction content — changes save to this browser's local storage</p>
+        <p class="text-slate-500 text-sm">Edit induction content — changes save to the shared database instantly</p>
       </div>
       <button id="admin-logout" class="nav-btn-secondary">Log out</button>
     </div>
@@ -807,7 +942,10 @@ function renderAdminDashboard() {
         <div id="facility-nav-list" class="space-y-1"></div>
         <button id="add-facility-btn" class="admin-add-btn"><i class="fa-solid fa-plus"></i> Add facility</button>
 
-        <h3 class="admin-section-title mt-6">Recent Completions</h3>
+        <h3 class="admin-section-title mt-6 admin-section-title-row">
+          <span>Recent Completions</span>
+          <button type="button" id="refresh-records-btn" class="icon-btn" title="Refresh from database"><i class="fa-solid fa-arrows-rotate"></i></button>
+        </h3>
         <div id="records-list" class="text-xs text-slate-500 space-y-2 max-h-48 overflow-y-auto"></div>
       </div>
 
@@ -832,18 +970,22 @@ function renderAdminDashboard() {
   });
 
   wrap.querySelector("#add-module-btn").addEventListener("click", () => {
+    const maxOrder = state.db.modules.reduce((max, m) => Math.max(max, m.sort_order || 0), 0);
     const newModule = {
       id: uid("mod"),
       title: "New Module",
       icon: "fa-file-circle-plus",
       category: "orientation",
       facilities: ["all"],
-      slides: [defaultSlide("info")]
+      slides: [defaultSlide("info")],
+      sort_order: maxOrder + 10
     };
-    state.db.modules.push(newModule);
-    saveDB(state.db);
+    state.db.modules.push(newModule); // optimistic — shows instantly
     state.adminSelectedModuleId = newModule.id;
     render();
+    upsertModuleRemote(newModule).catch(e => {
+      alert("Could not save the new module to the database: " + e.message);
+    });
   });
 
   // --- Facilities nav list ---
@@ -857,9 +999,11 @@ function renderAdminDashboard() {
     `;
     item.querySelector(".admin-delete-icon").addEventListener("click", () => {
       if (!confirm(`Remove facility "${f.name}"? This does not delete modules.`)) return;
-      state.db.facilities = state.db.facilities.filter(x => x.id !== f.id);
-      saveDB(state.db);
+      state.db.facilities = state.db.facilities.filter(x => x.id !== f.id); // optimistic
       render();
+      deleteFacilityRemote(f.id).catch(e => {
+        alert("Could not remove the facility from the database: " + e.message);
+      });
     });
     facilityNavList.appendChild(item);
   });
@@ -867,20 +1011,33 @@ function renderAdminDashboard() {
     const name = prompt("New facility name:");
     if (!name) return;
     const type = confirm("Is this a residential camp? (OK = Camp, Cancel = Operational Site)") ? "camp" : "operational";
-    state.db.facilities.push({
+    const newFacility = {
       id: uid("facility"),
       name,
       description: type === "camp" ? "Residential camp & support facility" : "Operational site",
       icon: type === "camp" ? "fa-campground" : "fa-location-dot",
       type
+    };
+    state.db.facilities.push(newFacility); // optimistic
+    render();
+    insertFacilityRemote(newFacility).catch(e => {
+      alert("Could not save the new facility to the database: " + e.message);
     });
-    saveDB(state.db);
+  });
+
+  wrap.querySelector("#refresh-records-btn").addEventListener("click", async () => {
+    try {
+      state.records = await fetchRecords();
+    } catch (e) {
+      alert("Could not refresh completions from the database: " + e.message);
+    }
     render();
   });
 
-  // --- Records list ---
+  // --- Records list (from the in-memory cache — see bootLoadData / the
+  // refresh button above / finishInduction's optimistic update) ---
   const recordsList = wrap.querySelector("#records-list");
-  const records = loadRecords();
+  const records = state.records;
   if (records.length === 0) {
     recordsList.innerHTML = `<p class="italic text-slate-400">No completions recorded yet.</p>`;
   } else {
@@ -1237,7 +1394,7 @@ function renderModuleEditor(module) {
     });
   });
 
-  panel.querySelector("#save-module-btn").addEventListener("click", () => {
+  panel.querySelector("#save-module-btn").addEventListener("click", async () => {
     const errorEl = panel.querySelector("#editor-error");
     errorEl.classList.add("hidden");
     try {
@@ -1277,7 +1434,7 @@ function renderModuleEditor(module) {
       module.facilities = selectedFacilities.length ? selectedFacilities : ["all"];
       module.slides = JSON.parse(JSON.stringify(workingSlides)); // commit the working copy
 
-      saveDB(state.db);
+      await upsertModuleRemote(module);
       flashSaved(panel);
     } catch (e) {
       errorEl.textContent = e.message;
@@ -1287,10 +1444,12 @@ function renderModuleEditor(module) {
 
   panel.querySelector("#delete-module-btn").addEventListener("click", () => {
     if (!confirm(`Delete module "${module.title}"? This cannot be undone.`)) return;
-    state.db.modules = state.db.modules.filter(m => m.id !== module.id);
-    saveDB(state.db);
+    state.db.modules = state.db.modules.filter(m => m.id !== module.id); // optimistic
     state.adminSelectedModuleId = state.db.modules.length ? state.db.modules[0].id : null;
     render();
+    deleteModuleRemote(module.id).catch(e => {
+      alert("Could not delete the module from the database: " + e.message);
+    });
   });
 
   return panel;
