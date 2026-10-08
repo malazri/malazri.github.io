@@ -4,15 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Lekhwair · Handover</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js">
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════
-   LEKHWAIR HANDOVER — FIXED ADMIN & DROPDOWNS
+   LEKHWAIR HANDOVER — COMPLETE UI
    ═══════════════════════════════════════════ */
 :root {
     --white:       #ffffff;
@@ -40,11 +38,9 @@
     --font-mono:   'JetBrains Mono', monospace;
     --ease:        cubic-bezier(.4,0,.2,1);
 }
-
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { height: 100%; }
 body { font-family: var(--font-body); background: var(--off-white); color: var(--text-1); height: 100%; display: flex; flex-direction: column; overflow: hidden; font-size: 15px; -webkit-font-smoothing: antialiased; }
-
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 10px; }
@@ -69,12 +65,13 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 .field-label { font-size: .78rem; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .05em; }
 .field-input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: var(--r-md); font-family: var(--font-body); font-size: .95rem; color: var(--text-1); background: var(--off-white); transition: all .2s var(--ease); outline: none; }
 .field-input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px var(--accent-glow); }
+select.field-input { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; padding-right: 36px; cursor: pointer; }
 .field-input.pin-field { text-align: center; letter-spacing: .5rem; font-size: 1.3rem; font-family: var(--font-mono); }
 .login-btn { width: 100%; height: 52px; border-radius: var(--r-md); border: none; background: linear-gradient(135deg, var(--accent), var(--accent-deep)); color: #fff; font-family: var(--font-body); font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .2s var(--ease); margin-top: .4rem; box-shadow: 0 4px 14px var(--accent-glow); }
 .login-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
 .login-btn:active { transform: translateY(0); }
 
-/* ════ TOP BAR (first name + avatar) ════ */
+/* ════ TOP BAR ════ */
 #app { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 .topbar { height: var(--nav-h); background: var(--white); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 1.2rem; gap: 12px; flex-shrink: 0; z-index: 50; box-shadow: var(--shadow-sm); }
 .topbar-logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
@@ -82,22 +79,18 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 .logo-text { line-height: 1.1; }
 .logo-main { font-size: .9rem; font-weight: 700; color: var(--text-1); }
 .logo-sub { font-size: .7rem; color: var(--text-3); font-family: var(--font-mono); }
-
 .topbar-center { flex: 1; min-width: 0; }
 .topbar-page-title { font-size: .95rem; font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
-
 .back-btn { display: none; align-items: center; gap: 6px; background: none; border: none; color: var(--accent); cursor: pointer; font-family: var(--font-body); font-size: .9rem; font-weight: 600; padding: 6px 0; transition: opacity .15s; flex-shrink: 0; }
 .back-btn:hover { opacity: .7; }
 .back-btn svg { width: 18px; height: 18px; }
 .back-btn.visible { display: flex; }
-
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .topbar-firstname { font-size: 0.9rem; font-weight: 600; color: var(--text-1); white-space: nowrap; }
 .user-avatar-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--accent-bg); color: var(--accent); border: 2px solid var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all .18s var(--ease); }
 .user-avatar-btn:hover { background: var(--accent); color: #fff; box-shadow: 0 4px 10px var(--accent-glow); }
-
 .dropdown { position: relative; }
-.dropdown-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--white); border: 1.5px solid var(--border); border-radius: var(--r-md); min-width: 180px; z-index: 100; box-shadow: var(--shadow-lg); overflow: hidden; animation: fade-scale .16s var(--ease); }
+.dropdown-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--white); border: 1.5px solid var(--border); border-radius: var(--r-md); min-width: 180px; z-index: 200; box-shadow: var(--shadow-lg); overflow: hidden; animation: fade-scale .16s var(--ease); }
 .dropdown-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 11px 14px; border: none; background: none; font-family: var(--font-body); font-size: .88rem; color: var(--text-2); cursor: pointer; transition: background .12s; text-align: left; }
 .dropdown-item:hover { background: var(--off-white); color: var(--text-1); }
 .dropdown-divider { height: 1px; background: var(--border); }
@@ -108,25 +101,18 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 /* ── SIDEBAR ── */
 .sidebar { width: var(--sidebar-w); background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; }
 .sidebar-header { padding: .8rem .9rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.sidebar-header-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.sidebar-header-row { display: flex; gap: 6px; align-items: center; margin-bottom: 0; }
 .new-topic-btn { flex: 1; height: 38px; border-radius: var(--r-md); background: var(--accent); border: none; color: #fff; font-family: var(--font-body); font-size: .85rem; font-weight: 600; cursor: pointer; transition: all .18s var(--ease); display: flex; align-items: center; justify-content: center; gap: 6px; }
 .new-topic-btn:hover { background: var(--accent-deep); box-shadow: 0 4px 12px var(--accent-glow); }
+.icon-btn { width: 38px; height: 38px; border-radius: var(--r-sm); border: 1.5px solid var(--border); background: var(--white); color: var(--text-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; transition: all .18s var(--ease); flex-shrink: 0; }
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.icon-btn.active-filter { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
-.expandable-search { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-.expandable-search input {
-    width: 0; padding: 0; border: none; outline: none;
-    background: transparent; transition: all .3s var(--ease);
-    font-family: var(--font-body); font-size: .82rem; opacity: 0; pointer-events: none;
-}
-.expandable-search.open input {
-    width: 140px; padding: 0 10px;
-    border: 1.5px solid var(--border); border-radius: var(--r-md);
-    background: var(--off-white); opacity: 1; pointer-events: auto;
-    height: 36px; margin-left: 4px;
-}
-.expandable-search.open input:focus {
-    border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px var(--accent-glow);
-}
+.expandable-panel { display: none; flex-direction: column; gap: 6px; padding-top: 8px; animation: fade-scale .18s var(--ease); }
+.expandable-panel.open { display: flex; }
+.expandable-panel input, .expandable-panel select, .expandable-panel .filter-input { width: 100%; height: 36px; padding: 0 12px; border: 1.5px solid var(--border); border-radius: var(--r-sm); background: var(--off-white); font-family: var(--font-body); font-size: .82rem; color: var(--text-1); outline: none; transition: all .18s var(--ease); }
+.expandable-panel input:focus, .expandable-panel select:focus, .expandable-panel .filter-input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px var(--accent-glow); }
+.expandable-panel select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px; cursor: pointer; }
 
 .topic-scroll { flex: 1; overflow-y: auto; padding: .6rem; }
 .cat-group { margin-bottom: .3rem; }
@@ -182,8 +168,7 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 .section-card-body { display: none; border-top: 1px solid var(--border); background: var(--off-white); flex-direction: column; border-radius: 0 0 var(--r-lg) var(--r-lg); }
 .section-card-body.open { display: flex; }
 .updates-list { padding: 0 14px; }
-.section-card:has(.dropdown-menu[style*="block"]) { z-index: 10; }
-.section-add-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--white); margin-top: auto; }
+.section-add-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--white); margin-top: auto; border-radius: 0 0 var(--r-lg) var(--r-lg); }
 .add-update-trigger { flex: 1; height: 36px; padding: 0 12px; border: 1.5px solid var(--border); border-radius: var(--r-full); font-family: var(--font-body); font-size: .85rem; color: var(--text-3); background: var(--off-white); cursor: pointer; text-align: left; transition: all .18s var(--ease); }
 .add-update-trigger:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
@@ -203,13 +188,14 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 .update-del-btn { position: absolute; right: 0; top: 14px; background: none; border: none; color: var(--border-dark); cursor: pointer; font-size: .9rem; padding: 4px; border-radius: var(--r-sm); transition: all .15s; }
 .update-del-btn:hover { color: var(--red); background: var(--red-bg); }
 .section-empty { padding: 1.5rem; text-align: center; font-size: .82rem; color: var(--text-3); font-family: var(--font-mono); }
+.archived-toggle { text-align: center; padding: .5rem 0; }
+.archived-toggle-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 16px; border-radius: var(--r-full); border: 1.5px solid var(--border); background: var(--white); font-size: .78rem; font-weight: 600; color: var(--text-3); cursor: pointer; transition: all .18s var(--ease); }
+.archived-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+.add-section-cta { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 1rem; border: 2px dashed var(--border-dark); border-radius: var(--r-lg); cursor: pointer; transition: all .18s var(--ease); color: var(--text-3); font-size: .88rem; font-weight: 500; background: transparent; }
+.add-section-cta:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
-/* ════ ADMIN OVERLAY (fixed, works on mobile) ════ */
-.admin-overlay {
-    position: fixed; inset: 0; background: var(--off-white);
-    z-index: 200; display: none; overflow-y: auto; padding: 1.5rem;
-    flex-direction: column;
-}
+/* ════ ADMIN OVERLAY ════ */
+.admin-overlay { position: fixed; inset: 0; background: var(--off-white); z-index: 200; display: none; overflow-y: auto; padding: 1.5rem; flex-direction: column; }
 .admin-overlay.open { display: flex; }
 .admin-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border); }
 .admin-title { font-size: 1rem; font-weight: 700; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
@@ -243,10 +229,6 @@ tr:hover td { background: var(--off-white); }
 .mtc-meta { font-size: .72rem; color: var(--text-3); font-family: var(--font-mono); }
 .mtc-arrow { color: var(--text-3); font-size: .9rem; flex-shrink: 0; }
 
-/* ════ Filter ════ */
-.filter-bar { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px 8px; }
-.filter-select, .filter-input { width: 100%; height: 34px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: var(--r-sm); background: var(--off-white); font-family: var(--font-body); font-size: .8rem; color: var(--text-1); outline: none; cursor: pointer; transition: all .18s var(--ease); }
-.filter-select:focus, .filter-input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px var(--accent-glow); }
 /* ════ MODALS ════ */
 .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,25,35,.45); backdrop-filter: blur(4px); z-index: 2000; align-items: flex-end; justify-content: center; padding: 0; }
 @media (min-width: 640px) { .modal-backdrop { align-items: center; padding: 1.5rem; } }
@@ -313,17 +295,13 @@ tr:hover td { background: var(--off-white); }
     .main-panel { display: none; }
     .fab { display: flex; }
     .app-body { flex-direction: column; }
-
     #mobileDetailView { position: fixed; inset: 0; z-index: 30; background: var(--off-white); transform: translateX(100%); transition: transform .28s var(--ease); display: flex; flex-direction: column; overflow: hidden; }
     #mobileDetailView.open { transform: translateX(0); }
-
     .topbar-page-title { display: block; }
-
     .topbar.detail-mode .topbar-logo { display: none; }
     .topbar.detail-mode .back-btn { display: flex; }
     .topbar.detail-mode .topbar-center { display: block; }
 }
-
 @media (min-width: 769px) {
     .mobile-view { display: none !important; }
     #mobileDetailView { display: none !important; }
@@ -355,8 +333,9 @@ tr:hover td { background: var(--off-white); }
     <div class="login-card">
       <div class="field-group">
         <label class="field-label">Your Name</label>
-        <input list="loginUserList" id="loginUserSelect" class="field-input" placeholder="Select or type your name…" autocomplete="off"/>
-        <datalist id="loginUserList"></datalist>
+        <select id="loginUserSelect" class="field-input">
+          <option value="">Select your name…</option>
+        </select>
       </div>
       <div class="field-group">
         <label class="field-label">Security PIN</label>
@@ -414,32 +393,32 @@ tr:hover td { background: var(--off-white); }
         <div class="sidebar-header-row">
           <button class="new-topic-btn" onclick="openModal('topicModal')">＋ New Topic</button>
           <button class="icon-btn" id="sidebarArchiveToggleBtn" onclick="toggleArchiveFilter()" title="Toggle Archived View"><span id="sidebarArchiveIcon">📦</span></button>
-          <!-- Search toggle button added here -->
-          <div class="expandable-search" id="sidebarSearchContainer">
-            <button class="icon-btn" onclick="toggleSidebarSearch()" title="Search Topics">🔍</button>
-            <input type="text" id="sidebarSearchInput" placeholder="Search..." oninput="renderTopics()" autocomplete="off"/>
-          </div>
+          <button class="icon-btn" id="sidebarSearchBtn" onclick="toggleSidebarSearch()" title="Search">🔍</button>
+          <button class="icon-btn" id="sidebarFilterBtn" onclick="toggleSidebarFilter()" title="Filter">⚙️</button>
         </div>
-      </div>
-      <div class="filter-bar" id="filterBarDesktop">
+        <div class="expandable-panel" id="sidebarSearchPanel">
+          <input type="text" id="sidebarSearchInput" placeholder="Search topics..." oninput="setSearchQuery(this.value)" autocomplete="off"/>
+        </div>
+        <div class="expandable-panel" id="sidebarFilterPanel">
           <select class="filter-select" id="filterDuration" onchange="applyFilter()">
-              <option value="all">All Time</option>
-              <option value="1">Last 24 Hours</option>
-              <option value="7">Last 7 Days</option>
-              <option value="14">Last 2 Weeks</option>
-              <option value="30">Last 30 Days</option>
-              <option value="custom">Custom Range…</option>
+            <option value="all">All Time</option>
+            <option value="1">Last 24 Hours</option>
+            <option value="7">Last 7 Days</option>
+            <option value="14">Last 2 Weeks</option>
+            <option value="30">Last 30 Days</option>
+            <option value="custom">Custom Range…</option>
           </select>
           <select class="filter-select" id="filterType" onchange="applyFilter()">
-              <option value="all">Everything</option>
-              <option value="new-topic">New Topics Only</option>
-              <option value="new-section">New Sections Only</option>
-              <option value="new-update">New Updates Only</option>
+            <option value="all">Everything</option>
+            <option value="new-topic">New Topics Only</option>
+            <option value="new-section">New Sections Only</option>
+            <option value="new-update">New Updates Only</option>
           </select>
-          <div id="customRangeWrap" style="display:none;gap:6px;margin-top:6px;">
-              <input type="date" class="filter-input" id="filterFrom" onchange="applyFilter()"/>
-              <input type="date" class="filter-input" id="filterTo" onchange="applyFilter()"/>
+          <div id="customRangeWrap" style="display:none;gap:6px;">
+            <input type="date" class="filter-input" id="filterFrom" onchange="applyFilter()"/>
+            <input type="date" class="filter-input" id="filterTo" onchange="applyFilter()"/>
           </div>
+        </div>
       </div>
       <div class="topic-scroll" id="topicListDesktop"></div>
     </aside>
@@ -461,34 +440,35 @@ tr:hover td { background: var(--off-white); }
     <div class="mobile-view active" id="mobileTopicsView">
       <div class="mobile-topics-header">
         <h2>Handover Topics</h2>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:.4rem;">
+        <div class="sidebar-header-row" style="margin-top:.5rem;">
           <button class="new-topic-btn" style="flex:1;" onclick="openModal('topicModal')">＋ New Topic</button>
           <button class="icon-btn" id="mobileArchiveToggleBtn" onclick="toggleArchiveFilter()" title="Toggle Archived"><span id="mobileArchiveIcon">📦</span></button>
-          <div class="expandable-search" id="mobileSearchContainer">
-            <button class="icon-btn" onclick="toggleMobileSearch()">🔍</button>
-            <input type="text" id="mobileSearchInput" placeholder="Search..." oninput="setSearchQuery(this.value)" autocomplete="off"/>
-          </div>
+          <button class="icon-btn" onclick="toggleMobileSearch()" title="Search">🔍</button>
+          <button class="icon-btn" onclick="toggleMobileFilter()" title="Filter">⚙️</button>
         </div>
-      </div>
-      <div class="filter-bar" style="margin-top:.6rem;">
+        <div class="expandable-panel" id="mobileSearchPanel">
+          <input type="text" id="mobileSearchInput" placeholder="Search topics..." oninput="setSearchQuery(this.value)" autocomplete="off"/>
+        </div>
+        <div class="expandable-panel" id="mobileFilterPanel">
           <select class="filter-select" id="filterDurationM" onchange="syncFilterFromMobile()">
-              <option value="all">All Time</option>
-              <option value="1">Last 24 Hours</option>
-              <option value="7">Last 7 Days</option>
-              <option value="14">Last 2 Weeks</option>
-              <option value="30">Last 30 Days</option>
-              <option value="custom">Custom Range…</option>
+            <option value="all">All Time</option>
+            <option value="1">Last 24 Hours</option>
+            <option value="7">Last 7 Days</option>
+            <option value="14">Last 2 Weeks</option>
+            <option value="30">Last 30 Days</option>
+            <option value="custom">Custom Range…</option>
           </select>
           <select class="filter-select" id="filterTypeM" onchange="syncFilterFromMobile()">
-              <option value="all">Everything</option>
-              <option value="new-topic">New Topics Only</option>
-              <option value="new-section">New Sections Only</option>
-              <option value="new-update">New Updates Only</option>
+            <option value="all">Everything</option>
+            <option value="new-topic">New Topics Only</option>
+            <option value="new-section">New Sections Only</option>
+            <option value="new-update">New Updates Only</option>
           </select>
-          <div id="customRangeWrapM" style="display:none;gap:6px;margin-top:6px;">
-              <input type="date" class="filter-input" id="filterFromM" onchange="syncFilterFromMobile()"/>
-              <input type="date" class="filter-input" id="filterToM" onchange="syncFilterFromMobile()"/>
+          <div id="customRangeWrapM" style="display:none;gap:6px;">
+            <input type="date" class="filter-input" id="filterFromM" onchange="syncFilterFromMobile()"/>
+            <input type="date" class="filter-input" id="filterToM" onchange="syncFilterFromMobile()"/>
           </div>
+        </div>
       </div>
       <div class="mobile-topics-scroll" id="topicListMobile"></div>
     </div>
@@ -499,7 +479,7 @@ tr:hover td { background: var(--off-white); }
       <div id="mobileNewSectionFooter" style="display:none;"></div>
     </div>
 
-    <!-- ── ADMIN OVERLAY (mobile friendly) ── -->
+    <!-- ── ADMIN OVERLAY ── -->
     <div class="admin-overlay" id="adminPanelOverlay">
       <div class="admin-topbar">
         <div class="admin-title">⚙️ Administration</div>
@@ -646,33 +626,32 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 window._supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ─── STATE ─── */
-let db = { users:[{id:"u1",name:"Manager",mobile:"0000",pin:"123456"}], adminPin:"999999", categories:["General","HSE","Project"], topics:[], sections:[], comments:[] };
+let db = { users:[{id:"u1",name:"Manager",mobile:"0000",pin:"123456"}], adminPin:"999999", categories:["General","HSE","Project"], topics:[], sections:[], comments:[], userReads:{} };
 let activeT=null, activeS=null, droppedFile=null, showArchivedSecs=false;
 let collapsedCategories={}, syncTimeout=null, expandedSections=new Set();
 let currentSessionPreviousLogin=0;
 let isMobile=()=>window.innerWidth<=768;
 
-// Global search query
+/* ─── SEARCH & FILTER STATE ─── */
 let currentSearchQuery = '';
-
-function setSearchQuery(val) {
-  currentSearchQuery = val.toLowerCase();
-  renderTopics();
-}
-
-
-// Filter state
 let filterDuration = 'all';
 let filterType = 'all';
 let filterFrom = '';
 let filterTo = '';
 
+function setSearchQuery(val){
+    currentSearchQuery = (val||'').toLowerCase();
+    renderTopics();
+}
+
+/* ─── FILTER HANDLERS ─── */
 function applyFilter(){
     filterDuration = document.getElementById('filterDuration').value;
     filterType = document.getElementById('filterType').value;
     filterFrom = document.getElementById('filterFrom') ? document.getElementById('filterFrom').value : '';
     filterTo = document.getElementById('filterTo') ? document.getElementById('filterTo').value : '';
     document.getElementById('customRangeWrap').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    updateFilterIconState();
     renderTopics();
 }
 
@@ -682,12 +661,21 @@ function syncFilterFromMobile(){
     filterFrom = document.getElementById('filterFromM') ? document.getElementById('filterFromM').value : '';
     filterTo = document.getElementById('filterToM') ? document.getElementById('filterToM').value : '';
     document.getElementById('customRangeWrapM').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    // sync to desktop
     document.getElementById('filterDuration').value = filterDuration;
     document.getElementById('filterType').value = filterType;
     if(document.getElementById('filterFrom')) document.getElementById('filterFrom').value = filterFrom;
     if(document.getElementById('filterTo')) document.getElementById('filterTo').value = filterTo;
     document.getElementById('customRangeWrap').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    updateFilterIconState();
     renderTopics();
+}
+
+function updateFilterIconState(){
+    const active = (filterDuration !== 'all') || (filterType !== 'all');
+    document.querySelectorAll('#sidebarFilterBtn, #mobileFilterPanel').forEach(el => {
+        if(el && el.tagName === 'BUTTON') el.classList.toggle('active-filter', active);
+    });
 }
 
 function isInFilterRange(dateObj){
@@ -704,121 +692,171 @@ function isInFilterRange(dateObj){
     return (now - t) <= days * 24 * 60 * 60 * 1000;
 }
 
-// Close all open search containers on click outside
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.expandable-search')) {
-    const openContainers = document.querySelectorAll('.expandable-search.open');
-    openContainers.forEach(container => {
-      container.classList.remove('open');
-      const input = container.querySelector('input');
-      if (input) input.value = '';
-      setSearchQuery('');
+/* ─── READ TRACKING ─── */
+function getCurrentUserId(){ return document.getElementById("globalUserSelect").value; }
+function getUserReads(){
+    const uid = getCurrentUserId();
+    if(!uid) return {topics:[],sections:[],comments:[]};
+    if(!db.userReads[uid]) db.userReads[uid] = {topics:[],sections:[],comments:[]};
+    return db.userReads[uid];
+}
+function isRead(type,id){
+    const r = getUserReads();
+    return (r[type]||[]).includes(id);
+}
+function markAsRead(type,id){
+    const uid = getCurrentUserId();
+    if(!uid || !id) return;
+    if(!db.userReads[uid]) db.userReads[uid] = {topics:[],sections:[],comments:[]};
+    if(!db.userReads[uid][type]) db.userReads[uid][type] = [];
+    if(!db.userReads[uid][type].includes(id)){
+        db.userReads[uid][type].push(id);
+        sync();
+    }
+}
+function markManyAsRead(type, ids){
+    const uid = getCurrentUserId();
+    if(!uid || !ids.length) return;
+    if(!db.userReads[uid]) db.userReads[uid] = {topics:[],sections:[],comments:[]};
+    if(!db.userReads[uid][type]) db.userReads[uid][type] = [];
+    let changed = false;
+    ids.forEach(id => {
+        if(!db.userReads[uid][type].includes(id)){
+            db.userReads[uid][type].push(id);
+            changed = true;
+        }
     });
-  }
-  if (!e.target.closest('.dropdown')) {
-    document.querySelectorAll('.dropdown-menu').forEach(menu => {
-      menu.style.display = 'none';
-    });
-  }
+    if(changed) sync();
+}
+
+/* ─── NEW BADGE ─── */
+function checkIsNew(dateObj, creatorId, type, id){
+    if(!dateObj) return false;
+    const uid = getCurrentUserId();
+    if(creatorId && creatorId === uid) return false;
+    if(type && id && isRead(type, id)) return false;
+    const t = new Date(dateObj).getTime();
+    const now = Date.now();
+    const twoWeeks = 14*24*60*60*1000;
+    const withinTwoWeeks = (now - t) <= twoWeeks;
+    const sinceLastLogin = currentSessionPreviousLogin && t > currentSessionPreviousLogin;
+    return withinTwoWeeks || sinceLastLogin;
+}
+
+function getSectionBadgeHtml(sid){
+    const sec = db.sections.find(s => s.id === sid);
+    if(!sec) return "";
+    if(checkIsNew(sec.date, sec.userId, 'sections', sid)) return `<span class="badge-new">New</span>`;
+    const comments = db.comments.filter(c => c.sectionId === sid);
+    if(!comments.length) return "";
+    const latest = comments.reduce((a,b) => new Date(a.date) > new Date(b.date) ? a : b);
+    if(checkIsNew(latest.date, latest.userId, 'comments', latest.id)) return `<span class="badge-new">New Update</span>`;
+    return "";
+}
+
+function getTopicBadgeHtml(tid){
+    const t = db.topics.find(x => x.id === tid);
+    if(!t) return "";
+    if(checkIsNew(t.date, t.userId, 'topics', tid)) return `<span class="badge-new">New</span>`;
+    const sections = db.sections.filter(s => s.topicId === tid);
+    for(let s of sections){
+        if(checkIsNew(s.date, s.userId, 'sections', s.id)) return `<span class="badge-new">Update</span>`;
+    }
+    const comments = db.comments.filter(c => sections.some(s => s.id === c.sectionId));
+    if(comments.length){
+        const latest = comments.reduce((a,b) => new Date(a.date) > new Date(b.date) ? a : b);
+        if(checkIsNew(latest.date, latest.userId, 'comments', latest.id)) return `<span class="badge-new">Update</span>`;
+    }
+    return "";
+}
+
+/* ─── CLICK OUTSIDE CLOSES DROPDOWN ─── */
+document.addEventListener('click', function(e){
+    if(!e.target.closest('.dropdown')){
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+    }
 });
 
-/* ─── SEARCH TOGGLE (sidebar & mobile) ─── */
-function toggleSidebarSearch() {
-  const container = document.getElementById('sidebarSearchContainer');
-  const input = document.getElementById('sidebarSearchInput');
-  container.classList.toggle('open');
-  if (container.classList.contains('open')) {
-    input.focus();
-  } else {
-    input.value = '';
-    renderTopics();
-  }
+/* ─── SEARCH/FILTER TOGGLES ─── */
+function toggleSidebarSearch(){
+    const p = document.getElementById('sidebarSearchPanel');
+    const fp = document.getElementById('sidebarFilterPanel');
+    fp.classList.remove('open');
+    p.classList.toggle('open');
+    if(p.classList.contains('open')) document.getElementById('sidebarSearchInput').focus();
+    else { document.getElementById('sidebarSearchInput').value = ''; setSearchQuery(''); }
+}
+function toggleSidebarFilter(){
+    const p = document.getElementById('sidebarFilterPanel');
+    const sp = document.getElementById('sidebarSearchPanel');
+    sp.classList.remove('open');
+    p.classList.toggle('open');
+}
+function toggleMobileSearch(){
+    const p = document.getElementById('mobileSearchPanel');
+    const fp = document.getElementById('mobileFilterPanel');
+    fp.classList.remove('open');
+    p.classList.toggle('open');
+    if(p.classList.contains('open')) document.getElementById('mobileSearchInput').focus();
+    else { document.getElementById('mobileSearchInput').value = ''; setSearchQuery(''); }
+}
+function toggleMobileFilter(){
+    const p = document.getElementById('mobileFilterPanel');
+    const sp = document.getElementById('mobileSearchPanel');
+    sp.classList.remove('open');
+    p.classList.toggle('open');
 }
 
-function toggleMobileSearch() {
-  const container = document.getElementById('mobileSearchContainer');
-  const input = document.getElementById('mobileSearchInput');
-  container.classList.toggle('open');
-  if (container.classList.contains('open')) {
-    input.focus();
-  } else {
-    input.value = '';
-    renderTopics();
-  }
-}
-
-/* ─── ARCHIVE TOGGLE (icon-based, replaces switch) ─── */
+/* ─── ARCHIVE TOGGLE ─── */
 function toggleArchiveFilter(){
-  const currentFilter = document.getElementById('topicFilter').value;
-  const newFilter = currentFilter === 'active' ? 'archived' : 'active';
-  document.getElementById('topicFilter').value = newFilter;
-  updateArchiveIcons();
-  renderTopics();
-  if (newFilter === 'archived' && activeT) {
-    const t = db.topics.find(x => x.id === activeT);
-    if (t && !t.archived) {
-      if (isMobile()) closeMobileDetail();
-      else { document.getElementById('welcomeView').style.display = 'flex'; document.getElementById('topicDetail').style.display = 'none'; }
-      activeT = null;
+    const currentFilter = document.getElementById('topicFilter').value;
+    const newFilter = currentFilter === 'active' ? 'archived' : 'active';
+    document.getElementById('topicFilter').value = newFilter;
+    updateArchiveIcons();
+    renderTopics();
+    if(newFilter === 'archived' && activeT){
+        const t = db.topics.find(x => x.id === activeT);
+        if(t && !t.archived){
+            if(isMobile()) closeMobileDetail();
+            else { document.getElementById('welcomeView').style.display = 'flex'; document.getElementById('topicDetail').style.display = 'none'; }
+            activeT = null;
+        }
     }
-  }
-  if (newFilter === 'active' && activeT) {
-    const t = db.topics.find(x => x.id === activeT);
-    if (t && t.archived) {
-      if (isMobile()) closeMobileDetail();
-      else { document.getElementById('welcomeView').style.display = 'flex'; document.getElementById('topicDetail').style.display = 'none'; }
-      activeT = null;
+    if(newFilter === 'active' && activeT){
+        const t = db.topics.find(x => x.id === activeT);
+        if(t && t.archived){
+            if(isMobile()) closeMobileDetail();
+            else { document.getElementById('welcomeView').style.display = 'flex'; document.getElementById('topicDetail').style.display = 'none'; }
+            activeT = null;
+        }
     }
-  }
 }
-
 function updateArchiveIcons(){
-  const currentFilter = document.getElementById('topicFilter').value;
-  const isArchived = currentFilter === 'archived';
-  const icon = isArchived ? '📂' : '📦';
-  document.getElementById('sidebarArchiveIcon').textContent = icon;
-  document.getElementById('mobileArchiveIcon').textContent = icon;
+    const currentFilter = document.getElementById('topicFilter').value;
+    const isArchived = currentFilter === 'archived';
+    const icon = isArchived ? '📂' : '📦';
+    document.getElementById('sidebarArchiveIcon').textContent = icon;
+    document.getElementById('mobileArchiveIcon').textContent = icon;
 }
 
-// --- ADMIN PANEL (now uses overlay) ---
-function openAdminPanel() {
-  // First require admin PIN
-  const input = prompt("Enter Admin PIN:");
-  if (input === null) return;
-  if (input.length > 6) return alert("PIN cannot exceed 6 digits.");
-  if (!/^\d+$/.test(input)) return alert("PIN must be numeric.");
-  if (input === db.adminPin) {
-    document.getElementById('adminPanelOverlay').classList.add('open');
-    renderAdmin();
-  } else {
-    alert("Incorrect Admin PIN.");
-  }
+/* ─── ADMIN PANEL ─── */
+function openAdminPanel(){
+    const input = prompt("Enter Admin PIN:");
+    if(input === null) return;
+    if(input.length > 6) return alert("PIN cannot exceed 6 digits.");
+    if(!/^\d+$/.test(input)) return alert("PIN must be numeric.");
+    if(input === db.adminPin){
+        document.getElementById('adminPanelOverlay').classList.add('open');
+        renderAdmin();
+    } else {
+        alert("Incorrect Admin PIN.");
+    }
 }
-function closeAdminPanel() {
-  document.getElementById('adminPanelOverlay').classList.remove('open');
-}
-
-/* ─── SEARCH SYNC ─── */
-function syncSearchFromTop(){
-    const topVal = document.getElementById('globalSearchInput').value;
-    const sidebarInput = document.getElementById('sidebarSearchInput');
-    if (sidebarInput) sidebarInput.value = topVal;
-    renderTopics();
-}
-function syncSearchFromSidebar(){
-    const sidebarVal = document.getElementById('sidebarSearchInput').value;
-    const topInput = document.getElementById('globalSearchInput');
-    if (topInput) topInput.value = sidebarVal;
-    renderTopics();
-}
-function getSearchQuery(){
-    // Read from whichever search input is available
-    const topVal = document.getElementById('globalSearchInput')?.value || '';
-    const sidebarVal = document.getElementById('sidebarSearchInput')?.value || '';
-    return (sidebarVal || topVal).toLowerCase();
+function closeAdminPanel(){
+    document.getElementById('adminPanelOverlay').classList.remove('open');
 }
 
-/* ─── MOBILE VIEW & TOP BAR HELPERS ─── */
+/* ─── MOBILE VIEW ─── */
 function openMobileDetail(topicId){
     const el = document.getElementById('mobileDetailView');
     el.classList.add('open');
@@ -835,368 +873,362 @@ function closeMobileDetail(){
     document.getElementById('mainTopbar').classList.remove('detail-mode');
 }
 
-function toggleTopSearch(){
-    const cont = document.getElementById('topSearchContainer');
-    const inp = document.getElementById('globalSearchInput');
-    const topbar = document.getElementById('mainTopbar');
-    cont.classList.toggle('open');
-    topbar.classList.toggle('search-open', cont.classList.contains('open'));
-    if (cont.classList.contains('open')) {
-        inp.focus();
-    } else {
-        inp.value = '';
-        const sidebarInput = document.getElementById('sidebarSearchInput');
-        if (sidebarInput) sidebarInput.value = '';
-        renderTopics();
-    }
-}
-
-/* ─── NEW BADGE ─── */
-function checkIsNew(dateObj,creatorId){
-    if(!dateObj) return false;
-    const uid=document.getElementById("globalUserSelect").value;
-    if(creatorId&&creatorId===uid) return false;
-    const t=new Date(dateObj).getTime();
-    const now=Date.now();
-    const twoWeeks=14*24*60*60*1000;
-    const withinTwoWeeks=(now-t)<=twoWeeks;
-    const sinceLastLogin=currentSessionPreviousLogin&&t>currentSessionPreviousLogin;
-    return withinTwoWeeks||sinceLastLogin;
-}
-function getSectionBadgeHtml(sid){
-    const sec=db.sections.find(s=>s.id===sid);
-    if(!sec) return "";
-    if(checkIsNew(sec.date,sec.userId)) return `<span class="badge-new">New</span>`;
-    const comments=db.comments.filter(c=>c.sectionId===sid);
-    if(!comments.length) return "";
-    const latest=comments.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
-    if(latest.userId===document.getElementById("globalUserSelect").value) return "";
-    return checkIsNew(latest.date,latest.userId)?`<span class="badge-new">New Update</span>`:"";
-}
-function getTopicBadgeHtml(tid){
-    const t=db.topics.find(x=>x.id===tid);
-    if(!t) return "";
-    if(checkIsNew(t.date,t.userId)) return `<span class="badge-new">New</span>`;
-    const sections=db.sections.filter(s=>s.topicId===tid);
-    for(let s of sections){
-        if(checkIsNew(s.date,s.userId)) return `<span class="badge-new">Update</span>`;
-    }
-    const comments=db.comments.filter(c=>sections.some(s=>s.id===c.sectionId));
-    if(comments.length){
-        const latest=comments.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
-        if(latest.userId!==document.getElementById("globalUserSelect").value && checkIsNew(latest.date,latest.userId)){
-            return `<span class="badge-new">Update</span>`;
-        }
-    }
-    return "";
-}
-
 /* ─── INIT ─── */
 async function initApp(){
-  const lt = document.getElementById("loaderText");
-  try{
-    if(lt) lt.innerText="Checking cloud database…";
-    const {data,error}=await window._supabase.from('handover_data').select('state').eq('id',1).maybeSingle();
-    if(error) throw error;
-    if(data&&data.state){ if(lt) lt.innerText="Loading data…"; db=data.state; }
-    else{
-      if(lt) lt.innerText="Setting up local data…";
-      let local=localStorage.getItem("handover_v10");
-      if(local) db=JSON.parse(local);
-      await window._supabase.from('handover_data').upsert({id:1,state:db});
+    const lt = document.getElementById("loaderText");
+    try{
+        if(lt) lt.innerText = "Checking cloud database…";
+        const {data, error} = await window._supabase.from('handover_data').select('state').eq('id', 1).maybeSingle();
+        if(error) throw error;
+        if(data && data.state){ if(lt) lt.innerText = "Loading data…"; db = data.state; }
+        else{
+            if(lt) lt.innerText = "Setting up local data…";
+            let local = localStorage.getItem("handover_v10");
+            if(local) db = JSON.parse(local);
+            await window._supabase.from('handover_data').upsert({ id: 1, state: db });
+        }
+    }catch(e){
+        console.warn("Supabase failed, using local.", e);
+        let local = localStorage.getItem("handover_v10");
+        if(local) db = JSON.parse(local);
     }
-  }catch(e){
-    console.warn("Supabase failed, using local.",e);
-    let local=localStorage.getItem("handover_v10");
-    if(local) db=JSON.parse(local);
-  }
-  if(!db.users||!db.users.length) db.users=[{id:"u1",name:"Manager",mobile:"0000",pin:"123456"}];
-  db.users.forEach(u=>{if(!u.pin) u.pin="123456";});
-  if(!db.adminPin) db.adminPin="999999";
-  handleDeepLinks();
-  populateGlobalUser();
-  updateArchiveIcons();
-  renderTopics();
-  renderAdmin();
-  setTimeout(()=>{
-    const loader=document.getElementById("globalLoader");
-    if(loader){loader.style.opacity="0";setTimeout(()=>loader.style.display="none",300);}
-    checkSession();
-    setInterval(autoSyncFetch,10000);
-  },500);
+    if(!db.users || !db.users.length) db.users = [{ id:"u1", name:"Manager", mobile:"0000", pin:"123456" }];
+    db.users.forEach(u => { if(!u.pin) u.pin = "123456"; });
+    if(!db.adminPin) db.adminPin = "999999";
+    if(!db.userReads) db.userReads = {};
+    handleDeepLinks();
+    populateGlobalUser();
+    updateArchiveIcons();
+    renderTopics();
+    renderAdmin();
+    setTimeout(() => {
+        const loader = document.getElementById("globalLoader");
+        if(loader){ loader.style.opacity = "0"; setTimeout(() => loader.style.display = "none", 300); }
+        checkSession();
+        setInterval(autoSyncFetch, 10000);
+    }, 500);
 }
-window.onload=initApp;
+window.onload = initApp;
 
 async function sync(){
-    localStorage.setItem("handover_v10",JSON.stringify(db));
-    renderTopics(); renderAdmin();
+    localStorage.setItem("handover_v10", JSON.stringify(db));
+    renderTopics();
+    renderAdmin();
     clearTimeout(syncTimeout);
-    syncTimeout=setTimeout(async()=>{
-        try{await window._supabase.from('handover_data').upsert({id:1,state:db});}
-        catch(e){console.error("Sync failed",e);}
-    },800);
+    syncTimeout = setTimeout(async () => {
+        try{ await window._supabase.from('handover_data').upsert({ id: 1, state: db }); }
+        catch(e){ console.error("Sync failed", e); }
+    }, 800);
 }
+
 async function autoSyncFetch(){
     try{
-        const {data}=await window._supabase.from('handover_data').select('state').eq('id',1).maybeSingle();
-        if(data&&data.state){
-            const cs=JSON.stringify(data.state), ls=JSON.stringify(db);
-            if(cs!==ls){
-                db=data.state; localStorage.setItem("handover_v10",cs);
+        const {data} = await window._supabase.from('handover_data').select('state').eq('id', 1).maybeSingle();
+        if(data && data.state){
+            const cs = JSON.stringify(data.state), ls = JSON.stringify(db);
+            if(cs !== ls){
+                db = data.state;
+                if(!db.userReads) db.userReads = {};
+                localStorage.setItem("handover_v10", cs);
                 updateArchiveIcons();
                 renderTopics();
                 if(activeT){ if(isMobile()) renderMobileDetail(activeT); else renderSections(); }
-                if(document.getElementById("adminView").style.display==="block") renderAdmin();
+                if(document.getElementById("adminPanelOverlay").classList.contains('open')) renderAdmin();
             }
         }
-    }catch(e){console.warn("Auto-sync failed.",e);}
+    }catch(e){ console.warn("Auto-sync failed.", e); }
 }
+
 function handleDeepLinks(){
-    const p=new URLSearchParams(window.location.search), did=p.get("downloadCommentId");
-    if(did&&db.comments){
-        const c=db.comments.find(x=>x.id===did);
-        if(c&&c.fData){const a=document.createElement("a");a.href=c.fData;a.download=c.fName;document.body.appendChild(a);a.click();document.body.removeChild(a);window.history.replaceState({},"",window.location.pathname);}
-        else alert("Attachment not found.");
+    const p = new URLSearchParams(window.location.search), did = p.get("downloadCommentId");
+    if(did && db.comments){
+        const c = db.comments.find(x => x.id === did);
+        if(c && c.fData){
+            const a = document.createElement("a");
+            a.href = c.fData; a.download = c.fName;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            window.history.replaceState({}, "", window.location.pathname);
+        } else alert("Attachment not found.");
     }
 }
 
 /* ─── USER UI ─── */
 const updateWelcomeMsg = () => {
-  const sel = document.getElementById("globalUserSelect");
-  if(sel && sel.options.length > 0) {
-    const name = sel.options[sel.selectedIndex].text;
-    const firstName = name.split(' ')[0];
-    const initial = name.charAt(0).toUpperCase();
-    document.getElementById('topbarFirstName').textContent = firstName;
-    document.getElementById('userAvatarBtn').textContent = initial;
-    // Also update sidebar welcome name if present
-    const welcomeNames = document.querySelectorAll('.welcome-name-text');
-    welcomeNames.forEach(el => el.innerText = name);
-  }
+    const sel = document.getElementById("globalUserSelect");
+    if(sel && sel.options.length > 0){
+        const name = sel.options[sel.selectedIndex].text;
+        const firstName = name.split(' ')[0];
+        const initial = name.charAt(0).toUpperCase();
+        document.getElementById('topbarFirstName').textContent = firstName;
+        document.getElementById('userAvatarBtn').textContent = initial;
+    }
 };
 document.getElementById("globalUserSelect").addEventListener("change", updateWelcomeMsg);
 
 /* ─── AUTH ─── */
 function checkSession(){
-  const ss=localStorage.getItem('handover_session');
-  if(ss){
-    const s=JSON.parse(ss);
-    if(s.expiry>Date.now()){
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('app').style.display='flex';
-      document.getElementById("globalUserSelect").value=s.userId;
-      document.getElementById("globalUserSelect").dispatchEvent(new Event('change'));
-      if(!sessionStorage.getItem('handover_visit_started')){
-        const user=db.users.find(u=>u.id===s.userId);
-        if(user){
-          const prev=user.lastLogin||Date.now();
-          localStorage.setItem('handover_prev_login_'+user.id,prev);
-          currentSessionPreviousLogin=prev;
-          user.lastLogin=Date.now();
-          sync(); sessionStorage.setItem('handover_visit_started','true');
+    const ss = localStorage.getItem('handover_session');
+    if(ss){
+        const s = JSON.parse(ss);
+        if(s.expiry > Date.now()){
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('app').style.display = 'flex';
+            document.getElementById("globalUserSelect").value = s.userId;
+            document.getElementById("globalUserSelect").dispatchEvent(new Event('change'));
+            if(!sessionStorage.getItem('handover_visit_started')){
+                const user = db.users.find(u => u.id === s.userId);
+                if(user){
+                    const prev = user.lastLogin || Date.now();
+                    localStorage.setItem('handover_prev_login_' + user.id, prev);
+                    currentSessionPreviousLogin = prev;
+                    user.lastLogin = Date.now();
+                    sync();
+                    sessionStorage.setItem('handover_visit_started', 'true');
+                }
+            }else{
+                const saved = localStorage.getItem('handover_prev_login_' + s.userId);
+                currentSessionPreviousLogin = saved ? parseInt(saved) : Date.now();
+            }
+            updateWelcomeMsg();
+            return;
         }
-      }else{
-        const saved=localStorage.getItem('handover_prev_login_'+s.userId);
-        currentSessionPreviousLogin=saved?parseInt(saved):Date.now();
-      }
-      updateWelcomeMsg();
-      return;
     }
-  }
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('app').style.display='none';
-  const ll=document.getElementById('loginUserList');
-  ll.innerHTML=db.users.map(u=>`<option value="${u.name}">`).join('');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    const ls = document.getElementById('loginUserSelect');
+    ls.innerHTML = '<option value="">Select your name…</option>' + db.users.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
 }
+
 function doLogin(){
-    const name=document.getElementById('loginUserSelect').value.trim();
-    const pin=document.getElementById('loginPinInput').value.trim();
-    if(!name) return alert("Please enter your name.");
+    const name = document.getElementById('loginUserSelect').value.trim();
+    const pin = document.getElementById('loginPinInput').value.trim();
+    if(!name) return alert("Please select your name.");
     if(!pin) return alert("Please enter your PIN.");
-    const user=db.users.find(u=>u.name.toLowerCase()===name.toLowerCase());
-    if(user&&user.pin===pin){
-        const expiry=Date.now()+1209600000;
-        localStorage.setItem('handover_session',JSON.stringify({userId:user.id,expiry}));
-        const prev=user.lastLogin||Date.now();
-        localStorage.setItem('handover_prev_login_'+user.id,prev);
-        currentSessionPreviousLogin=prev; user.lastLogin=Date.now();
-        sessionStorage.setItem('handover_visit_started','true');
+    const user = db.users.find(u => u.name.toLowerCase() === name.toLowerCase());
+    if(user && user.pin === pin){
+        const expiry = Date.now() + 1209600000;
+        localStorage.setItem('handover_session', JSON.stringify({ userId: user.id, expiry }));
+        const prev = user.lastLogin || Date.now();
+        localStorage.setItem('handover_prev_login_' + user.id, prev);
+        currentSessionPreviousLogin = prev;
+        user.lastLogin = Date.now();
+        sessionStorage.setItem('handover_visit_started', 'true');
         sync();
-        document.getElementById('loginPinInput').value='';
-        document.getElementById('loginUserSelect').value='';
+        document.getElementById('loginPinInput').value = '';
+        document.getElementById('loginUserSelect').value = '';
         checkSession();
-    }else alert("Access denied: incorrect name or PIN.");
+    } else alert("Access denied: incorrect name or PIN.");
 }
-function doLogout(){ localStorage.removeItem('handover_session'); checkSession(); }
-function toggleAdminPanel(){
-    const input=prompt("Enter Admin PIN:");
-    if(input===null) return;
-    if(input.length>6) return alert("PIN cannot exceed 6 digits.");
-    if(!/^\d+$/.test(input)) return alert("PIN must be numeric.");
-    if(input===db.adminPin) toggleView('admin');
-    else alert("Incorrect Admin PIN.");
+
+function doLogout(){
+    localStorage.removeItem('handover_session');
+    sessionStorage.removeItem('handover_visit_started');
+    checkSession();
 }
+
 function changeAdminPin(){
-    const old=prompt("Current Admin PIN:"); if(old!==db.adminPin) return alert("Incorrect.");
-    const np=prompt("New 6-digit PIN:"); if(!/^\d{6}$/.test(np)) return alert("Must be 6 digits.");
-    db.adminPin=np; sync(); alert("Admin PIN updated.");
+    const old = prompt("Current Admin PIN:");
+    if(old !== db.adminPin) return alert("Incorrect.");
+    const np = prompt("New 6-digit PIN:");
+    if(!/^\d{6}$/.test(np)) return alert("Must be 6 digits.");
+    db.adminPin = np; sync(); alert("Admin PIN updated.");
 }
-function toggleView(v){
-    document.getElementById("adminView").style.display=v==="admin"?"block":"none";
-    if(v==="admin") renderAdmin();
-}
+
 function populateGlobalUser(){
-    const sel=document.getElementById("globalUserSelect"), cur=sel.value;
-    sel.innerHTML=db.users.map(u=>`<option value="${u.id}">${u.name}</option>`).join("");
-    if(cur&&db.users.find(u=>u.id===cur)) sel.value=cur;
+    const sel = document.getElementById("globalUserSelect"), cur = sel.value;
+    sel.innerHTML = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join("");
+    if(cur && db.users.find(u => u.id === cur)) sel.value = cur;
     sel.dispatchEvent(new Event('change'));
 }
 
 /* ─── MODALS ─── */
-function openModal(id,sid=null){
-    activeS=sid; droppedFile=null;
-    if(id==="topicModal"){
-        const c=document.getElementById("tcIn");
-        c.innerHTML=db.categories.map((cat,i)=>`<div class="cat-option${i===0?' selected':''}" data-cat="${cat}" onclick="selectCatOption(this)">${cat}</div>`).join("");
+function openModal(id, sid = null){
+    activeS = sid; droppedFile = null;
+    if(id === "topicModal"){
+        const c = document.getElementById("tcIn");
+        c.innerHTML = db.categories.map((cat, i) => `<div class="cat-option${i === 0 ? ' selected' : ''}" data-cat="${cat}" onclick="selectCatOption(this)">${cat}</div>`).join("");
     }
-    if(id==="commentModal"){
-        document.getElementById("coIn").value="";
-        document.getElementById("dzStatus").innerText="";
+    if(id === "commentModal"){
+        document.getElementById("coIn").value = "";
+        document.getElementById("dzStatus").innerText = "";
     }
-    document.getElementById(id).style.display="flex";
+    document.getElementById(id).style.display = "flex";
 }
-function closeModal(id){ document.getElementById(id).style.display="none"; }
-function selectCatOption(el){ document.querySelectorAll('.cat-option').forEach(o=>o.classList.remove('selected')); el.classList.add('selected'); }
+function closeModal(id){ document.getElementById(id).style.display = "none"; }
+function selectCatOption(el){ document.querySelectorAll('.cat-option').forEach(o => o.classList.remove('selected')); el.classList.add('selected'); }
 function selectColor(el){
-    document.querySelectorAll('.color-swatch').forEach(s=>{s.classList.remove('selected');s.innerHTML='';});
-    el.classList.add('selected'); el.innerHTML='<span style="color:white;font-size:.6rem">✓</span>';
-    document.getElementById('scIn').value=el.dataset.color;
+    document.querySelectorAll('.color-swatch').forEach(s => { s.classList.remove('selected'); s.innerHTML = ''; });
+    el.classList.add('selected');
+    el.innerHTML = '<span style="color:white;font-size:.6rem">✓</span>';
+    document.getElementById('scIn').value = el.dataset.color;
 }
 function toggleCustomDates(){
-    const v=document.getElementById("exPeriod").value;
-    document.getElementById("customDateFields").style.display=v==="custom"?"flex":"none";
+    const v = document.getElementById("exPeriod").value;
+    document.getElementById("customDateFields").style.display = v === "custom" ? "flex" : "none";
 }
-function toggleDropdown(id,e){
+function toggleDropdown(id, e){
     e.stopPropagation();
-    document.querySelectorAll(".dropdown-menu").forEach(m=>{if(m.id!=="ddm-"+id) m.style.display="none";});
-    const m=document.getElementById("ddm-"+id);
-    m.style.display=m.style.display==="block"?"none":"block";
+    document.querySelectorAll(".dropdown-menu").forEach(m => { if(m.id !== "ddm-" + id) m.style.display = "none"; });
+    const m = document.getElementById("ddm-" + id);
+    m.style.display = m.style.display === "block" ? "none" : "block";
 }
 
 /* ─── SECTION EXPAND ─── */
-window.toggleSectionExpand=function(sid,event){
-    if(event&&(event.target.closest(".dropdown")||(event.target.closest("button")&&!event.target.classList.contains('add-update-trigger')))) return;
-    const body=document.getElementById("sb-"+sid), icon=document.getElementById("si-"+sid);
+window.toggleSectionExpand = function(sid, event){
+    if(event && (event.target.closest(".dropdown") || (event.target.closest("button") && !event.target.classList.contains('add-update-trigger')))) return;
+    const body = document.getElementById("sb-" + sid), icon = document.getElementById("si-" + sid);
     if(!body) return;
-    const isOpen=body.classList.contains('open');
-    if(isOpen){ body.classList.remove('open'); if(icon) icon.classList.remove('open'); expandedSections.delete(sid); }
-    else{ body.classList.add('open'); if(icon) icon.classList.add('open'); expandedSections.add(sid); }
+    const isOpen = body.classList.contains('open');
+    if(isOpen){
+        body.classList.remove('open');
+        if(icon) icon.classList.remove('open');
+        expandedSections.delete(sid);
+    } else {
+        body.classList.add('open');
+        if(icon) icon.classList.add('open');
+        expandedSections.add(sid);
+        // Mark as read
+        markAsRead('sections', sid);
+        const secComments = db.comments.filter(c => c.sectionId === sid).map(c => c.id);
+        markManyAsRead('comments', secComments);
+        setTimeout(() => { renderSections(); renderTopics(); }, 100);
+    }
 };
-window.toggleCategory=function(cat){
-    collapsedCategories[cat]=!collapsedCategories[cat]; renderTopics();
+window.toggleCategory = function(cat){
+    collapsedCategories[cat] = !collapsedCategories[cat];
+    renderTopics();
 };
 
 /* ─── TOPIC CRUD ─── */
 function saveTopic(){
-    const title=document.getElementById("tIn").value.trim(); if(!title) return;
-    const sel=document.querySelector('.cat-option.selected'), cat=sel?sel.dataset.cat:db.categories[0];
-    const userId=document.getElementById("globalUserSelect").value;
-    db.topics.unshift({id:"t"+Date.now(),title,cat,archived:false,date:new Date(),userId});
-    document.getElementById("tIn").value="";
-    sync(); closeModal("topicModal");
+    const title = document.getElementById("tIn").value.trim();
+    if(!title) return;
+    const sel = document.querySelector('.cat-option.selected'), cat = sel ? sel.dataset.cat : db.categories[0];
+    const userId = document.getElementById("globalUserSelect").value;
+    const newTopic = { id: "t" + Date.now(), title, cat, archived: false, date: new Date(), userId };
+    db.topics.unshift(newTopic);
+    markAsRead('topics', newTopic.id);
+    document.getElementById("tIn").value = "";
+    sync();
+    closeModal("topicModal");
 }
 function toggleTopicArchive(id){
-    const t=db.topics.find(x=>x.id===id); t.archived=!t.archived; sync();
-    if(t.archived&&document.getElementById("topicFilter").value==="active"){
-        if(!isMobile()){ document.getElementById("welcomeView").style.display="flex"; document.getElementById("topicDetail").style.display="none"; }
-        else closeMobileDetail();
-        activeT=null;
-    }else viewTopic(id);
+    const t = db.topics.find(x => x.id === id);
+    t.archived = !t.archived;
+    sync();
+    if(t.archived && document.getElementById("topicFilter").value === "active"){
+        if(!isMobile()){
+            document.getElementById("welcomeView").style.display = "flex";
+            document.getElementById("topicDetail").style.display = "none";
+        } else closeMobileDetail();
+        activeT = null;
+    } else viewTopic(id);
 }
 function deleteTopic(id){
     if(!confirm("Delete this topic and all its contents?")) return;
-    db.topics=db.topics.filter(t=>t.id!==id);
-    db.sections=db.sections.filter(s=>s.topicId!==id);
-    db.comments=db.comments.filter(c=>db.sections.find(s=>s.id===c.sectionId));
-    activeT=null;
-    if(!isMobile()){ document.getElementById("topicDetail").style.display="none"; document.getElementById("welcomeView").style.display="flex"; }
-    else closeMobileDetail();
+    db.topics = db.topics.filter(t => t.id !== id);
+    db.sections = db.sections.filter(s => s.topicId !== id);
+    db.comments = db.comments.filter(c => db.sections.find(s => s.id === c.sectionId));
+    activeT = null;
+    if(!isMobile()){
+        document.getElementById("topicDetail").style.display = "none";
+        document.getElementById("welcomeView").style.display = "flex";
+    } else closeMobileDetail();
     sync();
 }
 
 /* ─── SECTION CRUD ─── */
 function saveSection(){
-    const title=document.getElementById("sIn").value.trim(); if(!title) return;
-    const userId=document.getElementById("globalUserSelect").value;
-    db.sections.push({id:"s"+Date.now(),topicId:activeT,title,color:document.getElementById("scIn").value,archived:false,date:new Date(),userId});
-    document.getElementById("sIn").value="";
-    sync(); closeModal("sectionModal");
+    const title = document.getElementById("sIn").value.trim();
+    if(!title) return;
+    const userId = document.getElementById("globalUserSelect").value;
+    const newSection = { id: "s" + Date.now(), topicId: activeT, title, color: document.getElementById("scIn").value, archived: false, date: new Date(), userId };
+    db.sections.push(newSection);
+    markAsRead('sections', newSection.id);
+    document.getElementById("sIn").value = "";
+    sync();
+    closeModal("sectionModal");
     if(isMobile()) renderMobileDetail(activeT); else renderSections();
 }
 function editSection(sid){
-    const s=db.sections.find(x=>x.id===sid); const n=prompt("Rename:",s.title);
-    if(n){s.title=n;sync();if(isMobile())renderMobileDetail(activeT);else renderSections();}
+    const s = db.sections.find(x => x.id === sid);
+    const n = prompt("Rename:", s.title);
+    if(n){ s.title = n; sync(); if(isMobile()) renderMobileDetail(activeT); else renderSections(); }
 }
 function toggleSectionArchive(sid){
-    const s=db.sections.find(x=>x.id===sid); s.archived=!s.archived;
-    sync(); if(isMobile()) renderMobileDetail(activeT); else renderSections();
+    const s = db.sections.find(x => x.id === sid);
+    s.archived = !s.archived;
+    sync();
+    if(isMobile()) renderMobileDetail(activeT); else renderSections();
 }
 function deleteSection(sid){
     if(!confirm("Delete section and all updates?")) return;
-    db.sections=db.sections.filter(s=>s.id!==sid);
-    db.comments=db.comments.filter(c=>c.sectionId!==sid);
-    sync(); if(isMobile()) renderMobileDetail(activeT); else renderSections();
+    db.sections = db.sections.filter(s => s.id !== sid);
+    db.comments = db.comments.filter(c => c.sectionId !== sid);
+    sync();
+    if(isMobile()) renderMobileDetail(activeT); else renderSections();
 }
-function toggleArchivedSecsVisibility(){ showArchivedSecs=!showArchivedSecs; if(isMobile()) renderMobileDetail(activeT); else renderSections(); }
+function toggleArchivedSecsVisibility(){
+    showArchivedSecs = !showArchivedSecs;
+    if(isMobile()) renderMobileDetail(activeT); else renderSections();
+}
 
 /* ─── FILE HANDLING ─── */
-const dz=document.getElementById("dropZone"), fi=document.getElementById("fileIn");
-if(dz) dz.onclick=()=>fi.click();
-if(dz) dz.ondragover=e=>{e.preventDefault();dz.classList.add("drag-over");};
-if(dz) dz.ondragleave=()=>dz.classList.remove("drag-over");
-if(dz) dz.ondrop=e=>{e.preventDefault();dz.classList.remove("drag-over");handleFiles(e.dataTransfer.files);};
-if(fi) fi.onchange=e=>handleFiles(e.target.files);
-function handleFiles(files){ if(files.length){droppedFile=files[0];document.getElementById("dzStatus").innerText="✓ "+droppedFile.name;}}
-
+const dz = document.getElementById("dropZone"), fi = document.getElementById("fileIn");
+if(dz) dz.onclick = () => fi.click();
+if(dz) dz.ondragover = e => { e.preventDefault(); dz.classList.add("drag-over"); };
+if(dz) dz.ondragleave = () => dz.classList.remove("drag-over");
+if(dz) dz.ondrop = e => { e.preventDefault(); dz.classList.remove("drag-over"); handleFiles(e.dataTransfer.files); };
+if(fi) fi.onchange = e => handleFiles(e.target.files);
+function handleFiles(files){
+    if(files.length){ droppedFile = files[0]; document.getElementById("dzStatus").innerText = "✓ " + droppedFile.name; }
+}
 function saveComment(){
-    const text=document.getElementById("coIn").value.trim();
-    const userId=document.getElementById("globalUserSelect").value;
+    const text = document.getElementById("coIn").value.trim();
+    const userId = document.getElementById("globalUserSelect").value;
     if(!userId) return alert("No user selected.");
     if(!text) return alert("Please enter text.");
-    if(droppedFile){const r=new FileReader();r.onload=e=>commitComment(text,userId,e.target.result,droppedFile.name,droppedFile.type);r.readAsDataURL(droppedFile);}
-    else commitComment(text,userId,null,null,null);
+    if(droppedFile){
+        const r = new FileReader();
+        r.onload = e => commitComment(text, userId, e.target.result, droppedFile.name, droppedFile.type);
+        r.readAsDataURL(droppedFile);
+    } else commitComment(text, userId, null, null, null);
 }
-function commitComment(text,userId,fData,fName,fType){
-    db.comments.push({id:"c"+Date.now(),sectionId:activeS,userId,text,fData,fName,fType,date:new Date()});
-    droppedFile=null; expandedSections.add(activeS);
-    sync(); closeModal("commentModal");
+function commitComment(text, userId, fData, fName, fType){
+    const newComment = { id: "c" + Date.now(), sectionId: activeS, userId, text, fData, fName, fType, date: new Date() };
+    db.comments.push(newComment);
+    markAsRead('comments', newComment.id);
+    markAsRead('sections', activeS);
+    droppedFile = null;
+    expandedSections.add(activeS);
+    sync();
+    closeModal("commentModal");
     if(isMobile()) renderMobileDetail(activeT); else renderSections();
 }
 function deleteComment(cid){
-    db.comments=db.comments.filter(c=>c.id!==cid);
-    sync(); if(isMobile()) renderMobileDetail(activeT); else renderSections();
+    db.comments = db.comments.filter(c => c.id !== cid);
+    sync();
+    if(isMobile()) renderMobileDetail(activeT); else renderSections();
 }
 
-/* ─── RENDER HELPERS ─── */
+/* ─── RENDER ─── */
 function renderTopics(){
     const filterVal = document.getElementById("topicFilter").value;
     const isArchived = filterVal === "archived";
 
     let filtered = db.topics.filter(t => !!t.archived === isArchived && t.title.toLowerCase().includes(currentSearchQuery));
 
-    // Type filter
     if(filterType === 'new-topic'){
-        filtered = filtered.filter(t => checkIsNew(t.date, t.userId));
+        filtered = filtered.filter(t => checkIsNew(t.date, t.userId, 'topics', t.id));
     } else if(filterType === 'new-section'){
-        filtered = filtered.filter(t => db.sections.some(s => s.topicId === t.id && isInFilterRange(s.date) && checkIsNew(s.date, s.userId)));
+        filtered = filtered.filter(t => db.sections.some(s => s.topicId === t.id && isInFilterRange(s.date) && checkIsNew(s.date, s.userId, 'sections', s.id)));
     } else if(filterType === 'new-update'){
         filtered = filtered.filter(t => {
             const secIds = db.sections.filter(s => s.topicId === t.id).map(s => s.id);
-            return db.comments.some(c => secIds.includes(c.sectionId) && isInFilterRange(c.date) && checkIsNew(c.date, c.userId));
+            return db.comments.some(c => secIds.includes(c.sectionId) && isInFilterRange(c.date) && checkIsNew(c.date, c.userId, 'comments', c.id));
         });
     }
 
-    // Duration filter (only applies when not "new-*" type, since those use their own time window)
     if(filterType === 'all' && filterDuration !== 'all'){
         filtered = filtered.filter(t => {
             const secIds = db.sections.filter(s => s.topicId === t.id).map(s => s.id);
@@ -1215,115 +1247,117 @@ function renderTopics(){
 }
 
 function renderTopicList(containerId, grouped){
-    const container=document.getElementById(containerId); if(!container) return;
-    let html="";
+    const container = document.getElementById(containerId);
+    if(!container) return;
+    let html = "";
     if(!Object.keys(grouped).length){
-        html=`<div style="text-align:center;padding:2rem;font-size:.82rem;color:var(--text-3);">No topics found.</div>`;
-    }else{
+        html = `<div style="text-align:center;padding:2rem;font-size:.82rem;color:var(--text-3);">No topics found.</div>`;
+    } else {
         for(const cat in grouped){
-            const topics=grouped[cat], isCol=collapsedCategories[cat];
-            html+=`<div class="cat-group">
+            const topics = grouped[cat], isCol = collapsedCategories[cat];
+            html += `<div class="cat-group">
                 <div class="cat-label-row" onclick="toggleCategory('${cat}')">
                     <div class="cat-dot"></div>
                     <div class="cat-name">${cat}</div>
                     <div class="cat-count">${topics.length}</div>
-                    <div class="cat-arrow${isCol?'':' open'}">▶</div>
+                    <div class="cat-arrow${isCol ? '' : ' open'}">▶</div>
                 </div>
-                <div style="display:${isCol?'none':'block'};padding-left:4px;">`;
-            topics.forEach(t=>{
-                const secCount=db.sections.filter(s=>s.topicId===t.id&&!s.archived).length;
-                html+=`<div class="topic-item${t.id===activeT?' active':''}${t.archived?' archived':''}" onclick="viewTopic('${t.id}')">
+                <div style="display:${isCol ? 'none' : 'block'};padding-left:4px;">`;
+            topics.forEach(t => {
+                const secCount = db.sections.filter(s => s.topicId === t.id && !s.archived).length;
+                html += `<div class="topic-item${t.id === activeT ? ' active' : ''}${t.archived ? ' archived' : ''}" onclick="viewTopic('${t.id}')">
                     <div class="topic-item-dot"></div>
                     <div class="topic-item-body">
                         <div class="topic-item-name">${t.title} ${getTopicBadgeHtml(t.id)}</div>
-                        <div class="topic-item-meta">${secCount} section${secCount!==1?'s':''}</div>
+                        <div class="topic-item-meta">${secCount} section${secCount !== 1 ? 's' : ''}</div>
                     </div>
                 </div>`;
             });
-            html+=`</div></div>`;
+            html += `</div></div>`;
         }
     }
-    container.innerHTML=html;
+    container.innerHTML = html;
 }
 
 function renderTopicListMobile(containerId, grouped){
-    const container=document.getElementById(containerId); if(!container) return;
-    let html="";
+    const container = document.getElementById(containerId);
+    if(!container) return;
+    let html = "";
     if(!Object.keys(grouped).length){
-        html=`<div style="text-align:center;padding:2rem;font-size:.85rem;color:var(--text-3);">No topics found.</div>`;
-    }else{
+        html = `<div style="text-align:center;padding:2rem;font-size:.85rem;color:var(--text-3);">No topics found.</div>`;
+    } else {
         for(const cat in grouped){
-            const topics=grouped[cat];
-            html+=`<div class="mobile-cat-section">
+            const topics = grouped[cat];
+            html += `<div class="mobile-cat-section">
                 <div class="mobile-cat-header">${cat} <span style="font-weight:400">(${topics.length})</span></div>`;
-            topics.forEach(t=>{
-                const secCount=db.sections.filter(s=>s.topicId===t.id&&!s.archived).length;
-                const updateCount=db.comments.filter(c=>db.sections.find(s=>s.topicId===t.id&&s.id===c.sectionId)).length;
-                html+=`<div class="mobile-topic-card${t.archived?' archived-card':''}" onclick="viewTopic('${t.id}')">
+            topics.forEach(t => {
+                const secCount = db.sections.filter(s => s.topicId === t.id && !s.archived).length;
+                const updateCount = db.comments.filter(c => db.sections.find(s => s.topicId === t.id && s.id === c.sectionId)).length;
+                html += `<div class="mobile-topic-card${t.archived ? ' archived-card' : ''}" onclick="viewTopic('${t.id}')">
                     <div class="mtc-accent">📋</div>
                     <div class="mtc-body">
                         <div class="mtc-title">${t.title} ${getTopicBadgeHtml(t.id)}</div>
-                        <div class="mtc-meta">${secCount} sections · ${updateCount} updates${t.archived?' · Archived':''}</div>
+                        <div class="mtc-meta">${secCount} sections · ${updateCount} updates${t.archived ? ' · Archived' : ''}</div>
                     </div>
                     <div class="mtc-arrow">›</div>
                 </div>`;
             });
-            html+=`</div>`;
+            html += `</div>`;
         }
     }
-    container.innerHTML=html;
+    container.innerHTML = html;
 }
 
 function buildTopicHeroHtml(t){
-    const isArc=t.archived;
-    const secCount=db.sections.filter(s=>s.topicId===t.id&&!s.archived).length;
-    const updCount=db.comments.filter(c=>db.sections.find(s=>s.topicId===t.id&&s.id===c.sectionId)).length;
+    const isArc = t.archived;
+    const secCount = db.sections.filter(s => s.topicId === t.id && !s.archived).length;
+    const updCount = db.comments.filter(c => db.sections.find(s => s.topicId === t.id && s.id === c.sectionId)).length;
     return `<div class="topic-hero">
         <div class="topic-hero-top">
             <div>
-                <div class="topic-hero-cat">${t.cat}${isArc?' · ARCHIVED':''}</div>
+                <div class="topic-hero-cat">${t.cat}${isArc ? ' · ARCHIVED' : ''}</div>
                 <div class="topic-hero-title">${t.title} ${getTopicBadgeHtml(t.id)}</div>
             </div>
             <div class="topic-hero-actions">
-                <button class="btn btn-ghost btn-sm" onclick="toggleTopicArchive('${t.id}')" title="${isArc?'Unarchive':'Archive'}">${isArc?'📂 Restore':'📦 Archive'}</button>
+                <button class="btn btn-ghost btn-sm" onclick="toggleTopicArchive('${t.id}')" title="${isArc ? 'Unarchive' : 'Archive'}">${isArc ? '📂 Restore' : '📦 Archive'}</button>
                 <button class="btn btn-ghost btn-sm btn-icon-only" onclick="deleteTopic('${t.id}')" title="Delete">🗑️</button>
             </div>
         </div>
         <div class="topic-stats">
-            <div class="stat-pill"><div class="stat-pill-dot"></div>${secCount} active section${secCount!==1?'s':''}</div>
-            <div class="stat-pill"><div class="stat-pill-dot" style="background:var(--accent)"></div>${updCount} update${updCount!==1?'s':''}</div>
+            <div class="stat-pill"><div class="stat-pill-dot"></div>${secCount} active section${secCount !== 1 ? 's' : ''}</div>
+            <div class="stat-pill"><div class="stat-pill-dot" style="background:var(--accent)"></div>${updCount} update${updCount !== 1 ? 's' : ''}</div>
         </div>
     </div>`;
 }
 
-function buildSectionCardHtml(s,isArchived){
-    const isExp=expandedSections.has(s.id);
-    const color=s.color||'var(--accent)';
-    const archBtn=isArchived?`📂 Restore`:`📦 Complete`;
-    const updateBtn=isArchived?'':`<button class="add-update-trigger" onclick="openModal('commentModal','${s.id}');event.stopPropagation();">＋ Add update…</button>`;
-    return `<div class="section-card${isArchived?' archived':''}">
+function buildSectionCardHtml(s, isArchived){
+    const isExp = expandedSections.has(s.id);
+    const color = s.color || 'var(--accent)';
+    const archBtn = isArchived ? `📂 Restore` : `📦 Complete`;
+    const updateBtn = isArchived ? '' : `<button class="add-update-trigger" onclick="openModal('commentModal','${s.id}');event.stopPropagation();">＋ Add update…</button>`;
+    return `<div class="section-card${isArchived ? ' archived' : ''}">
         <div class="section-card-header" onclick="toggleSectionExpand('${s.id}',event)">
             <div class="section-color-bar" style="background:${color}"></div>
             <div class="section-card-info">
-                <div class="section-card-title">${s.title}${isArchived?' <span style="font-size:.7rem;color:var(--text-3)">[Completed]</span>':''} ${isArchived?'':getSectionBadgeHtml(s.id)}</div>
-                <div class="section-card-meta">${db.comments.filter(c=>c.sectionId===s.id).length} updates</div>
+                <div class="section-card-title">${s.title}${isArchived ? ' <span style="font-size:.7rem;color:var(--text-3)">[Completed]</span>' : ''} ${isArchived ? '' : getSectionBadgeHtml(s.id)}</div>
+                <div class="section-card-meta">${db.comments.filter(c => c.sectionId === s.id).length} updates</div>
             </div>
             <div class="section-card-right">
                 <div class="dropdown">
                     <button class="icon-btn" onclick="toggleDropdown('${s.id}',event)" style="width:32px;height:32px;font-size:.85rem;">⋮</button>
                     <div id="ddm-${s.id}" class="dropdown-menu">
-                        ${isArchived?'':`<button class="dropdown-item" onclick="editSection('${s.id}');event.stopPropagation();">✏️ Rename</button>`}
+                        ${isArchived ? '' : `<button class="dropdown-item" onclick="editSection('${s.id}');event.stopPropagation();">✏️ Rename</button>`}
                         <button class="dropdown-item" onclick="toggleSectionArchive('${s.id}');event.stopPropagation();">${archBtn}</button>
                         <div class="dropdown-divider"></div>
                         <button class="dropdown-item red" onclick="deleteSection('${s.id}');event.stopPropagation();" style="color:var(--red)">🗑️ Delete</button>
                     </div>
                 </div>
-                <div class="sec-expand-icon${isExp?' open':''}" id="si-${s.id}">▾</div>
+                <div class="sec-expand-icon${isExp ? ' open' : ''}" id="si-${s.id}">▾</div>
             </div>
         </div>
-        <div class="section-card-body${isExp?' open':''}" id="sb-${s.id}">
+        <div class="section-card-body${isExp ? ' open' : ''}" id="sb-${s.id}">
             <div class="updates-list">${renderUpdates(s.id)}</div>
-            ${updateBtn?`<div class="section-add-bar">${updateBtn}</div>`:''}
+            ${updateBtn ? `<div class="section-add-bar">${updateBtn}</div>` : ''}
         </div>
     </div>`;
 }
@@ -1332,19 +1366,15 @@ function renderUpdates(sid){
     const sec = db.sections.find(s => s.id === sid);
     let items = db.comments.filter(c => c.sectionId === sid);
 
-    // Apply duration filter
     if(filterDuration !== 'all'){
         items = items.filter(c => isInFilterRange(c.date));
     }
-    // Apply type filter
     if(filterType === 'new-update'){
-        items = items.filter(c => checkIsNew(c.date, c.userId));
+        items = items.filter(c => checkIsNew(c.date, c.userId, 'comments', c.id));
     }
+    items = items.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Sort newest first
-    items = items.sort((a,b) => new Date(b.date) - new Date(a.date));
-
-    if(!items.length) return `<div class="section-empty">No updates match the current filter.</div>`;
+    if(!items.length) return `<div class="section-empty">No updates${filterDuration !== 'all' || filterType !== 'all' ? ' match the current filter' : ' yet — be the first to log one'}.</div>`;
 
     return items.map(c => {
         const u = db.users.find(x => x.id === c.userId) || { name: "Unknown", mobile: "" };
@@ -1360,7 +1390,7 @@ function renderUpdates(sid){
             <div class="update-content">
                 <div class="update-header">
                     <span class="update-name">${u.name}</span>
-                    ${checkIsNew(c.date, c.userId) ? '<span class="badge-new">New</span>' : ''}
+                    ${checkIsNew(c.date, c.userId, 'comments', c.id) ? '<span class="badge-new">New</span>' : ''}
                     ${u.mobile ? `<span class="update-mobile">${u.mobile}</span>` : ''}
                     <span class="update-date">${new Date(c.date).toLocaleDateString()}</span>
                 </div>
@@ -1372,194 +1402,231 @@ function renderUpdates(sid){
 }
 
 function buildFeedHtml(topicId){
-    const allSecs=db.sections.filter(s=>s.topicId===topicId);
+    const allSecs = db.sections.filter(s => s.topicId === topicId);
     let visibleSecs = allSecs;
-      if(filterType === 'new-section'){
-          visibleSecs = allSecs.filter(s => isInFilterRange(s.date) && checkIsNew(s.date, s.userId));
-      } else if(filterType === 'new-update'){
-          visibleSecs = allSecs.filter(s => db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date) && checkIsNew(c.date, c.userId)));
-      } else if(filterDuration !== 'all'){
-          visibleSecs = allSecs.filter(s => {
-              if(isInFilterRange(s.date)) return true;
-              return db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date));
-          });
-      }
-      const activeSecs = visibleSecs.filter(s => !s.archived);
-      const archivedSecs = visibleSecs.filter(s => s.archived);
-    const t=db.topics.find(x=>x.id===topicId);
-    const isTopicArchived=t&&t.archived;
+    if(filterType === 'new-section'){
+        visibleSecs = allSecs.filter(s => isInFilterRange(s.date) && checkIsNew(s.date, s.userId, 'sections', s.id));
+    } else if(filterType === 'new-update'){
+        visibleSecs = allSecs.filter(s => db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date) && checkIsNew(c.date, c.userId, 'comments', c.id)));
+    } else if(filterDuration !== 'all'){
+        visibleSecs = allSecs.filter(s => {
+            if(isInFilterRange(s.date)) return true;
+            return db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date));
+        });
+    }
+    const activeSecs = visibleSecs.filter(s => !s.archived);
+    const archivedSecs = visibleSecs.filter(s => s.archived);
+    const t = db.topics.find(x => x.id === topicId);
+    const isTopicArchived = t && t.archived;
 
-    let html=activeSecs.map(s=>buildSectionCardHtml(s,false)).join("");
-    if(archivedSecs.length>0){
-        const btnTxt=showArchivedSecs?`Hide ${archivedSecs.length} completed`:`Show ${archivedSecs.length} completed`;
-        html+=`<div class="archived-toggle"><button class="archived-toggle-btn" onclick="toggleArchivedSecsVisibility()">${showArchivedSecs?'▲':'▼'} ${btnTxt}</button></div>`;
-        if(showArchivedSecs) html+=archivedSecs.map(s=>buildSectionCardHtml(s,true)).join("");
+    let html = activeSecs.map(s => buildSectionCardHtml(s, false)).join("");
+    if(archivedSecs.length > 0){
+        const btnTxt = showArchivedSecs ? `Hide ${archivedSecs.length} completed` : `Show ${archivedSecs.length} completed`;
+        html += `<div class="archived-toggle"><button class="archived-toggle-btn" onclick="toggleArchivedSecsVisibility()">${showArchivedSecs ? '▲' : '▼'} ${btnTxt}</button></div>`;
+        if(showArchivedSecs) html += archivedSecs.map(s => buildSectionCardHtml(s, true)).join("");
     }
     if(!isTopicArchived){
-        html+=`<div class="add-section-cta" onclick="openModal('sectionModal')">＋ Add new section</div>`;
+        html += `<div class="add-section-cta" onclick="openModal('sectionModal')">＋ Add new section</div>`;
     }
     return html;
 }
 
 function viewTopic(id){
-    activeT=id; showArchivedSecs=false; expandedSections.clear();
+    markAsRead('topics', id);
+    activeT = id;
+    showArchivedSecs = false;
+    expandedSections.clear();
     if(isMobile()){
         openMobileDetail(id);
-    }else{
-        document.getElementById("welcomeView").style.display="none";
-        document.getElementById("topicDetail").style.display="flex";
-        const t=db.topics.find(x=>x.id===id);
-        document.getElementById("topicHero").innerHTML=buildTopicHeroHtml(t);
+    } else {
+        document.getElementById("welcomeView").style.display = "none";
+        document.getElementById("topicDetail").style.display = "flex";
+        const t = db.topics.find(x => x.id === id);
+        document.getElementById("topicHero").innerHTML = buildTopicHeroHtml(t);
         renderSections();
     }
     renderTopics();
 }
 
 function renderSections(){
-    document.getElementById("sectionsFeed").innerHTML=buildFeedHtml(activeT);
+    document.getElementById("sectionsFeed").innerHTML = buildFeedHtml(activeT);
 }
 
 function renderMobileDetail(id){
-    const t=db.topics.find(x=>x.id===id); if(!t) return;
-    document.getElementById('topbarPageTitle').innerText=t.title;
+    const t = db.topics.find(x => x.id === id);
+    if(!t) return;
+    document.getElementById('topbarPageTitle').innerText = t.title;
     document.getElementById('mainTopbar').classList.add('detail-mode');
     document.getElementById('backBtn').classList.add('visible');
-    document.getElementById("mobileTopicHero").innerHTML=buildTopicHeroHtml(t);
-    document.getElementById("mobileSectionsFeed").innerHTML=buildFeedHtml(id);
+    document.getElementById("mobileTopicHero").innerHTML = buildTopicHeroHtml(t);
+    document.getElementById("mobileSectionsFeed").innerHTML = buildFeedHtml(id);
     document.getElementById('mainFab').classList.toggle('hidden', t.archived);
 }
 
 /* ─── EXPORT ─── */
 function openExportModalWrapper(){
     openModal("exportModal");
-    const outSel=document.getElementById("exOutEmp"), inSel=document.getElementById("exInEmp");
-    const opts=db.users.map(u=>`<option value="${u.id}">${u.name}</option>`).join("");
-    if(outSel) outSel.innerHTML=`<option value="">Select…</option>`+opts;
-    if(inSel) inSel.innerHTML=`<option value="">Select…</option>`+opts;
-    const cur=document.getElementById("globalUserSelect").value;
-    if(cur&&outSel) outSel.value=cur;
-    if(db.users.length===2&&inSel&&cur){const s=db.users.find(u=>u.id!==cur);if(s) inSel.value=s.id;}
+    const outSel = document.getElementById("exOutEmp"), inSel = document.getElementById("exInEmp");
+    const opts = db.users.map(u => `<option value="${u.id}">${u.name}</option>`).join("");
+    if(outSel) outSel.innerHTML = `<option value="">Select…</option>` + opts;
+    if(inSel) inSel.innerHTML = `<option value="">Select…</option>` + opts;
+    const cur = document.getElementById("globalUserSelect").value;
+    if(cur && outSel) outSel.value = cur;
+    if(db.users.length === 2 && inSel && cur){ const s = db.users.find(u => u.id !== cur); if(s) inSel.value = s.id; }
     buildExportCheckboxTree();
 }
 function buildExportCheckboxTree(){
-    const c=document.getElementById("exportCheckboxTree"); if(!c) return;
-    const period=document.getElementById("exPeriod").value, fD=document.getElementById("exFrom").value, tD=document.getElementById("exTo").value;
-    let html="",count=0;
-    db.topics.forEach(t=>{
-        let secs=db.sections.filter(s=>s.topicId===t.id);
-        if(period==="custom") secs=secs.filter(s=>db.comments.some(c=>c.sectionId===s.id&&isCommentInDateRange(c.date,period,fD,tD)));
+    const c = document.getElementById("exportCheckboxTree");
+    if(!c) return;
+    const period = document.getElementById("exPeriod").value;
+    const fD = document.getElementById("exFrom").value;
+    const tD = document.getElementById("exTo").value;
+    let html = "", count = 0;
+    db.topics.forEach(t => {
+        let secs = db.sections.filter(s => s.topicId === t.id);
+        if(period === "custom") secs = secs.filter(s => db.comments.some(c => c.sectionId === s.id && isCommentInDateRange(c.date, period, fD, tD)));
         if(!secs.length) return;
-        html+=`<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        html += `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
             <label class="cb-label" style="font-weight:700;color:var(--text-1);"><input type="checkbox" id="chk_t_${t.id}" class="topic-cb" checked onchange="toggleTopicCheckboxes('${t.id}',this.checked)">${t.title}</label>
             <div style="margin-left:22px;margin-top:4px;">`;
-        secs.forEach(s=>{count++;html+=`<label class="cb-label"><input type="checkbox" value="${s.id}" class="sec-cb t-sec-${t.id}" checked onchange="updateTopicCheckbox('${t.id}')">${s.title}</label>`;});
-        html+=`</div></div>`;
+        secs.forEach(s => { count++; html += `<label class="cb-label"><input type="checkbox" value="${s.id}" class="sec-cb t-sec-${t.id}" checked onchange="updateTopicCheckbox('${t.id}')">${s.title}</label>`; });
+        html += `</div></div>`;
     });
-    c.innerHTML=count?html:`<div style="text-align:center;padding:1rem;font-size:.82rem;color:var(--text-3);">No logs found for this period.</div>`;
+    c.innerHTML = count ? html : `<div style="text-align:center;padding:1rem;font-size:.82rem;color:var(--text-3);">No logs found for this period.</div>`;
     validateExportHasData();
 }
-function toggleTopicCheckboxes(tid,v){ document.querySelectorAll(`.t-sec-${tid}`).forEach(cb=>cb.checked=v); validateExportHasData(); }
+function toggleTopicCheckboxes(tid, v){ document.querySelectorAll(`.t-sec-${tid}`).forEach(cb => cb.checked = v); validateExportHasData(); }
 function updateTopicCheckbox(tid){
-    const tc=document.getElementById(`chk_t_${tid}`), cbs=document.querySelectorAll(`.t-sec-${tid}`);
-    if(tc&&cbs.length){const all=Array.from(cbs).every(c=>c.checked),some=Array.from(cbs).some(c=>c.checked);tc.checked=all;tc.indeterminate=some&&!all;}
+    const tc = document.getElementById(`chk_t_${tid}`), cbs = document.querySelectorAll(`.t-sec-${tid}`);
+    if(tc && cbs.length){
+        const all = Array.from(cbs).every(c => c.checked), some = Array.from(cbs).some(c => c.checked);
+        tc.checked = all;
+        tc.indeterminate = some && !all;
+    }
     validateExportHasData();
 }
 function validateExportHasData(){
-    const btn=document.getElementById("executeExportBtn"), checked=document.querySelectorAll(".sec-cb:checked");
-    if(btn){btn.disabled=!checked.length;btn.style.opacity=checked.length?"1":"0.4";}
+    const btn = document.getElementById("executeExportBtn"), checked = document.querySelectorAll(".sec-cb:checked");
+    if(btn){ btn.disabled = !checked.length; btn.style.opacity = checked.length ? "1" : "0.4"; }
 }
-function isCommentInDateRange(cDateStr,period,fromStr,toStr){
-    if(period==="all") return true;
-    const cDate=new Date(cDateStr); cDate.setHours(0,0,0,0);
-    if(period==="custom"){
-        let valid=true;
-        if(fromStr){const f=new Date(fromStr);f.setHours(0,0,0,0);if(cDate<f) valid=false;}
-        if(toStr){const t=new Date(toStr);t.setHours(23,59,59,999);if(cDate>t) valid=false;}
+function isCommentInDateRange(cDateStr, period, fromStr, toStr){
+    if(period === "all") return true;
+    const cDate = new Date(cDateStr);
+    cDate.setHours(0, 0, 0, 0);
+    if(period === "custom"){
+        let valid = true;
+        if(fromStr){ const f = new Date(fromStr); f.setHours(0, 0, 0, 0); if(cDate < f) valid = false; }
+        if(toStr){ const t = new Date(toStr); t.setHours(23, 59, 59, 999); if(cDate > t) valid = false; }
         return valid;
     }
     return true;
 }
 function generatePDF(){
-  closeModal("exportModal");
-  const oId=document.getElementById("exOutEmp").value, iId=document.getElementById("exInEmp").value;
-  const period=document.getElementById("exPeriod").value, fD=document.getElementById("exFrom").value, tD=document.getElementById("exTo").value;
-  const selIds=Array.from(document.querySelectorAll(".sec-cb:checked")).map(cb=>cb.value);
-  const oU=db.users.find(u=>u.id===oId), iU=db.users.find(u=>u.id===iId);
-  const oStr=oU?`${oU.name} (${oU.mobile||"N/A"})`:"_____________________";
-  const iStr=iU?`${iU.name} (${iU.mobile||"N/A"})`:"_____________________";
-  let dateDisp=new Date().toLocaleDateString();
-  if(period==="custom"&&(fD||tD)) dateDisp=`${fD?new Date(fD).toLocaleDateString():"Start"} to ${tD?new Date(tD).toLocaleDateString():"Present"}`;
-  else if(period==="all") dateDisp="Complete History";
-  const base=window.location.href.split("?")[0];
-  let rHtml=`<div style="text-align:center;border-bottom:2px solid #2c3e50;padding-bottom:15px;margin-bottom:25px;">
-    <h1 style="margin:0;font-size:26px;text-transform:uppercase;color:#2c3e50;">Shift Handover Report</h1>
-    <p style="margin:8px 0 0;color:#7f8c8d;font-size:13px;">Date: ${dateDisp}</p></div>
-  <div style="display:flex;justify-content:space-between;background:#f8f9fa;padding:15px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:25px;">
-    <div style="width:48%;"><h3 style="margin:0 0 8px;font-size:11px;color:#6c757d;text-transform:uppercase;border-bottom:1px solid #ced4da;padding-bottom:4px;">Outgoing</h3>
-    <p style="margin:0;font-weight:bold;text-align:center;font-size:13px;">${oStr}</p><p style="margin:4px 0 0;font-size:9px;color:#adb5bd;text-align:center;">Signature / Time</p></div>
-    <div style="width:48%;"><h3 style="margin:0 0 8px;font-size:11px;color:#6c757d;text-transform:uppercase;border-bottom:1px solid #ced4da;padding-bottom:4px;">Incoming</h3>
-    <p style="margin:0;font-weight:bold;text-align:center;font-size:13px;">${iStr}</p><p style="margin:4px 0 0;font-size:9px;color:#adb5bd;text-align:center;">Signature / Time</p></div>
-  </div>`;
-  let total=0;
-  db.categories.forEach(cat=>{
-    const ctTopics=db.topics.filter(t=>t.cat===cat); if(!ctTopics.length) return;
-    let catH="";
-    ctTopics.forEach(t=>{
-      const tSecs=db.sections.filter(s=>s.topicId===t.id&&selIds.includes(s.id)); if(!tSecs.length) return;
-      let topH="";
-      tSecs.forEach(s=>{
-        const allC=db.comments.filter(c=>c.sectionId===s.id); if(!allC.length) return;
-        const hasAct=(!t.archived&&!s.archived)||allC.some(c=>isCommentInDateRange(c.date,period,fD,tD));
-        if(!hasAct) return;
-        const badge=(t.archived||s.archived)?`<span style="font-size:10px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;margin-left:8px;">Completed</span>`:`<span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;margin-left:8px;font-weight:bold;">Active</span>`;
-        let sHtml=`<div style="margin-left:15px;margin-bottom:15px;page-break-inside:avoid;"><h4 style="font-size:15px;font-weight:600;color:#34495e;margin:0 0 8px;">▶ ${s.title} ${badge}</h4><div style="margin-left:20px;">`;
-        allC.forEach(c=>{
-          if(!isCommentInDateRange(c.date,period,fD,tD)) return;
-          const u=db.users.find(x=>x.id===c.userId)||{name:"Unknown",mobile:""};
-          let att="";
-          if(c.fData){att=c.fType&&c.fType.startsWith("image/")?`<div style="margin-top:8px;"><img src="${c.fData}" style="max-width:100%;max-height:200px;object-fit:contain;border:1px solid #e2e8f0;border-radius:4px;"/></div>`:`<div style="margin-top:6px;"><a href="${base}?downloadCommentId=${c.id}" style="color:#1d4ed8;font-size:11px;font-weight:600;">📎 ${c.fName}</a></div>`;}
-          sHtml+=`<div style="padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;page-break-inside:avoid;"><p style="margin:0;font-size:12px;"><strong>${u.name}</strong>${u.mobile?` <span style="color:#2563eb;font-size:10px;">(${u.mobile})</span>`:''} <span style="color:#64748b;font-size:10px;">• ${new Date(c.date).toLocaleDateString()}</span></p><p style="margin:4px 0 0;font-size:12px;color:#334155;">${c.text}</p>${att}</div>`;
+    closeModal("exportModal");
+    const oId = document.getElementById("exOutEmp").value, iId = document.getElementById("exInEmp").value;
+    const period = document.getElementById("exPeriod").value, fD = document.getElementById("exFrom").value, tD = document.getElementById("exTo").value;
+    const selIds = Array.from(document.querySelectorAll(".sec-cb:checked")).map(cb => cb.value);
+    const oU = db.users.find(u => u.id === oId), iU = db.users.find(u => u.id === iId);
+    const oStr = oU ? `${oU.name} (${oU.mobile || "N/A"})` : "_____________________";
+    const iStr = iU ? `${iU.name} (${iU.mobile || "N/A"})` : "_____________________";
+    let dateDisp = new Date().toLocaleDateString();
+    if(period === "custom" && (fD || tD)) dateDisp = `${fD ? new Date(fD).toLocaleDateString() : "Start"} to ${tD ? new Date(tD).toLocaleDateString() : "Present"}`;
+    else if(period === "all") dateDisp = "Complete History";
+    const base = window.location.href.split("?")[0];
+    let rHtml = `<div style="text-align:center;border-bottom:2px solid #2c3e50;padding-bottom:15px;margin-bottom:25px;">
+        <h1 style="margin:0;font-size:26px;text-transform:uppercase;color:#2c3e50;">Shift Handover Report</h1>
+        <p style="margin:8px 0 0;color:#7f8c8d;font-size:13px;">Date: ${dateDisp}</p></div>
+      <div style="display:flex;justify-content:space-between;background:#f8f9fa;padding:15px;border:1px solid #e9ecef;border-radius:6px;margin-bottom:25px;">
+        <div style="width:48%;"><h3 style="margin:0 0 8px;font-size:11px;color:#6c757d;text-transform:uppercase;border-bottom:1px solid #ced4da;padding-bottom:4px;">Outgoing</h3>
+        <p style="margin:0;font-weight:bold;text-align:center;font-size:13px;">${oStr}</p><p style="margin:4px 0 0;font-size:9px;color:#adb5bd;text-align:center;">Signature / Time</p></div>
+        <div style="width:48%;"><h3 style="margin:0 0 8px;font-size:11px;color:#6c757d;text-transform:uppercase;border-bottom:1px solid #ced4da;padding-bottom:4px;">Incoming</h3>
+        <p style="margin:0;font-weight:bold;text-align:center;font-size:13px;">${iStr}</p><p style="margin:4px 0 0;font-size:9px;color:#adb5bd;text-align:center;">Signature / Time</p></div>
+      </div>`;
+    let total = 0;
+    db.categories.forEach(cat => {
+        const ctTopics = db.topics.filter(t => t.cat === cat);
+        if(!ctTopics.length) return;
+        let catH = "";
+        ctTopics.forEach(t => {
+            const tSecs = db.sections.filter(s => s.topicId === t.id && selIds.includes(s.id));
+            if(!tSecs.length) return;
+            let topH = "";
+            tSecs.forEach(s => {
+                const allC = db.comments.filter(c => c.sectionId === s.id);
+                if(!allC.length) return;
+                const hasAct = (!t.archived && !s.archived) || allC.some(c => isCommentInDateRange(c.date, period, fD, tD));
+                if(!hasAct) return;
+                const badge = (t.archived || s.archived) ? `<span style="font-size:10px;background:#e2e8f0;color:#475569;padding:2px 6px;border-radius:4px;margin-left:8px;">Completed</span>` : `<span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;margin-left:8px;font-weight:bold;">Active</span>`;
+                let sHtml = `<div style="margin-left:15px;margin-bottom:15px;page-break-inside:avoid;"><h4 style="font-size:15px;font-weight:600;color:#34495e;margin:0 0 8px;">▶ ${s.title} ${badge}</h4><div style="margin-left:20px;">`;
+                allC.slice().sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(c => {
+                    if(!isCommentInDateRange(c.date, period, fD, tD)) return;
+                    const u = db.users.find(x => x.id === c.userId) || { name: "Unknown", mobile: "" };
+                    let att = "";
+                    if(c.fData){
+                        att = c.fType && c.fType.startsWith("image/")
+                            ? `<div style="margin-top:8px;"><img src="${c.fData}" style="max-width:100%;max-height:200px;object-fit:contain;border:1px solid #e2e8f0;border-radius:4px;"/></div>`
+                            : `<div style="margin-top:6px;"><a href="${base}?downloadCommentId=${c.id}" style="color:#1d4ed8;font-size:11px;font-weight:600;">📎 ${c.fName}</a></div>`;
+                    }
+                    sHtml += `<div style="padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;page-break-inside:avoid;"><p style="margin:0;font-size:12px;"><strong>${u.name}</strong>${u.mobile ? ` <span style="color:#2563eb;font-size:10px;">(${u.mobile})</span>` : ''} <span style="color:#64748b;font-size:10px;">• ${new Date(c.date).toLocaleDateString()}</span></p><p style="margin:4px 0 0;font-size:12px;color:#334155;">${c.text}</p>${att}</div>`;
+                });
+                sHtml += `</div></div>`;
+                topH += sHtml;
+            });
+            if(topH) catH += `<div style="margin-left:10px;margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:#1e293b;border-bottom:2px solid #cbd5e1;padding-bottom:4px;margin:0 0 12px;">Topic: ${t.title}</h3>${topH}</div>`;
         });
-        sHtml+=`</div></div>`; topH+=sHtml;
-      });
-      if(topH) catH+=`<div style="margin-left:10px;margin-bottom:20px;"><h3 style="font-size:16px;font-weight:600;color:#1e293b;border-bottom:2px solid #cbd5e1;padding-bottom:4px;margin:0 0 12px;">Topic: ${t.title}</h3>${topH}</div>`;
+        if(catH){
+            total++;
+            rHtml += `<div style="margin-bottom:30px;page-break-inside:avoid;"><h2 style="background:#1e293b;color:white;padding:6px 12px;font-size:14px;font-weight:bold;text-transform:uppercase;border-radius:4px;margin:0 0 15px;">${cat}</h2>${catH}</div>`;
+        }
     });
-    if(catH){total++;rHtml+=`<div style="margin-bottom:30px;page-break-inside:avoid;"><h2 style="background:#1e293b;color:white;padding:6px 12px;font-size:14px;font-weight:bold;text-transform:uppercase;border-radius:4px;margin:0 0 15px;">${cat}</h2>${catH}</div>`;}
-  });
-  if(!total) rHtml+=`<div style="text-align:center;padding:30px;color:#94a3b8;font-style:italic;">No logs match these parameters.</div>`;
-  rHtml+=`<div style="margin-top:40px;text-align:center;font-size:9px;color:#cbd5e1;border-top:1px solid #e2e8f0;padding-top:10px;">End of Report — Lekhwair Shift Handover Tracker</div>`;
-  const pw=window.open("","_blank");
-  if(!pw){alert("Popup blocked.");return;}
-  const fn=`Shift_Handover_${new Date().toISOString().split("T")[0]}.pdf`;
-  const sc='<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>';
-  pw.document.write(`<!DOCTYPE html><html><head><title>Generating…</title>${sc}<style>*{box-sizing:border-box}body{font-family:Helvetica,Arial,sans-serif;background:#e2e8f0;margin:0;padding:20px 0}#dom{background:white;padding:35px;width:680px;margin:0 auto;box-shadow:0 4px 15px rgba(0,0,0,.1)}.st{text-align:center;font-size:16px;color:#3498db;margin-bottom:15px;font-weight:bold}a{text-decoration:underline!important;color:#1d4ed8!important}</style></head><body><div class="st" id="st">Generating PDF…</div><div id="dom">${rHtml}</div><script>window.onload=function(){html2pdf().set({margin:[.4,.4,.4,.4],filename:'${fn}',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'in',format:'a4',orientation:'portrait'},enableLinks:true}).from(document.getElementById('dom')).save().then(()=>{document.getElementById('st').style.color='#2ecc71';document.getElementById('st').innerText='PDF ready — close this tab.';}).catch(e=>{document.getElementById('st').style.color='#e74c3c';document.getElementById('st').innerText='Error. See console.';console.error(e);});};
-  <\/script></body></html>`);
-  pw.document.close();
+    if(!total) rHtml += `<div style="text-align:center;padding:30px;color:#94a3b8;font-style:italic;">No logs match these parameters.</div>`;
+    rHtml += `<div style="margin-top:40px;text-align:center;font-size:9px;color:#cbd5e1;border-top:1px solid #e2e8f0;padding-top:10px;">End of Report — Lekhwair Shift Handover Tracker</div>`;
+    const pw = window.open("", "_blank");
+    if(!pw){ alert("Popup blocked."); return; }
+    const fn = `Shift_Handover_${new Date().toISOString().split("T")[0]}.pdf`;
+    const sc = '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>';
+    pw.document.write(`<!DOCTYPE html><html><head><title>Generating…</title>${sc}<style>*{box-sizing:border-box}body{font-family:Helvetica,Arial,sans-serif;background:#e2e8f0;margin:0;padding:20px 0}#dom{background:white;padding:35px;width:680px;margin:0 auto;box-shadow:0 4px 15px rgba(0,0,0,.1)}.st{text-align:center;font-size:16px;color:#3498db;margin-bottom:15px;font-weight:bold}a{text-decoration:underline!important;color:#1d4ed8!important}</style></head><body><div class="st" id="st">Generating PDF…</div><div id="dom">${rHtml}</div><script>window.onload=function(){html2pdf().set({margin:[.4,.4,.4,.4],filename:'${fn}',image:{type:'jpeg',quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'in',format:'a4',orientation:'portrait'},enableLinks:true}).from(document.getElementById('dom')).save().then(()=>{document.getElementById('st').style.color='#2ecc71';document.getElementById('st').innerText='PDF ready — close this tab.';}).catch(e=>{document.getElementById('st').style.color='#e74c3c';document.getElementById('st').innerText='Error. See console.';console.error(e);});};<\/script></body></html>`);
+    pw.document.close();
 }
 
 /* ─── ADMIN ─── */
 function renderAdmin(){
-    const ul=document.getElementById("userAdminList");
-    ul.innerHTML=`<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>`+
-        db.users.map(u=>`<tr><td>${u.name}</td><td>${u.mobile||'-'}</td><td><button class="btn btn-ghost btn-sm" onclick="deleteUser('${u.id}')">Delete</button></td></tr>`).join("")+`</table>`;
-    const cl=document.getElementById("catAdminList");
-    cl.innerHTML=`<table><tr><th>Category</th><th>Actions</th></tr>`+
-        db.categories.map(c=>`<tr><td>${c}</td><td><button class="btn btn-ghost btn-sm" onclick="deleteCategory('${c}')">Delete</button></td></tr>`).join("")+`</table>`;
+    const ul = document.getElementById("userAdminList");
+    ul.innerHTML = `<table><tr><th>Name</th><th>Mobile</th><th>Actions</th></tr>` +
+        db.users.map(u => `<tr><td>${u.name}</td><td>${u.mobile || '-'}</td><td><button class="btn btn-ghost btn-sm" onclick="deleteUser('${u.id}')">Delete</button></td></tr>`).join("") + `</table>`;
+    const cl = document.getElementById("catAdminList");
+    cl.innerHTML = `<table><tr><th>Category</th><th>Actions</th></tr>` +
+        db.categories.map(c => `<tr><td>${c}</td><td><button class="btn btn-ghost btn-sm" onclick="deleteCategory('${c}')">Delete</button></td></tr>`).join("") + `</table>`;
 }
 function addUser(){
-    const n=document.getElementById("newUserName").value.trim(), m=document.getElementById("newUserMobile").value.trim(), p=document.getElementById("newUserPin").value.trim();
-    if(!n||!p) return alert("Name and PIN are required.");
-    db.users.push({id:"u"+Date.now(),name:n,mobile:m,pin:p});
-    document.getElementById("newUserName").value=""; document.getElementById("newUserMobile").value=""; document.getElementById("newUserPin").value="";
-    sync(); populateGlobalUser();
+    const n = document.getElementById("newUserName").value.trim();
+    const m = document.getElementById("newUserMobile").value.trim();
+    const p = document.getElementById("newUserPin").value.trim();
+    if(!n || !p) return alert("Name and PIN are required.");
+    if(!/^\d{6}$/.test(p)) return alert("PIN must be exactly 6 digits.");
+    db.users.push({ id: "u" + Date.now(), name: n, mobile: m, pin: p });
+    document.getElementById("newUserName").value = "";
+    document.getElementById("newUserMobile").value = "";
+    document.getElementById("newUserPin").value = "";
+    sync();
+    populateGlobalUser();
 }
-function deleteUser(id){ if(confirm("Remove user?")){db.users=db.users.filter(u=>u.id!==id);sync();populateGlobalUser();} }
-function addCategory(){ const n=prompt("Category Name:"); if(n&&!db.categories.includes(n)){db.categories.push(n);sync();} }
-function deleteCategory(c){ if(confirm("Remove category?")){db.categories=db.categories.filter(x=>x!==c);sync();} }
+function deleteUser(id){
+    if(confirm("Remove user?")){ db.users = db.users.filter(u => u.id !== id); sync(); populateGlobalUser(); }
+}
+function addCategory(){
+    const n = prompt("Category Name:");
+    if(n && !db.categories.includes(n)){ db.categories.push(n); sync(); }
+}
+function deleteCategory(c){
+    if(confirm("Remove category?")){ db.categories = db.categories.filter(x => x !== c); sync(); }
+}
 function hardReset(){
-    if(prompt("Type RESET to wipe all data:")!=="RESET") return;
-    db={users:[{id:"u1",name:"Manager",mobile:"0000",pin:"123456"}],adminPin:"999999",categories:["General","HSE","Project"],topics:[],sections:[],comments:[]};
-    sync(); populateGlobalUser(); doLogout();
+    if(prompt("Type RESET to wipe all data:") !== "RESET") return;
+    db = { users:[{id:"u1",name:"Manager",mobile:"0000",pin:"123456"}], adminPin:"999999", categories:["General","HSE","Project"], topics:[], sections:[], comments:[], userReads:{} };
+    sync();
+    populateGlobalUser();
+    doLogout();
 }
 </script>
 </body>
