@@ -166,10 +166,10 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 
 .sections-feed { flex: 1; min-height: 0; overflow-y: auto; padding: 1.2rem; display: flex; flex-direction: column; gap: 12px; }
 
-.section-card { background: var(--white); border-radius: var(--r-lg); border: 1.5px solid var(--border); overflow: hidden; box-shadow: var(--shadow-sm); transition: box-shadow .2s var(--ease); display: flex; flex-direction: column; flex-shrink: 0; }
+.section-card { background: var(--white); border-radius: var(--r-lg); border: 1.5px solid var(--border); overflow: visible; box-shadow: var(--shadow-sm); transition: box-shadow .2s var(--ease); display: flex; flex-direction: column; flex-shrink: 0; position: relative; z-index: 1; }
 .section-card:hover { box-shadow: var(--shadow-md); }
 .section-card.archived { opacity: .55; }
-.section-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; transition: background .15s var(--ease); flex-shrink: 0; min-height: 48px; }
+.section-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; user-select: none; transition: background .15s var(--ease); flex-shrink: 0; min-height: 48px; border-radius: var(--r-lg) var(--r-lg) 0 0; }
 .section-card-header:hover { background: var(--off-white); }
 .section-color-bar { width: 4px; min-height: 36px; border-radius: 2px; flex-shrink: 0; background: var(--accent); align-self: stretch; }
 .section-card-info { flex: 1; min-width: 0; }
@@ -179,9 +179,10 @@ body { font-family: var(--font-body); background: var(--off-white); color: var(-
 .sec-expand-icon { font-size: .7rem; color: var(--text-3); transition: transform .25s var(--ease); flex-shrink: 0; }
 .sec-expand-icon.open { transform: rotate(180deg); }
 
-.section-card-body { display: none; border-top: 1px solid var(--border); background: var(--off-white); flex-direction: column; }
+.section-card-body { display: none; border-top: 1px solid var(--border); background: var(--off-white); flex-direction: column; border-radius: 0 0 var(--r-lg) var(--r-lg); }
 .section-card-body.open { display: flex; }
 .updates-list { padding: 0 14px; }
+.section-card:has(.dropdown-menu[style*="block"]) { z-index: 10; }
 .section-add-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--white); margin-top: auto; }
 .add-update-trigger { flex: 1; height: 36px; padding: 0 12px; border: 1.5px solid var(--border); border-radius: var(--r-full); font-family: var(--font-body); font-size: .85rem; color: var(--text-3); background: var(--off-white); cursor: pointer; text-align: left; transition: all .18s var(--ease); }
 .add-update-trigger:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
@@ -764,23 +765,40 @@ function toggleTopSearch(){
 
 /* ─── NEW BADGE ─── */
 function checkIsNew(dateObj,creatorId){
-    if(!dateObj||!currentSessionPreviousLogin) return false;
+    if(!dateObj) return false;
     const uid=document.getElementById("globalUserSelect").value;
     if(creatorId&&creatorId===uid) return false;
-    return new Date(dateObj).getTime()>currentSessionPreviousLogin;
+    const t=new Date(dateObj).getTime();
+    const now=Date.now();
+    const twoWeeks=14*24*60*60*1000;
+    const withinTwoWeeks=(now-t)<=twoWeeks;
+    const sinceLastLogin=currentSessionPreviousLogin&&t>currentSessionPreviousLogin;
+    return withinTwoWeeks||sinceLastLogin;
 }
 function getSectionBadgeHtml(sid){
-    const sec=db.sections.find(s=>s.id===sid); if(!sec) return "";
+    const sec=db.sections.find(s=>s.id===sid);
+    if(!sec) return "";
     if(checkIsNew(sec.date,sec.userId)) return `<span class="badge-new">New</span>`;
-    const hasNew=db.comments.filter(c=>c.sectionId===sid).some(c=>checkIsNew(c.date,c.userId));
-    return hasNew?`<span class="badge-new">Update</span>`:"";
+    const comments=db.comments.filter(c=>c.sectionId===sid);
+    if(!comments.length) return "";
+    const latest=comments.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
+    if(latest.userId===document.getElementById("globalUserSelect").value) return "";
+    return checkIsNew(latest.date,latest.userId)?`<span class="badge-new">New Update</span>`:"";
 }
 function getTopicBadgeHtml(tid){
-    const t=db.topics.find(x=>x.id===tid); if(!t) return "";
+    const t=db.topics.find(x=>x.id===tid);
+    if(!t) return "";
     if(checkIsNew(t.date,t.userId)) return `<span class="badge-new">New</span>`;
-    for(let s of db.sections.filter(s=>s.topicId===tid)){
+    const sections=db.sections.filter(s=>s.topicId===tid);
+    for(let s of sections){
         if(checkIsNew(s.date,s.userId)) return `<span class="badge-new">Update</span>`;
-        if(db.comments.filter(c=>c.sectionId===s.id).some(c=>checkIsNew(c.date,c.userId))) return `<span class="badge-new">Update</span>`;
+    }
+    const comments=db.comments.filter(c=>sections.some(s=>s.id===c.sectionId));
+    if(comments.length){
+        const latest=comments.reduce((a,b)=>new Date(a.date)>new Date(b.date)?a:b);
+        if(latest.userId!==document.getElementById("globalUserSelect").value && checkIsNew(latest.date,latest.userId)){
+            return `<span class="badge-new">Update</span>`;
+        }
     }
     return "";
 }
@@ -1198,7 +1216,7 @@ function buildSectionCardHtml(s,isArchived){
 }
 
 function renderUpdates(sid){
-    const items=db.comments.filter(c=>c.sectionId===sid);
+    const items=db.comments.filter(c=>c.sectionId===sid).sort((a,b)=>new Date(b.date)-new Date(a.date));
     const sec=db.sections.find(s=>s.id===sid);
     if(!items.length) return `<div class="section-empty">No updates yet — be the first to log one.</div>`;
     return items.map(c=>{
