@@ -168,6 +168,7 @@ select.field-input{appearance:none;-webkit-appearance:none;background-image:url(
 .attachment-img{max-width:100%;max-height:200px;border-radius:var(--r-sm);border:1px solid var(--border);cursor:zoom-in;object-fit:contain;display:block;}
 .attachment-file{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 12px;color:var(--accent);font-size:.8rem;font-weight:600;text-decoration:none;transition:all .15s var(--ease);}
 .attachment-file:hover{background:var(--accent-bg);border-color:var(--accent);}
+/* The delete button class remains defined but is no longer used */
 .update-del-btn{position:absolute;right:0;top:14px;background:none;border:none;color:var(--border-dark);cursor:pointer;font-size:.9rem;padding:4px;border-radius:var(--r-sm);transition:all .15s;}
 .update-del-btn:hover{color:var(--red);background:var(--red-bg);}
 .section-empty{padding:1.5rem;text-align:center;font-size:.82rem;color:var(--text-3);font-family:var(--font-mono);}
@@ -1347,6 +1348,7 @@ function buildSectionCardHtml(s, isArchived){
     </div>`;
 }
 
+/* UPDATED: removed the delete button from each update entry */
 function renderUpdateEntry(c, sec){
     const u = db.users.find(x => x.id === c.userId) || { name: "Unknown", mobile: "" };
     let fileHtml = "";
@@ -1355,7 +1357,6 @@ function renderUpdateEntry(c, sec){
             ? `<div class="update-attachment"><img src="${c.fData}" class="attachment-img" onclick="window.open(this.src)"/></div>`
             : `<div class="update-attachment"><a href="${c.fData}" download="${c.fName}" class="attachment-file">📎 ${c.fName}</a></div>`;
     }
-    const delBtn = sec && sec.archived ? "" : `<button class="update-del-btn" onclick="deleteComment('${c.id}')">✕</button>`;
     return `<div class="update-entry">
         <div class="update-avatar">${u.name.charAt(0).toUpperCase()}</div>
         <div class="update-content">
@@ -1367,7 +1368,7 @@ function renderUpdateEntry(c, sec){
             </div>
             <div class="update-text">${c.text}</div>
             ${fileHtml}
-        </div>${delBtn}
+        </div>
     </div>`;
 }
 
