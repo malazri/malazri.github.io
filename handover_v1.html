@@ -243,6 +243,10 @@ tr:hover td { background: var(--off-white); }
 .mtc-meta { font-size: .72rem; color: var(--text-3); font-family: var(--font-mono); }
 .mtc-arrow { color: var(--text-3); font-size: .9rem; flex-shrink: 0; }
 
+/* ════ Filter ════ */
+.filter-bar { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px 8px; }
+.filter-select, .filter-input { width: 100%; height: 34px; padding: 0 10px; border: 1.5px solid var(--border); border-radius: var(--r-sm); background: var(--off-white); font-family: var(--font-body); font-size: .8rem; color: var(--text-1); outline: none; cursor: pointer; transition: all .18s var(--ease); }
+.filter-select:focus, .filter-input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px var(--accent-glow); }
 /* ════ MODALS ════ */
 .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15,25,35,.45); backdrop-filter: blur(4px); z-index: 2000; align-items: flex-end; justify-content: center; padding: 0; }
 @media (min-width: 640px) { .modal-backdrop { align-items: center; padding: 1.5rem; } }
@@ -417,6 +421,26 @@ tr:hover td { background: var(--off-white); }
           </div>
         </div>
       </div>
+      <div class="filter-bar" id="filterBarDesktop">
+          <select class="filter-select" id="filterDuration" onchange="applyFilter()">
+              <option value="all">All Time</option>
+              <option value="1">Last 24 Hours</option>
+              <option value="7">Last 7 Days</option>
+              <option value="14">Last 2 Weeks</option>
+              <option value="30">Last 30 Days</option>
+              <option value="custom">Custom Range…</option>
+          </select>
+          <select class="filter-select" id="filterType" onchange="applyFilter()">
+              <option value="all">Everything</option>
+              <option value="new-topic">New Topics Only</option>
+              <option value="new-section">New Sections Only</option>
+              <option value="new-update">New Updates Only</option>
+          </select>
+          <div id="customRangeWrap" style="display:none;gap:6px;margin-top:6px;">
+              <input type="date" class="filter-input" id="filterFrom" onchange="applyFilter()"/>
+              <input type="date" class="filter-input" id="filterTo" onchange="applyFilter()"/>
+          </div>
+      </div>
       <div class="topic-scroll" id="topicListDesktop"></div>
     </aside>
 
@@ -445,6 +469,26 @@ tr:hover td { background: var(--off-white); }
             <input type="text" id="mobileSearchInput" placeholder="Search..." oninput="setSearchQuery(this.value)" autocomplete="off"/>
           </div>
         </div>
+      </div>
+      <div class="filter-bar" style="margin-top:.6rem;">
+          <select class="filter-select" id="filterDurationM" onchange="syncFilterFromMobile()">
+              <option value="all">All Time</option>
+              <option value="1">Last 24 Hours</option>
+              <option value="7">Last 7 Days</option>
+              <option value="14">Last 2 Weeks</option>
+              <option value="30">Last 30 Days</option>
+              <option value="custom">Custom Range…</option>
+          </select>
+          <select class="filter-select" id="filterTypeM" onchange="syncFilterFromMobile()">
+              <option value="all">Everything</option>
+              <option value="new-topic">New Topics Only</option>
+              <option value="new-section">New Sections Only</option>
+              <option value="new-update">New Updates Only</option>
+          </select>
+          <div id="customRangeWrapM" style="display:none;gap:6px;margin-top:6px;">
+              <input type="date" class="filter-input" id="filterFromM" onchange="syncFilterFromMobile()"/>
+              <input type="date" class="filter-input" id="filterToM" onchange="syncFilterFromMobile()"/>
+          </div>
       </div>
       <div class="mobile-topics-scroll" id="topicListMobile"></div>
     </div>
@@ -614,6 +658,50 @@ let currentSearchQuery = '';
 function setSearchQuery(val) {
   currentSearchQuery = val.toLowerCase();
   renderTopics();
+}
+
+
+// Filter state
+let filterDuration = 'all';
+let filterType = 'all';
+let filterFrom = '';
+let filterTo = '';
+
+function applyFilter(){
+    filterDuration = document.getElementById('filterDuration').value;
+    filterType = document.getElementById('filterType').value;
+    filterFrom = document.getElementById('filterFrom') ? document.getElementById('filterFrom').value : '';
+    filterTo = document.getElementById('filterTo') ? document.getElementById('filterTo').value : '';
+    document.getElementById('customRangeWrap').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    renderTopics();
+}
+
+function syncFilterFromMobile(){
+    filterDuration = document.getElementById('filterDurationM').value;
+    filterType = document.getElementById('filterTypeM').value;
+    filterFrom = document.getElementById('filterFromM') ? document.getElementById('filterFromM').value : '';
+    filterTo = document.getElementById('filterToM') ? document.getElementById('filterToM').value : '';
+    document.getElementById('customRangeWrapM').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    document.getElementById('filterDuration').value = filterDuration;
+    document.getElementById('filterType').value = filterType;
+    if(document.getElementById('filterFrom')) document.getElementById('filterFrom').value = filterFrom;
+    if(document.getElementById('filterTo')) document.getElementById('filterTo').value = filterTo;
+    document.getElementById('customRangeWrap').style.display = filterDuration === 'custom' ? 'flex' : 'none';
+    renderTopics();
+}
+
+function isInFilterRange(dateObj){
+    if(filterDuration === 'all') return true;
+    const t = new Date(dateObj).getTime();
+    const now = Date.now();
+    if(filterDuration === 'custom'){
+        let valid = true;
+        if(filterFrom){ const f = new Date(filterFrom); f.setHours(0,0,0,0); if(t < f.getTime()) valid = false; }
+        if(filterTo){ const to = new Date(filterTo); to.setHours(23,59,59,999); if(t > to.getTime()) valid = false; }
+        return valid;
+    }
+    const days = parseInt(filterDuration);
+    return (now - t) <= days * 24 * 60 * 60 * 1000;
 }
 
 // Close all open search containers on click outside
@@ -1091,14 +1179,39 @@ function deleteComment(cid){
 
 /* ─── RENDER HELPERS ─── */
 function renderTopics(){
-  const filterVal = document.getElementById("topicFilter").value;
-  const isArchived = filterVal === "archived";
-  const filtered = db.topics.filter(t => !!t.archived === isArchived && t.title.toLowerCase().includes(currentSearchQuery));
-  const grouped = {};
-  filtered.forEach(t => { if(!grouped[t.cat]) grouped[t.cat] = []; grouped[t.cat].push(t); });
-  updateArchiveIcons();
-  renderTopicList('topicListDesktop', grouped);
-  renderTopicListMobile('topicListMobile', grouped);
+    const filterVal = document.getElementById("topicFilter").value;
+    const isArchived = filterVal === "archived";
+
+    let filtered = db.topics.filter(t => !!t.archived === isArchived && t.title.toLowerCase().includes(currentSearchQuery));
+
+    // Type filter
+    if(filterType === 'new-topic'){
+        filtered = filtered.filter(t => checkIsNew(t.date, t.userId));
+    } else if(filterType === 'new-section'){
+        filtered = filtered.filter(t => db.sections.some(s => s.topicId === t.id && isInFilterRange(s.date) && checkIsNew(s.date, s.userId)));
+    } else if(filterType === 'new-update'){
+        filtered = filtered.filter(t => {
+            const secIds = db.sections.filter(s => s.topicId === t.id).map(s => s.id);
+            return db.comments.some(c => secIds.includes(c.sectionId) && isInFilterRange(c.date) && checkIsNew(c.date, c.userId));
+        });
+    }
+
+    // Duration filter (only applies when not "new-*" type, since those use their own time window)
+    if(filterType === 'all' && filterDuration !== 'all'){
+        filtered = filtered.filter(t => {
+            const secIds = db.sections.filter(s => s.topicId === t.id).map(s => s.id);
+            const hasTopic = isInFilterRange(t.date);
+            const hasSection = db.sections.some(s => s.topicId === t.id && isInFilterRange(s.date));
+            const hasComment = db.comments.some(c => secIds.includes(c.sectionId) && isInFilterRange(c.date));
+            return hasTopic || hasSection || hasComment;
+        });
+    }
+
+    const grouped = {};
+    filtered.forEach(t => { if(!grouped[t.cat]) grouped[t.cat] = []; grouped[t.cat].push(t); });
+    updateArchiveIcons();
+    renderTopicList('topicListDesktop', grouped);
+    renderTopicListMobile('topicListMobile', grouped);
 }
 
 function renderTopicList(containerId, grouped){
@@ -1216,25 +1329,39 @@ function buildSectionCardHtml(s,isArchived){
 }
 
 function renderUpdates(sid){
-    const items=db.comments.filter(c=>c.sectionId===sid).sort((a,b)=>new Date(b.date)-new Date(a.date));
-    const sec=db.sections.find(s=>s.id===sid);
-    if(!items.length) return `<div class="section-empty">No updates yet — be the first to log one.</div>`;
-    return items.map(c=>{
-        const u=db.users.find(x=>x.id===c.userId)||{name:"Unknown",mobile:""};
-        let fileHtml="";
+    const sec = db.sections.find(s => s.id === sid);
+    let items = db.comments.filter(c => c.sectionId === sid);
+
+    // Apply duration filter
+    if(filterDuration !== 'all'){
+        items = items.filter(c => isInFilterRange(c.date));
+    }
+    // Apply type filter
+    if(filterType === 'new-update'){
+        items = items.filter(c => checkIsNew(c.date, c.userId));
+    }
+
+    // Sort newest first
+    items = items.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    if(!items.length) return `<div class="section-empty">No updates match the current filter.</div>`;
+
+    return items.map(c => {
+        const u = db.users.find(x => x.id === c.userId) || { name: "Unknown", mobile: "" };
+        let fileHtml = "";
         if(c.fData){
-            fileHtml=c.fType&&c.fType.startsWith("image/")
-                ?`<div class="update-attachment"><img src="${c.fData}" class="attachment-img" onclick="window.open(this.src)"/></div>`
-                :`<div class="update-attachment"><a href="${c.fData}" download="${c.fName}" class="attachment-file">📎 ${c.fName}</a></div>`;
+            fileHtml = c.fType && c.fType.startsWith("image/")
+                ? `<div class="update-attachment"><img src="${c.fData}" class="attachment-img" onclick="window.open(this.src)"/></div>`
+                : `<div class="update-attachment"><a href="${c.fData}" download="${c.fName}" class="attachment-file">📎 ${c.fName}</a></div>`;
         }
-        const delBtn=sec&&sec.archived?"":`<button class="update-del-btn" onclick="deleteComment('${c.id}')">✕</button>`;
+        const delBtn = sec && sec.archived ? "" : `<button class="update-del-btn" onclick="deleteComment('${c.id}')">✕</button>`;
         return `<div class="update-entry">
             <div class="update-avatar">${u.name.charAt(0).toUpperCase()}</div>
             <div class="update-content">
                 <div class="update-header">
                     <span class="update-name">${u.name}</span>
-                    ${checkIsNew(c.date,c.userId)?'<span class="badge-new">New</span>':''}
-                    ${u.mobile?`<span class="update-mobile">${u.mobile}</span>`:''}
+                    ${checkIsNew(c.date, c.userId) ? '<span class="badge-new">New</span>' : ''}
+                    ${u.mobile ? `<span class="update-mobile">${u.mobile}</span>` : ''}
                     <span class="update-date">${new Date(c.date).toLocaleDateString()}</span>
                 </div>
                 <div class="update-text">${c.text}</div>
@@ -1246,8 +1373,19 @@ function renderUpdates(sid){
 
 function buildFeedHtml(topicId){
     const allSecs=db.sections.filter(s=>s.topicId===topicId);
-    const activeSecs=allSecs.filter(s=>!s.archived);
-    const archivedSecs=allSecs.filter(s=>s.archived);
+    let visibleSecs = allSecs;
+      if(filterType === 'new-section'){
+          visibleSecs = allSecs.filter(s => isInFilterRange(s.date) && checkIsNew(s.date, s.userId));
+      } else if(filterType === 'new-update'){
+          visibleSecs = allSecs.filter(s => db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date) && checkIsNew(c.date, c.userId)));
+      } else if(filterDuration !== 'all'){
+          visibleSecs = allSecs.filter(s => {
+              if(isInFilterRange(s.date)) return true;
+              return db.comments.some(c => c.sectionId === s.id && isInFilterRange(c.date));
+          });
+      }
+      const activeSecs = visibleSecs.filter(s => !s.archived);
+      const archivedSecs = visibleSecs.filter(s => s.archived);
     const t=db.topics.find(x=>x.id===topicId);
     const isTopicArchived=t&&t.archived;
 
